@@ -1,30 +1,38 @@
-<script src="bundle.js"></script>
-<input type="file" id="image-input" accept="all">
+<html lang="en">
 
-<br>
-<br>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookmarkFS</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self'">
+</head>
 
-<table id="table"></table>
+<body>
+    <script src="./bundle.js"></script>
 
-<style>
-    body {
-        background-color: hsl(284, 13%, 28%);
-    }
+    <!-- <script src="darkmode.js"></script -->
+    <link href='style.css' rel='stylesheet' type='text/css'>
+    <!-- <img style='display:block; width:100px;height:100px;' id='base64image'
+       src='data:image/jpeg;base64, LzlqLzRBQ... ' -->
+    <center>
+        <!--
+    <label for="file-input" class="button">Upload File</label>
+    <input type="file" id="file-input" accept="*/*">
+-->
 
-    tr:nth-child(even) {
-        background-color: hsl(285, 13%, 18%);
-    }
+        <table class="rwd-table" id="table">
+            <!--
+<tr>
+	<th>Preview</th> 
+    <th>Name</th>
+    <th>Download</th>
+	<th>Clipboard</th>
+    <th>Delete</th>
+</tr>
+-->
+        </table>
+    </center>
 
-    tr:hover {
-        background-color: hsl(284, 14%, 38%);
-    }
+</body>
 
-    td,
-    th {
-        border: 2px solid black;
-        border-radius: 10px;
-        padding: 8px;
-        border-collapse: collapse;
-        margin: 2px;
-    }
-</style>
+</html>
