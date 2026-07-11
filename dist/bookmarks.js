@@ -77,6 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Main Initialization ---
     function initialize() {
+        if (chrome.sidePanel && chrome.sidePanel.setOptions) {
+            chrome.sidePanel.setOptions({ path: "dist/bookmarks.html" }).catch(() => {});
+        }
         loadSettings();
         setupEventListeners();
         setupDarkMode();

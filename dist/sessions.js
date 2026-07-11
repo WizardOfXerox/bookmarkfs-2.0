@@ -557,6 +557,9 @@
     }
 
     // Initialize UI
+    if (chrome.sidePanel && chrome.sidePanel.setOptions) {
+        chrome.sidePanel.setOptions({ path: "dist/sessions.html" }).catch(() => {});
+    }
     await loadActiveWorkspace();
     await refreshWorkspaces();
 })();

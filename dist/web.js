@@ -1,4 +1,8 @@
 (() => {
+    if (chrome.sidePanel && chrome.sidePanel.setOptions) {
+        chrome.sidePanel.setOptions({ path: "dist/web.html" }).catch(() => {});
+    }
+
     const iframe = document.getElementById("web-iframe");
     const addressBar = document.getElementById("web-address-bar");
     const btnGo = document.getElementById("web-go");

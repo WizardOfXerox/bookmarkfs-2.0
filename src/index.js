@@ -4205,6 +4205,10 @@ export function handleZip(bytes) {
         detectContext();
         ensureUI();
 
+        if (chrome.sidePanel && chrome.sidePanel.setOptions) {
+            chrome.sidePanel.setOptions({ path: "dist/index.html" }).catch(() => {});
+        }
+
         // wire main file input
         const input = qs("#file-input");
         if (input) {

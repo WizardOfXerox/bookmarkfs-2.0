@@ -1,4 +1,8 @@
 (() => {
+    if (chrome.sidePanel && chrome.sidePanel.setOptions) {
+        chrome.sidePanel.setOptions({ path: "dist/notes.html" }).catch(() => {});
+    }
+
     const favicon = document.getElementById("active-favicon");
     const domainSpan = document.getElementById("active-domain");
     const scopeSelector = document.getElementById("notes-scope-selector");
