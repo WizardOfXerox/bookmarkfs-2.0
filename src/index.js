@@ -31,6 +31,50 @@ export function handleZip(bytes) {
     let pageSize = 25;
     let cachedSessionPassphrase = "";
 
+    // ---------- Sandbox Communication ----------
+    let sandboxRequestId = 0;
+    const sandboxCallbacks = new Map();
+
+    window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || !data.requestId) return;
+
+        const cb = sandboxCallbacks.get(data.requestId);
+        if (cb) {
+            sandboxCallbacks.delete(data.requestId);
+            if (data.type === "unrar-list-result" || data.type === "unrar-extract-result") {
+                cb.resolve(data);
+            } else {
+                cb.reject(new Error(data.message || "Sandbox error"));
+            }
+        }
+    });
+
+    function callSandbox(message) {
+        return new Promise((resolve, reject) => {
+            const id = ++sandboxRequestId;
+            message.requestId = id;
+            sandboxCallbacks.set(id, { resolve, reject });
+
+            let iframe = qs("#sandbox-iframe");
+            if (!iframe) {
+                iframe = document.createElement("iframe");
+                iframe.id = "sandbox-iframe";
+                iframe.src = "sandbox.html";
+                iframe.style.display = "none";
+                document.body.appendChild(iframe);
+            }
+
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage(message, "*");
+            } else {
+                iframe.onload = () => {
+                    iframe.contentWindow.postMessage(message, "*");
+                };
+            }
+        });
+    }
+
     // Recorder State
     let mediaRecorder = null;
     let recordedChunks = [];
@@ -3401,14 +3445,14 @@ export function handleZip(bytes) {
                         }
                     } else if (type === "application/vnd.rar" || type === "application/x-rar-compressed" || name.endsWith(".rar")) {
                         try {
-                            contentArea.innerHTML = "<p style='color:#a1a1aa;'>Loading RAR extractor...</p>";
-                            const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-                            const extractor = await createExtractorFromData({
-                                data: arrayBuffer,
-                                wasmFile: chrome.runtime.getURL("dist/unrar.wasm")
+                            contentArea.innerHTML = "<p style='color:#a1a1aa;'>Loading RAR extractor (sandbox)...</p>";
+                            
+                            const result = await callSandbox({
+                                type: "unrar-list",
+                                bytes: bytes
                             });
-                            const list = extractor.getFileList();
-                            const headers = Array.from(list.fileHeaders);
+                            
+                            const headers = result.files;
                             contentArea.innerHTML = "";
 
                             if (!headers || headers.length === 0) {
@@ -3433,7 +3477,7 @@ export function handleZip(bytes) {
 
                                 const tbody = table.querySelector("tbody");
                                 headers.forEach(header => {
-                                    const isDir = header.flags.directory || header.unpSize === 0;
+                                    const isDir = header.directory;
                                     const tr = document.createElement("tr");
                                     tr.style.borderBottom = "1px solid #27272a";
 
@@ -3457,27 +3501,32 @@ export function handleZip(bytes) {
                                         dlBtn.textContent = "Download";
                                         dlBtn.style.padding = "4px 8px";
                                         dlBtn.style.fontSize = "11px";
-                                        dlBtn.onclick = () => {
+                                        dlBtn.onclick = async () => {
                                             try {
-                                                const extracted = extractor.extract({ files: [header.name] });
-                                                const filesArr = Array.from(extracted.files);
-                                                const matchingFile = filesArr[0];
-                                                if (matchingFile && matchingFile.extraction) {
-                                                    const innerMime = getMimeType(header.name);
-                                                    const blob = new Blob([matchingFile.extraction], { type: innerMime });
-                                                    const blobUrl = URL.createObjectURL(blob);
-                                                    const a = document.createElement("a");
-                                                    a.href = blobUrl;
-                                                    a.download = header.name.split("/").pop();
-                                                    document.body.appendChild(a);
-                                                    a.click();
-                                                    a.remove();
-                                                    URL.revokeObjectURL(blobUrl);
-                                                } else {
-                                                    alert("Failed to extract file from RAR.");
-                                                }
+                                                dlBtn.textContent = "Extracting...";
+                                                dlBtn.disabled = true;
+                                                
+                                                const extractResult = await callSandbox({
+                                                    type: "unrar-extract",
+                                                    bytes: bytes,
+                                                    fileName: header.name
+                                                });
+                                                
+                                                const innerMime = getMimeType(header.name);
+                                                const blob = new Blob([extractResult.content], { type: innerMime });
+                                                const blobUrl = URL.createObjectURL(blob);
+                                                const a = document.createElement("a");
+                                                a.href = blobUrl;
+                                                a.download = header.name.split("/").pop();
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                a.remove();
+                                                URL.revokeObjectURL(blobUrl);
                                             } catch (err) {
                                                 alert("Extraction failed: " + err.message);
+                                            } finally {
+                                                dlBtn.textContent = "Download";
+                                                dlBtn.disabled = false;
                                             }
                                         };
                                         tdAction.appendChild(dlBtn);
