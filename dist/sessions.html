@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookmarkFS Sessions</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sessions-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 980px;
+            margin: 20px auto;
+            padding: 0 16px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .active-session-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        .active-session-card:hover {
+            border-color: var(--accent);
+        }
+        .active-session-title {
+            color: var(--accent);
+            margin-top: 0;
+            margin-bottom: 14px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .tabs-list {
+            max-height: 160px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-right: 8px;
+        }
+        .tab-item {
+            font-size: 13px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        }
+        .sessions-grid-title {
+            text-align: left;
+            color: var(--accent);
+            margin-top: 10px;
+            margin-bottom: 14px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .sessions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            width: 100%;
+        }
+        .session-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .session-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+            box-shadow: 0 6px 15px var(--accent-glow);
+        }
+        .session-card-header {
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .session-card-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .session-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: auto;
+        }
+        .session-actions button {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="panel-nav-bar">
+        <a href="index.html" class="nav-btn">📁 Files</a>
+        <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
+        <a href="sessions.html" class="nav-btn active">🗂️ Sessions</a>
+    </div>
+
+    <div class="sessions-container">
+        <div class="active-session-card">
+            <h3 class="active-session-title">💻 Active Workspace window</h3>
+            <div id="active-tabs-list" class="tabs-list">
+                <!-- Open tabs loaded dynamically -->
+            </div>
+            <button id="snapshot-workspace-btn" class="button">💾 Save Workspace Session</button>
+        </div>
+
+        <h3 class="sessions-grid-title">🗂️ Stored Workspace Sessions Library</h3>
+        <div id="sessions-gallery" class="sessions-grid">
+            <!-- Saved sessions cards populated dynamically -->
+        </div>
+    </div>
+
+    <script src="sessions.js"></script>
+</body>
+</html>

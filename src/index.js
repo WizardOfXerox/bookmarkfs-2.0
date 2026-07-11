@@ -1627,9 +1627,9 @@ export function handleZip(bytes) {
             const nav = document.createElement("div");
             nav.id = "panel-nav-bar";
             nav.innerHTML = `
-                <button class="nav-btn active" data-panel="files">📁 Files</button>
-                <button class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</button>
-                <button class="nav-btn" data-panel="sessions">🗂️ Sessions</button>
+                <a href="index.html" class="nav-btn active" data-panel="files">📁 Files</a>
+                <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
+                <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
             `;
             center.insertBefore(nav, center.firstChild);
 

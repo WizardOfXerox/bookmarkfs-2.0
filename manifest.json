@@ -25,7 +25,7 @@
         "default_popup": "./dist/index.html"
     },
     "side_panel": {
-        "default_path": "./dist/index.html"
+        "default_path": "./dist/sidebar.html"
     },
     "web_accessible_resources": [{
         "resources": ["dist/unrar.wasm"],
