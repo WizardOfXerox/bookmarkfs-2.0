@@ -1681,11 +1681,7 @@ export function handleZip(bytes) {
                     const filename = `session-${dateStr}.json`;
                     let targetName = folderValue ? `${folderValue}/${filename}` : filename;
                     
-                    let pass = cachedSessionPassphrase;
-                    if (!pass) {
-                        pass = prompt("Optional Passphrase to encrypt session (cancel to skip encryption):", "");
-                        if (pass === null) return;
-                    }
+                    let pass = "";
                     
                     const { serialized, metaObj, metaHeader } = await prepareSerializedFromDataURL(
                         await new Promise(resolve => {

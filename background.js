@@ -174,3 +174,89 @@ async function sha256String(str) {
     const bytes = new TextEncoder().encode(str);
     return sha256Hex(bytes);
 }
+
+// Auto-save active workspace session tabs (TabXpert Premium)
+async function storeSessionAutoSave(bytes) {
+    const root = await fsRoot();
+    const children = await chrome.bookmarks.getChildren(root.id);
+    const filename = "autosave-session.json";
+
+    let fileFolder = children.find(b => !b.url && b.title === filename);
+    if (fileFolder) {
+        const sub = await chrome.bookmarks.getChildren(fileFolder.id);
+        for (const item of sub) {
+            await chrome.bookmarks.remove(item.id);
+        }
+        const chunkFolder = await getFileChunksFolder(fileFolder.id, false);
+        if (chunkFolder) {
+            await chrome.bookmarks.removeTree(chunkFolder.id);
+        }
+    } else {
+        fileFolder = await chrome.bookmarks.create({ parentId: root.id, title: filename });
+    }
+
+    const base64Str = bytesToBase64(bytes);
+    const serialized = "r" + base64Str;
+    const contentHash = await sha256Hex(bytes);
+
+    const maxBookmarkSize = 9092;
+    const pieces = [];
+    for (let i = 0; i < serialized.length; i += maxBookmarkSize) {
+        pieces.push(serialized.substring(i, i + maxBookmarkSize));
+    }
+
+    const chunkHashes = [];
+    for (const part of pieces) {
+        chunkHashes.push(await sha256String(part));
+    }
+
+    const metaObj = {
+        schemaVersion: 3,
+        type: "application/json",
+        sizeOriginal: bytes.length,
+        sizeStored: serialized.length,
+        ratio: serialized.length / Math.max(1, bytes.length),
+        compressed: false,
+        encrypted: false,
+        chunkSize: maxBookmarkSize,
+        chunkHashes: chunkHashes,
+        contentHash: contentHash,
+        dateISO: new Date().toISOString(),
+        tags: ["session", "autosave"]
+    };
+
+    const metaPayload = "!meta:" + btoa(JSON.stringify(metaObj));
+    await chrome.bookmarks.create({ parentId: fileFolder.id, title: metaPayload });
+
+    const chunkFolder = await getFileChunksFolder(fileFolder.id, true);
+    for (const part of pieces) {
+        await chrome.bookmarks.create({ parentId: chunkFolder.id, title: part });
+    }
+}
+
+let autoSaveTimeout = null;
+
+function triggerAutoSave() {
+    if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(async () => {
+        try {
+            console.log("Auto-saving active window workspace sessions...");
+            const tabs = await chrome.tabs.query({ currentWindow: true });
+            const sessionData = tabs.map(t => ({ title: t.title, url: t.url }));
+            const serializedText = JSON.stringify(sessionData, null, 2);
+            const bytes = new TextEncoder().encode(serializedText);
+            await storeSessionAutoSave(bytes);
+            console.log("Auto-save completed successfully!");
+        } catch (err) {
+            console.error("Auto-save failed:", err);
+        }
+    }, 3000);
+}
+
+chrome.tabs.onCreated.addListener(triggerAutoSave);
+chrome.tabs.onRemoved.addListener(triggerAutoSave);
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === "complete" || changeInfo.url) {
+        triggerAutoSave();
+    }
+});
