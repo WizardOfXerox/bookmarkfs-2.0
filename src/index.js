@@ -75,6 +75,27 @@ export function handleZip(bytes) {
         });
     }
 
+    let cachedMetas = null;
+
+    function addFileToCache(fileObj, metaObj) {
+        if (!cachedMetas) return;
+        cachedMetas = cachedMetas.filter(m => m.file.handle.id !== fileObj.handle.id && m.file.handle.title !== fileObj.handle.title);
+        cachedMetas.push({ file: fileObj, meta: metaObj });
+    }
+
+    function removeFileFromCache(fileId) {
+        if (!cachedMetas) return;
+        cachedMetas = cachedMetas.filter(m => m.file.handle.id !== fileId);
+    }
+
+    function renameFileInCache(fileId, newTitle) {
+        if (!cachedMetas) return;
+        const entry = cachedMetas.find(m => m.file.handle.id === fileId);
+        if (entry) {
+            entry.file.handle.title = newTitle;
+        }
+    }
+
     // Recorder State
     let mediaRecorder = null;
     let recordedChunks = [];
@@ -1038,18 +1059,22 @@ export function handleZip(bytes) {
             const id = cb.dataset.id;
             if (isFile) {
                 const f = files.find(x => x.handle.id === id);
-                if (f) await f.delete();
+                if (f) {
+                    await f.delete();
+                    removeFileFromCache(f.handle.id);
+                }
             } else {
                 const folderPath = id;
                 const prefix = folderPath + "/";
                 const matches = files.filter(x => x.handle.title === folderPath || x.handle.title.startsWith(prefix));
                 for (const f of matches) {
                     await f.delete();
+                    removeFileFromCache(f.handle.id);
                 }
             }
         }
         clearBulkSelection();
-        await loadFilesToTable();
+        await loadFilesToTable(false);
     }
 
     async function handleBulkMove() {
@@ -1068,6 +1093,7 @@ export function handleZip(bytes) {
                     const nameParts = splitVirtualName(f.handle.title);
                     const newName = joinVirtualName(targetFolder, nameParts.base);
                     await f.rename(newName);
+                    renameFileInCache(f.handle.id, newName);
                 }
             } else {
                 const folderPath = id;
@@ -1076,12 +1102,14 @@ export function handleZip(bytes) {
                 for (const f of matches) {
                     const relativePath = f.handle.title.slice(folderPath.length);
                     const newName = targetFolder ? `${targetFolder}/${folderPath.split("/").pop()}${relativePath}` : `${folderPath.split("/").pop()}${relativePath}`;
-                    await f.rename(normalizeVirtualPath(newName));
+                    const normalized = normalizeVirtualPath(newName);
+                    await f.rename(normalized);
+                    renameFileInCache(f.handle.id, normalized);
                 }
             }
         }
         clearBulkSelection();
-        await loadFilesToTable();
+        await loadFilesToTable(false);
     }
 
     function updateBulkBar() {
@@ -2098,8 +2126,8 @@ export function handleZip(bytes) {
                     const fobj = await createNewFile(targetPath);
                     await fobj.writeMeta(metaObj);
                     await fobj.write(serialized, () => {});
-
-                    await loadFilesToTable();
+                    addFileToCache(fobj, metaObj);
+                    await loadFilesToTable(false);
                 } catch (err) {
                     alert("Failed to create folder: " + err.message);
                 }
@@ -2849,7 +2877,7 @@ export function handleZip(bytes) {
 
 
     // ---------- UI Rendering ----------
-    async function loadFilesToTable() {
+    async function loadFilesToTable(bypassCache = false) {
         const table = qs("#table");
         const tbody = qs("#table tbody");
         if (!tbody) return;
@@ -2868,25 +2896,31 @@ export function handleZip(bytes) {
         const tagFilter = qs("#tag-filter");
         const tagFilterValue = tagFilter ? tagFilter.value : "";
 
-        const root = await fsRoot();
-        const subtree = await chrome.bookmarks.getSubTree(root.id);
-        const rootNode = subtree[0];
-        const childrenMap = new Map();
-        function cacheNode(node) {
-            if (node.children) {
-                childrenMap.set(node.id, node.children);
-                node.children.forEach(cacheNode);
+        if (bypassCache || !cachedMetas) {
+            const root = await fsRoot();
+            const subtree = await chrome.bookmarks.getSubTree(root.id);
+            const rootNode = subtree[0];
+            const childrenMap = new Map();
+            function cacheNode(node) {
+                if (node.children) {
+                    childrenMap.set(node.id, node.children);
+                    node.children.forEach(cacheNode);
+                }
             }
+            cacheNode(rootNode);
+
+            const rootChildren = childrenMap.get(rootNode.id) || [];
+            const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
+                .map(c => FileObj(c, childrenMap.get(c.id)));
+
+            cachedMetas = await Promise.all(files.map(async f => {
+                try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
+            }));
         }
-        cacheNode(rootNode);
 
-        const rootChildren = childrenMap.get(rootNode.id) || [];
-        const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
-            .map(c => FileObj(c, childrenMap.get(c.id)));
+        const files = cachedMetas.map(m => m.file);
+        const metas = cachedMetas;
 
-        const metas = await Promise.all(files.map(async f => {
-            try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
-        }));
         updateAnalytics(metas);
         updateStorageChart(metas);
 
@@ -3879,8 +3913,10 @@ export function handleZip(bytes) {
             btnRen.onclick = async() => {
                 const next = prompt("Rename to:", entry.fullName);
                 if (!next || next === entry.fullName) return;
-                await file.rename(normalizeVirtualPath(next));
-                await loadFilesToTable();
+                const newName = normalizeVirtualPath(next);
+                await file.rename(newName);
+                renameFileInCache(file.handle.id, newName);
+                await loadFilesToTable(false);
             };
             tdRen.appendChild(btnRen);
 
@@ -3897,12 +3933,10 @@ export function handleZip(bytes) {
                 setTimeout(async () => {
                     tr.remove();
                     await file.delete();
-                    const files = await listFiles();
-                    const metas = await Promise.all(files.map(async f => {
-                        try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
-                    }));
-                    updateAnalytics(metas);
-                    updateStorageChart(metas);
+                    removeFileFromCache(file.handle.id);
+                    updateAnalytics(cachedMetas);
+                    updateStorageChart(cachedMetas);
+                    await loadFilesToTable(false);
                 }, 300);
             };
             tdDel.appendChild(btnDel);
@@ -3932,13 +3966,13 @@ export function handleZip(bytes) {
                 for (const f of fileList) {
                     await processAndStoreFile(f, typedPass || "");
                 }
-                await loadFilesToTable();
+                await loadFilesToTable(false);
             });
         } else {
             for (const f of fileList) {
                 await processAndStoreFile(f, pass);
             }
-            await loadFilesToTable();
+            await loadFilesToTable(false);
         }
     }
 
@@ -3968,6 +4002,7 @@ export function handleZip(bytes) {
             if (action === "cancel") return;
             if (action === "replace") {
                 await existing.delete();
+                removeFileFromCache(existing.handle.id);
             } else {
                 targetName = incrementVersionedName(targetName);
                 while (await getFileByName(targetName)) targetName = incrementVersionedName(targetName);
@@ -3995,6 +4030,7 @@ export function handleZip(bytes) {
 
         await clearUploadCheckpoint();
         setProgress(1);
+        addFileToCache(fobj, metaObj);
     }
 
     function inferExtFromMime(mime) {
@@ -4326,7 +4362,7 @@ export function handleZip(bytes) {
         setupDragDrop();
 
         // initial render
-        await loadFilesToTable();
+        await loadFilesToTable(true);
         applySettings(); // apply saved settings immediately
         runAutoBackup();
 
