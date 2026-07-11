@@ -1322,15 +1322,15 @@ export function handleZip(bytes) {
             const thead = document.createElement("thead");
             thead.innerHTML = `
         <tr>
-          <th style="width: 40px; text-align:center;"><input type="checkbox" id="bulk-select-all"></th>
-          <th>Preview</th>
+          <th style="width: 30px; text-align:center;"><input type="checkbox" id="bulk-select-all"></th>
+          <th style="width: 80px;">Preview</th>
           <th>Name</th>
-          <th>Size</th>
-          <th>Date</th>
-          <th>Download</th>
-          <th>Clipboard</th>
-          <th>Rename</th>
-          <th>Delete</th>
+          <th style="width: 85px;">Size</th>
+          <th style="width: 90px;">Date</th>
+          <th style="width: 42px; text-align:center;" title="Download">📥</th>
+          <th style="width: 42px; text-align:center;" title="Copy to Clipboard">📋</th>
+          <th style="width: 42px; text-align:center;" title="Rename">✏️</th>
+          <th style="width: 42px; text-align:center;" title="Delete">🗑️</th>
         </tr>`;
             const tbody = document.createElement("tbody");
             table.appendChild(thead);
@@ -2727,15 +2727,20 @@ export function handleZip(bytes) {
             };
             const tdName = document.createElement("td");
             tdName.textContent = name;
+            tdName.style.wordBreak = "break-all";
+
             const tdSize = document.createElement("td");
-            tdSize.textContent = meta ? `${niceBytes(meta.sizeOriginal)} -> ${niceBytes(meta.sizeStored)}` : "-";
+            tdSize.innerHTML = meta ? `<div style="font-weight: 500;">${niceBytes(meta.sizeOriginal)}</div><div style="font-size: 10px; color: var(--text-secondary);">${niceBytes(meta.sizeStored)} stored</div>` : "-";
+
             const tdDate = document.createElement("td");
-            tdDate.textContent = meta && meta.dateISO ? (new Date(meta.dateISO)).toLocaleString() : "-";
+            tdDate.innerHTML = meta && meta.dateISO ? `<div style="font-weight: 500;">${new Date(meta.dateISO).toLocaleDateString()}</div><div style="font-size: 10px; color: var(--text-secondary);">${new Date(meta.dateISO).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>` : "-";
 
             const tdDl = document.createElement("td");
+            tdDl.style.textAlign = "center";
             const btnDl = document.createElement("button");
-            btnDl.className = "button";
-            btnDl.textContent = "Download";
+            btnDl.className = "button icon-button";
+            btnDl.innerHTML = "📥";
+            btnDl.title = "Download";
             btnDl.onclick = async() => {
                 const raw = await file.read();
                 const localMeta = await file.readMeta();
@@ -2752,9 +2757,11 @@ export function handleZip(bytes) {
             tdDl.appendChild(btnDl);
 
             const tdClip = document.createElement("td");
+            tdClip.style.textAlign = "center";
             const btnClip = document.createElement("button");
-            btnClip.className = "button";
-            btnClip.textContent = "Clipboard";
+            btnClip.className = "button icon-button";
+            btnClip.innerHTML = "📋";
+            btnClip.title = "Copy to Clipboard";
             btnClip.onclick = async() => {
                 const raw = await file.read();
                 const localMeta = await file.readMeta();
@@ -2770,9 +2777,11 @@ export function handleZip(bytes) {
             tdClip.appendChild(btnClip);
 
             const tdRen = document.createElement("td");
+            tdRen.style.textAlign = "center";
             const btnRen = document.createElement("button");
-            btnRen.className = "button";
-            btnRen.textContent = "Rename";
+            btnRen.className = "button icon-button";
+            btnRen.innerHTML = "✏️";
+            btnRen.title = "Rename";
             btnRen.onclick = async() => {
                 const next = prompt("Rename to:", entry.fullName);
                 if (!next || next === entry.fullName) return;
@@ -2782,9 +2791,11 @@ export function handleZip(bytes) {
             tdRen.appendChild(btnRen);
 
             const tdDel = document.createElement("td");
+            tdDel.style.textAlign = "center";
             const btnDel = document.createElement("button");
-            btnDel.className = "button";
-            btnDel.textContent = "Delete";
+            btnDel.className = "button icon-button";
+            btnDel.innerHTML = "🗑️";
+            btnDel.title = "Delete";
             btnDel.onclick = async() => {
                 if (!confirm(`Delete \"${entry.fullName}\"?`)) return;
                 await file.delete();
