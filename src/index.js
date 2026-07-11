@@ -406,8 +406,7 @@ export function handleZip(bytes) {
                 pageSize: parseInt(qs("#setting-pagesize").value, 10) || 25,
                 columns: [...document.querySelectorAll("#settings-popup input[data-col]")]
                     .filter(c => c.checked)
-                    .map(c => c.dataset.col),
-                dark: localStorage.getItem("bookmarkfs_theme") === "light"
+                    .map(c => c.dataset.col)
             };
 
             setSettings(settings);
@@ -469,8 +468,16 @@ export function handleZip(bytes) {
         if (Number.isFinite(s.maxSize) && s.maxSize > 0) maxBookmarkSize = s.maxSize;
         if (Number.isFinite(s.pageSize) && s.pageSize > 0) pageSize = s.pageSize;
 
-        // Apply dark mode
-        document.body.classList.toggle("dark-mode", !!s.dark);
+        // Apply dark mode unified with the global theme toggle
+        const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
+        const isLight = theme === "light";
+        document.body.classList.toggle("light-mode", isLight);
+        document.body.classList.toggle("dark-mode", !isLight);
+
+        const toggleBtn = document.getElementById("global-theme-toggle");
+        if (toggleBtn) {
+            toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+        }
 
         // Apply column visibility
         const allCols = ["preview", "name", "size", "date", "download", "clipboard", "rename", "delete"];
@@ -4206,105 +4213,105 @@ export function handleZip(bytes) {
       }
 
       /* Premium Light Mode Styles */
-      body.dark-mode {
+      body.light-mode {
           background: #f3f4f6 !important;
           color: #1f2937 !important;
       }
 
-      body.dark-mode #controls-bar {
+      body.light-mode #controls-bar {
           background-color: #ffffff !important;
           box-shadow: inset 0 -7px 0 0 #e5e7eb !important;
           border: 1px solid #d1d5db;
       }
 
-      body.dark-mode .button {
+      body.light-mode .button {
           background-color: #ffffff !important;
           box-shadow: inset 0 -7px 0 0 #d1d5db !important;
           color: #059669 !important;
           border: 1px solid #d1d5db;
       }
 
-      body.dark-mode .button:hover {
+      body.light-mode .button:hover {
           background-color: #f9fafb !important;
           box-shadow: inset 0 0px 0 0 #d1d5db !important;
       }
 
-      body.dark-mode #search-bar,
-      body.dark-mode #folder-input,
-      body.dark-mode #tag-filter {
+      body.light-mode #search-bar,
+      body.light-mode #folder-input,
+      body.light-mode #tag-filter {
           border-color: #059669 !important;
           background-color: #ffffff !important;
           color: #1f2937 !important;
       }
 
-      body.dark-mode table.rwd-table {
+      body.light-mode table.rwd-table {
           background: #ffffff !important;
           color: #1f2937 !important;
           border-color: #d1d5db !important;
       }
 
-      body.dark-mode table.rwd-table tr {
+      body.light-mode table.rwd-table tr {
           border-color: #e5e7eb !important;
       }
 
-      body.dark-mode table.rwd-table th {
+      body.light-mode table.rwd-table th {
           background: #f3f4f6 !important;
           color: #059669 !important;
       }
 
-      body.dark-mode table.rwd-table td {
+      body.light-mode table.rwd-table td {
           color: #374151 !important;
       }
 
-      body.dark-mode table.rwd-table td button {
+      body.light-mode table.rwd-table td button {
           border-color: #d1d5db !important;
       }
 
-      body.dark-mode #storage-chart-container,
-      body.dark-mode #bulk-bar {
+      body.light-mode #storage-chart-container,
+      body.light-mode #bulk-bar {
           background: #ffffff !important;
           border-color: #d1d5db !important;
       }
 
-      body.dark-mode #bulk-count {
+      body.light-mode #bulk-count {
           color: #4b5563 !important;
       }
 
       /* Modals in light mode */
-      body.dark-mode #preview-modal > div {
+      body.light-mode #preview-modal > div {
           background: #ffffff !important;
           border-color: #d1d5db !important;
           color: #1f2937 !important;
       }
 
-      body.dark-mode #preview-modal header {
+      body.light-mode #preview-modal header {
           border-bottom-color: #e5e7eb !important;
       }
 
-      body.dark-mode #preview-modal #editor-textarea,
-      body.dark-mode #preview-modal #editor-tags {
+      body.light-mode #preview-modal #editor-textarea,
+      body.light-mode #preview-modal #editor-tags {
           background: #f9fafb !important;
           color: #1f2937 !important;
           border-color: #d1d5db !important;
       }
 
       /* Highlighted code inside preview in light mode */
-      body.dark-mode #preview-modal pre {
+      body.light-mode #preview-modal pre {
           background: #f9fafb !important;
           color: #232629 !important;
           border-color: #d1d5db !important;
       }
 
       /* ZIP/RAR Tables in light mode modal */
-      body.dark-mode #preview-modal table {
+      body.light-mode #preview-modal table {
           color: #1f2937 !important;
       }
 
-      body.dark-mode #preview-modal tr {
+      body.light-mode #preview-modal tr {
           border-bottom-color: #e5e7eb !important;
       }
 
-      body.dark-mode #preview-modal th {
+      body.light-mode #preview-modal th {
           border-bottom-color: #d1d5db !important;
           color: #059669 !important;
       }
