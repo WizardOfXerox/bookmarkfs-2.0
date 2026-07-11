@@ -2,6 +2,28 @@
     const workspaceList = document.getElementById("workspace-list-container");
     const activeTabsList = document.getElementById("active-tabs-list");
     const snapshotBtn = document.getElementById("snapshot-workspace-btn");
+
+    function syncTheme() {
+        const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
+        const isLight = theme === "light";
+        document.body.classList.toggle("light-mode", isLight);
+        
+        const toggleBtn = document.getElementById("global-theme-toggle");
+        if (toggleBtn) {
+            toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+        }
+    }
+    
+    syncTheme();
+    const toggleBtn = document.getElementById("global-theme-toggle");
+    if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+            const currentTheme = localStorage.getItem("bookmarkfs_theme") || "dark";
+            const nextTheme = currentTheme === "dark" ? "light" : "dark";
+            localStorage.setItem("bookmarkfs_theme", nextTheme);
+            syncTheme();
+        });
+    }
     
     const selectedTitle = document.getElementById("selected-workspace-title");
     const tabsContainer = document.getElementById("workspace-tabs-container");

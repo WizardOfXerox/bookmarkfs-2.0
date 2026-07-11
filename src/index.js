@@ -1630,8 +1630,33 @@ export function handleZip(bytes) {
                 <a href="index.html" class="nav-btn active" data-panel="files">📁 Files</a>
                 <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
                 <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
+                <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
             `;
             center.insertBefore(nav, center.firstChild);
+
+            const syncTheme = () => {
+                const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
+                const isLight = theme === "light";
+                document.body.classList.toggle("light-mode", isLight);
+                document.body.classList.toggle("dark-mode", isLight);
+                
+                const toggleBtn = document.getElementById("global-theme-toggle");
+                if (toggleBtn) {
+                    toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+                }
+            };
+            
+            syncTheme();
+            const toggleBtn = document.getElementById("global-theme-toggle");
+            if (toggleBtn) {
+                toggleBtn.onclick = (e) => {
+                    e.preventDefault();
+                    const currentTheme = localStorage.getItem("bookmarkfs_theme") || "dark";
+                    const nextTheme = currentTheme === "dark" ? "light" : "dark";
+                    localStorage.setItem("bookmarkfs_theme", nextTheme);
+                    syncTheme();
+                };
+            }
 
             const filesView = document.createElement("div");
             filesView.id = "files-panel-view";
@@ -2182,14 +2207,21 @@ export function handleZip(bytes) {
     }
 
     function applyDarkFromStorage() {
-        const on = localStorage.getItem("bookmarkfs_dark") === "1";
-        document.body.classList.toggle("dark-mode", on);
+        const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
+        const isLight = theme === "light";
+        document.body.classList.toggle("light-mode", isLight);
+        document.body.classList.toggle("dark-mode", isLight);
     }
 
     function toggleDark() {
-        const now = !document.body.classList.contains("dark-mode");
-        document.body.classList.toggle("dark-mode", now);
-        localStorage.setItem("bookmarkfs_dark", now ? "1" : "0");
+        const currentTheme = localStorage.getItem("bookmarkfs_theme") || "dark";
+        const nextTheme = currentTheme === "dark" ? "light" : "dark";
+        localStorage.setItem("bookmarkfs_theme", nextTheme);
+        applyDarkFromStorage();
+        const toggleBtn = document.getElementById("global-theme-toggle");
+        if (toggleBtn) {
+            toggleBtn.textContent = nextTheme === "light" ? "🌙 Dark" : "☀️ Light";
+        }
     }
 
     // ---------- Bookmark FS primitives (based on your original) ----------

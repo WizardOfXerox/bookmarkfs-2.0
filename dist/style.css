@@ -15,7 +15,7 @@
     --font-mono: 'JetBrains Mono', monospace;
 }
 
-body.dark-mode {
+body.light-mode {
     --bg-main: #f3f4f6;
     --bg-card: #ffffff;
     --bg-button: #ffffff;
@@ -172,7 +172,7 @@ body.extension-popup {
 }
 
 /* Under light mode override */
-body.dark-mode .rwd-table tbody tr:hover {
+body.light-mode .rwd-table tbody tr:hover {
     background-color: rgba(0, 0, 0, 0.01) !important;
 }
 
@@ -557,15 +557,29 @@ table.rwd-table.grid-mode td.cell-empty {
         display: none !important;
     }
     
-    /* Center search inputs/control toolbars */
-    #controls, .search-container {
-        flex-direction: column !important;
+    /* Compact Search Inputs & Controls Grid for Sidebar */
+    #controls-bar {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 6px !important;
         width: 100% !important;
-        gap: 8px !important;
-        align-items: stretch !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
     }
-    #controls button, #controls select {
+    #controls-bar input {
+        grid-column: span 3 !important;
         width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    #controls-bar select {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    #controls-bar button, #controls-bar .button {
+        width: 100% !important;
+        padding: 6px 4px !important;
+        font-size: 10.5px !important;
+        height: auto !important;
         box-sizing: border-box !important;
     }
     

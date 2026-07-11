@@ -951,25 +951,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleDarkMode() {
-        const isDarkMode = document.body.classList.toggle('dark-mode');
-        settings.darkMode = isDarkMode;
-        localStorage.setItem('darkMode', isDarkMode);
-        
-        // Update icon
-        const icon = darkModeToggle.querySelector('i');
-        icon.className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+        const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
+        const nextTheme = theme === "dark" ? "light" : "dark";
+        localStorage.setItem("bookmarkfs_theme", nextTheme);
+        syncTheme();
     }
 
     function setupDarkMode() {
-        const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-        if (savedDarkMode) {
-            document.body.classList.add('dark-mode');
-            settings.darkMode = true;
+        syncTheme();
+        const toggleBtn = document.getElementById("global-theme-toggle");
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', toggleDarkMode);
         }
+    }
+
+    function syncTheme() {
+        const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
+        const isLight = theme === "light";
+        document.body.classList.toggle("light-mode", isLight);
         
-        // Update icon
-        const icon = darkModeToggle.querySelector('i');
-        icon.className = settings.darkMode ? 'fas fa-sun' : 'fas fa-moon';
+        const toggleBtn = document.getElementById("global-theme-toggle");
+        if (toggleBtn) {
+            toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+        }
     }
 
     // --- Initialize Application ---

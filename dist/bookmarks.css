@@ -19,17 +19,19 @@
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-body.dark-mode {
-    --background-color: #0c0c0e;
-    --text-color: #f4f4f5;
-    --card-background: #16161a;
-    --card-border: rgba(255, 255, 255, 0.06);
-    --input-background: #16161a;
-    --input-border: rgba(255, 255, 255, 0.06);
-    --hover-background: #1e1e24;
-    --shadow-light: 0 4px 12px rgba(0,0,0,0.3);
-    --shadow-medium: 0 8px 24px rgba(0,0,0,0.4);
-    --shadow-heavy: 0 12px 36px rgba(0,0,0,0.5);
+body.light-mode {
+    --background-color: #f3f4f6;
+    --text-color: #1f2937;
+    --card-background: #ffffff;
+    --card-border: rgba(0, 0, 0, 0.08);
+    --input-background: #ffffff;
+    --input-border: rgba(0, 0, 0, 0.08);
+    --hover-background: #e5e7eb;
+    --brand-orange: #059669;
+    --brand-blue: #059669;
+    --shadow-light: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-medium: 0 4px 12px rgba(0,0,0,0.1);
+    --shadow-heavy: 0 8px 24px rgba(0,0,0,0.15);
 }
 
 * {
@@ -591,11 +593,11 @@ header h1 {
     width: 24px;
     height: 24px;
     margin-right: 12px;
-    color: var(--brand-blue);
+    color: var(--text-color);
 }
 
-body.dark-mode .folder-icon {
-    color: var(--text-color); /* White in dark mode */
+body.light-mode .folder-icon {
+    color: var(--brand-blue);
 }
 
 .folder h3 {
@@ -1000,50 +1002,67 @@ body.dark-mode .folder-icon {
         padding: 8px !important;
     }
     header {
-        padding: 10px 12px !important;
-        flex-direction: column !important;
-        gap: 10px !important;
+        padding: 8px !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
         align-items: center !important;
+    }
+    .logo-container {
+        display: none !important;
     }
     
     /* Search Section styling */
     .search-section {
-        margin-bottom: 16px !important;
+        margin-bottom: 12px !important;
+        width: 100% !important;
+    }
+    .search-engine-logo {
+        margin-bottom: 12px !important;
     }
     .search-logo-image {
-        width: 32px !important;
+        width: 24px !important;
     }
     
-    /* Quick Access tabs stack or shrink */
+    /* Quick Access tabs in one row */
     .quick-access-tabs {
-        flex-direction: column !important;
+        flex-direction: row !important;
         width: 100% !important;
-        gap: 6px !important;
+        gap: 4px !important;
     }
     .quick-tab {
-        width: 100% !important;
+        flex: 1 !important;
+        padding: 6px 4px !important;
+        font-size: 11px !important;
         justify-content: center !important;
+        text-align: center !important;
+        white-space: nowrap !important;
     }
     
-    /* Bookmark Controls collapse */
+    /* Bookmark Controls collapse into grid */
     .bookmark-controls {
-        flex-direction: column !important;
-        gap: 8px !important;
-        align-items: stretch !important;
-    }
-    .search-filter-container {
-        flex-direction: column !important;
-        gap: 8px !important;
-    }
-    .filter-container {
+        display: flex !important;
         flex-direction: column !important;
         gap: 6px !important;
+    }
+    .search-filter-container {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        width: 100% !important;
+    }
+    .filter-container {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+        width: 100% !important;
     }
     .filter-container select {
         width: 100% !important;
+        padding: 6px !important;
+        font-size: 11px !important;
     }
     .view-controls {
-        justify-content: center !important;
+        display: none !important;
     }
     
     /* Bookmark folder tabs wrap nicely */
