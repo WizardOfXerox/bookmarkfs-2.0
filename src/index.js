@@ -382,6 +382,7 @@ export function handleZip(bytes) {
         <label><input type="checkbox" data-col="date"> Date</label><br>
         <label><input type="checkbox" data-col="download"> Download</label><br>
         <label><input type="checkbox" data-col="clipboard"> Clipboard</label><br>
+        <label><input type="checkbox" data-col="share"> Share</label><br>
         <label><input type="checkbox" data-col="rename"> Rename</label><br>
         <label><input type="checkbox" data-col="delete"> Delete</label><br>
       </fieldset>
@@ -480,7 +481,7 @@ export function handleZip(bytes) {
         }
 
         // Apply column visibility
-        const allCols = ["preview", "name", "size", "date", "download", "clipboard", "rename", "delete"];
+        const allCols = ["preview", "name", "size", "date", "download", "clipboard", "share", "rename", "delete"];
         allCols.forEach((col, idx) => {
             const th = qs(`#table thead th:nth-child(${idx+2})`);
             const cells = document.querySelectorAll(`#table tbody tr td:nth-child(${idx+2})`);
@@ -2140,6 +2141,7 @@ export function handleZip(bytes) {
           <th style="width: 90px;">Date</th>
           <th style="width: 42px; text-align:center;" title="Download">📥</th>
           <th style="width: 42px; text-align:center;" title="Copy to Clipboard">📋</th>
+          <th style="width: 42px; text-align:center;" title="Share">🔗</th>
           <th style="width: 42px; text-align:center;" title="Rename">✏️</th>
           <th style="width: 42px; text-align:center;" title="Delete">🗑️</th>
         </tr>`;
@@ -3752,6 +3754,32 @@ export function handleZip(bytes) {
             };
             tdClip.appendChild(btnClip);
 
+            const tdShare = document.createElement("td");
+            tdShare.style.textAlign = "center";
+            const btnShare = document.createElement("button");
+            btnShare.className = "button icon-button";
+            btnShare.innerHTML = "🔗";
+            btnShare.title = "Share (Copy share string)";
+            btnShare.onclick = async() => {
+                try {
+                    const raw = await file.read();
+                    const localMeta = await file.readMeta();
+                    const sharePackage = {
+                        type: "bookmarkfs-share",
+                        version: 3,
+                        name: name,
+                        meta: localMeta || meta,
+                        serialized: raw
+                    };
+                    const base64Str = btoa(JSON.stringify(sharePackage));
+                    await navigator.clipboard.writeText(base64Str);
+                    alert(`Shareable Base64 string for "${name}" copied to clipboard!`);
+                } catch (err) {
+                    alert("Share failed: " + err.message);
+                }
+            };
+            tdShare.appendChild(btnShare);
+
             const tdRen = document.createElement("td");
             tdRen.style.textAlign = "center";
             const btnRen = document.createElement("button");
@@ -3795,11 +3823,13 @@ export function handleZip(bytes) {
             tr.appendChild(tdDate);
             tr.appendChild(tdDl);
             tr.appendChild(tdClip);
+            tr.appendChild(tdShare);
             tr.appendChild(tdRen);
             tr.appendChild(tdDel);
             tbody.appendChild(tr);
         }
         applyGridSize();
+        applySettings();
     }
 
     // ---------- Upload handling ----------
