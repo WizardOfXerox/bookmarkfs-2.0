@@ -1053,8 +1053,470 @@ export function handleZip(bytes) {
         updateBulkBar();
     }
 
+    let activePanel = "files";
+    let currentBookmarkFolderId = "1"; // Bookmarks Bar default
+    let bookmarkPathHistory = []; // to keep track of folder path history (e.g. [{id: "1", title: "Bookmarks Bar"}])
+
+    function updateBookmarksPathBar() {
+        const pathNode = qs("#bookmarks-path-bar");
+        if (!pathNode) return;
+        const pathStr = bookmarkPathHistory.map(h => h.title).join(" / ") || "Root";
+        pathNode.textContent = `Path: / ${pathStr}`;
+    }
+
+    async function loadBookmarksToPanel() {
+        const table = qs("#bookmarks-table");
+        if (!table) return;
+        table.innerHTML = "";
+
+        const currentMode = localStorage.getItem("bookmarkfs_view_mode") || "list";
+        if (currentMode === "grid") {
+            table.classList.add("grid-mode");
+        } else {
+            table.classList.remove("grid-mode");
+        }
+
+        const thead = document.createElement("thead");
+        thead.innerHTML = `
+            <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>URL</th>
+                <th>Actions</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+
+        try {
+            const children = await chrome.bookmarks.getChildren(currentBookmarkFolderId);
+            updateBookmarksPathBar();
+
+            children.forEach(node => {
+                const tr = document.createElement("tr");
+                tr.style.borderBottom = "1px solid #27272a";
+
+                const tdType = document.createElement("td");
+                tdType.style.textAlign = "center";
+                const typeIndicator = document.createElement("span");
+                typeIndicator.textContent = node.url ? "🔗" : "📁";
+                tdType.appendChild(typeIndicator);
+                tr.appendChild(tdType);
+
+                const tdPreview = document.createElement("td");
+                const icon = document.createElement("img");
+                icon.style.width = "48px";
+                icon.style.height = "48px";
+                icon.style.objectFit = "cover";
+                if (node.url) {
+                    try {
+                        icon.src = `https://www.google.com/s2/favicons?sz=64&domain=${new URL(node.url).hostname}`;
+                    } catch {
+                        icon.src = placeholderDataUrl("LINK");
+                    }
+                } else {
+                    icon.src = placeholderDataUrl("DIR", "#2b4d2b");
+                }
+                tdPreview.appendChild(icon);
+                tr.appendChild(tdPreview);
+
+                const tdName = document.createElement("td");
+                if (node.url) {
+                    const link = document.createElement("a");
+                    link.href = node.url;
+                    link.target = "_blank";
+                    link.textContent = node.title || node.url;
+                    link.style.color = "var(--accent)";
+                    link.style.textDecoration = "none";
+                    link.style.fontWeight = "600";
+                    tdName.appendChild(link);
+                } else {
+                    const btn = document.createElement("button");
+                    btn.className = "button";
+                    btn.textContent = `[Folder] ${node.title}`;
+                    btn.onclick = async () => {
+                        bookmarkPathHistory.push({ id: currentBookmarkFolderId, title: node.title || "Folder" });
+                        currentBookmarkFolderId = node.id;
+                        await loadBookmarksToPanel();
+                    };
+                    tdName.appendChild(btn);
+                }
+                tr.appendChild(tdName);
+
+                const tdUrl = document.createElement("td");
+                tdUrl.textContent = node.url || "(Folder)";
+                tdUrl.style.fontSize = "11px";
+                tdUrl.style.color = "var(--text-secondary)";
+                tr.appendChild(tdUrl);
+
+                const tdEmpty = document.createElement("td");
+                tdEmpty.textContent = "-";
+                tdEmpty.className = "cell-empty";
+                tr.appendChild(tdEmpty);
+
+                const tdAction = document.createElement("td");
+                
+                const btnEdit = document.createElement("button");
+                btnEdit.className = "button icon-button";
+                btnEdit.innerHTML = "✏️";
+                btnEdit.title = "Rename/Edit";
+                btnEdit.onclick = async () => {
+                    if (node.url) {
+                        const newTitle = prompt("Edit Bookmark Title:", node.title);
+                        const newUrl = prompt("Edit Bookmark URL:", node.url);
+                        if (newTitle !== null && newUrl !== null) {
+                            await chrome.bookmarks.update(node.id, { title: newTitle, url: newUrl });
+                            await loadBookmarksToPanel();
+                        }
+                    } else {
+                        const newTitle = prompt("Edit Folder Title:", node.title);
+                        if (newTitle !== null) {
+                            await chrome.bookmarks.update(node.id, { title: newTitle });
+                            await loadBookmarksToPanel();
+                        }
+                    }
+                };
+                tdAction.appendChild(btnEdit);
+
+                const btnDel = document.createElement("button");
+                btnDel.className = "button icon-button";
+                btnDel.innerHTML = "🗑️";
+                btnDel.title = "Delete";
+                btnDel.style.marginLeft = "4px";
+                btnDel.onclick = async () => {
+                    if (!confirm(`Delete "${node.title}"?`)) return;
+                    tr.style.opacity = "0";
+                    tr.style.transform = "translateX(-20px)";
+                    setTimeout(async () => {
+                        if (node.url) {
+                            await chrome.bookmarks.remove(node.id);
+                        } else {
+                            await chrome.bookmarks.removeTree(node.id);
+                        }
+                        await loadBookmarksToPanel();
+                    }, 300);
+                };
+                tdAction.appendChild(btnDel);
+
+                tr.appendChild(tdAction);
+
+                for (let i = 0; i < 3; i++) {
+                    const td = document.createElement("td");
+                    td.textContent = "-";
+                    td.className = "cell-empty";
+                    tr.appendChild(td);
+                }
+
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error("Failed to load bookmarks:", err);
+        }
+    }
+
+    async function loadSessionsToPanel() {
+        const container = qs("#sessions-panel-view");
+        if (!container) return;
+        container.innerHTML = "";
+
+        const flexWrapper = document.createElement("div");
+        flexWrapper.style.display = "flex";
+        flexWrapper.style.flexDirection = "column";
+        flexWrapper.style.gap = "20px";
+        flexWrapper.style.width = "100%";
+        flexWrapper.style.maxWidth = "980px";
+        flexWrapper.style.margin = "0 auto";
+        container.appendChild(flexWrapper);
+
+        const activeCard = document.createElement("div");
+        activeCard.className = "glass-panel";
+        activeCard.style.padding = "16px";
+        activeCard.style.borderRadius = "12px";
+        activeCard.style.background = "#18181b";
+        activeCard.style.border = "1px solid #27272a";
+        activeCard.style.textAlign = "left";
+
+        const activeTitle = document.createElement("h3");
+        activeTitle.style.margin = "0 0 12px 0";
+        activeTitle.style.color = "#02ff88";
+        activeTitle.textContent = "💻 Active Browser Window Workspace";
+        activeCard.appendChild(activeTitle);
+
+        const tabs = await chrome.tabs.query({ currentWindow: true });
+        const tabsList = document.createElement("div");
+        tabsList.style.maxHeight = "150px";
+        tabsList.style.overflowY = "auto";
+        tabsList.style.display = "flex";
+        tabsList.style.flexDirection = "column";
+        tabsList.style.gap = "6px";
+        tabsList.style.marginBottom = "12px";
+
+        tabs.forEach(tab => {
+            const row = document.createElement("div");
+            row.style.fontSize = "12px";
+            row.style.color = "#e4e4e7";
+            row.style.whiteSpace = "nowrap";
+            row.style.overflow = "hidden";
+            row.style.textOverflow = "ellipsis";
+            row.textContent = `• ${tab.title || tab.url}`;
+            tabsList.appendChild(row);
+        });
+        activeCard.appendChild(tabsList);
+
+        const snapBtn = document.createElement("button");
+        snapBtn.className = "button";
+        snapBtn.textContent = "💾 Snapshot Workspace Session";
+        snapBtn.onclick = async () => {
+            const saveBtnNode = qs("#save-session-btn");
+            if (saveBtnNode) {
+                saveBtnNode.click();
+                setTimeout(() => loadSessionsToPanel(), 1500);
+            }
+        };
+        activeCard.appendChild(snapBtn);
+        flexWrapper.appendChild(activeCard);
+
+        const savedTitle = document.createElement("h3");
+        savedTitle.style.margin = "10px 0 0 0";
+        savedTitle.style.color = "#02ff88";
+        savedTitle.style.textAlign = "left";
+        savedTitle.textContent = "🗂️ Stored Workspace Sessions Library";
+        flexWrapper.appendChild(savedTitle);
+
+        const grid = document.createElement("div");
+        grid.style.display = "grid";
+        grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+        grid.style.gap = "16px";
+        flexWrapper.appendChild(grid);
+
+        const files = await listFiles();
+        const metas = await Promise.all(files.map(async f => {
+            try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
+        }));
+
+        for (const item of metas) {
+            const name = item.file.handle.title;
+            const isSessionFile = name.startsWith("session-") || (item.meta && Array.isArray(item.meta.tags) && item.meta.tags.includes("session"));
+            if (!isSessionFile) continue;
+
+            const card = document.createElement("div");
+            card.className = "glass-panel";
+            card.style.padding = "16px";
+            card.style.borderRadius = "12px";
+            card.style.background = "#18181b";
+            card.style.border = "1px solid #27272a";
+            card.style.display = "flex";
+            card.style.flexDirection = "column";
+            card.style.gap = "10px";
+            card.style.textAlign = "left";
+
+            const cardHeader = document.createElement("div");
+            cardHeader.style.fontWeight = "600";
+            cardHeader.style.color = "#02ff88";
+            cardHeader.textContent = item.meta?.name || name.split("/").pop();
+            card.appendChild(cardHeader);
+
+            let tabCount = 0;
+            let parsedSession = [];
+            try {
+                const raw = await item.file.read();
+                const reconstructed = await reconstructBytesFromSerialized(raw, item.meta);
+                const txt = td.decode(reconstructed.bytes);
+                parsedSession = JSON.parse(txt);
+                tabCount = parsedSession.length;
+            } catch {}
+
+            const info = document.createElement("div");
+            info.style.fontSize = "12px";
+            info.style.color = "#a1a1aa";
+            info.textContent = `Tabs: ${tabCount} | Size: ${niceBytes(item.meta?.size || 0)}`;
+            card.appendChild(info);
+
+            const btnRow = document.createElement("div");
+            btnRow.style.display = "flex";
+            btnRow.style.flexWrap = "wrap";
+            btnRow.style.gap = "6px";
+
+            const restoreBtn = document.createElement("button");
+            restoreBtn.className = "button";
+            restoreBtn.textContent = "🚀 Open";
+            restoreBtn.onclick = async () => {
+                for (const t of parsedSession) {
+                    if (t.url) chrome.tabs.create({ url: t.url, active: false });
+                }
+                alert(`Restored ${tabCount} tabs!`);
+            };
+            btnRow.appendChild(restoreBtn);
+
+            const winBtn = document.createElement("button");
+            winBtn.className = "button";
+            winBtn.textContent = "🗔 Win";
+            winBtn.onclick = async () => {
+                const urls = parsedSession.map(t => t.url).filter(Boolean);
+                if (urls.length > 0) chrome.windows.create({ url: urls });
+            };
+            btnRow.appendChild(winBtn);
+
+            const groupBtn = document.createElement("button");
+            groupBtn.className = "button";
+            groupBtn.textContent = "🏷️ Group";
+            groupBtn.onclick = async () => {
+                const tabIds = [];
+                for (const t of parsedSession) {
+                    if (t.url) {
+                        const created = await chrome.tabs.create({ url: t.url, active: false });
+                        tabIds.push(created.id);
+                    }
+                }
+                if (tabIds.length > 0) {
+                    const gid = await chrome.tabs.group({ tabIds });
+                    await chrome.tabGroups.update(gid, { title: "Restored Session", color: "green" });
+                }
+            };
+            btnRow.appendChild(groupBtn);
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "button";
+            delBtn.style.backgroundColor = "#7f1d1d";
+            delBtn.textContent = "🗑️";
+            delBtn.onclick = async () => {
+                if (!confirm(`Delete session "${name}"?`)) return;
+                card.style.opacity = "0";
+                setTimeout(async () => {
+                    await item.file.delete();
+                    await loadSessionsToPanel();
+                }, 300);
+            };
+            btnRow.appendChild(delBtn);
+
+            card.appendChild(btnRow);
+            grid.appendChild(card);
+        }
+    }
+
     function ensureUI() {
         const center = document.querySelector("center") || document.body;
+
+        if (!qs("#panel-nav-bar")) {
+            const nav = document.createElement("div");
+            nav.id = "panel-nav-bar";
+            nav.innerHTML = `
+                <button class="nav-btn active" data-panel="files">📁 Files</button>
+                <button class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</button>
+                <button class="nav-btn" data-panel="sessions">🗂️ Sessions</button>
+            `;
+            center.insertBefore(nav, center.firstChild);
+
+            const filesView = document.createElement("div");
+            filesView.id = "files-panel-view";
+            filesView.style.width = "100%";
+            center.appendChild(filesView);
+
+            const bookmarksView = document.createElement("div");
+            bookmarksView.id = "bookmarks-panel-view";
+            bookmarksView.style.width = "100%";
+            bookmarksView.style.display = "none";
+            center.appendChild(bookmarksView);
+
+            const sessionsView = document.createElement("div");
+            sessionsView.id = "sessions-panel-view";
+            sessionsView.style.width = "100%";
+            sessionsView.style.display = "none";
+            center.appendChild(sessionsView);
+
+            const bmControls = document.createElement("div");
+            bmControls.id = "bookmarks-controls-bar";
+            bmControls.style.margin = "12px 0";
+            bmControls.style.display = "flex";
+            bmControls.style.gap = "8px";
+            bmControls.style.flexWrap = "wrap";
+            bmControls.style.justifyContent = "center";
+            bmControls.style.backgroundColor = "#242424";
+            bmControls.style.padding = "10px";
+            bmControls.style.width = "fit-content";
+            bmControls.style.boxShadow = "inset 0 -7px 0 0 #050000!important";
+            bmControls.style.borderRadius = "50px";
+            bmControls.style.alignItems = "center";
+
+            const bmUpBtn = document.createElement("button");
+            bmUpBtn.className = "button";
+            bmUpBtn.textContent = "Up";
+            bmUpBtn.onclick = async () => {
+                if (bookmarkPathHistory.length > 0) {
+                    const parent = bookmarkPathHistory.pop();
+                    currentBookmarkFolderId = parent.id;
+                    await loadBookmarksToPanel();
+                }
+            };
+            bmControls.appendChild(bmUpBtn);
+
+            const bmAddLinkBtn = document.createElement("button");
+            bmAddLinkBtn.className = "button";
+            bmAddLinkBtn.textContent = "+ Add Bookmark";
+            bmAddLinkBtn.onclick = async () => {
+                const title = prompt("Bookmark Title:");
+                const url = prompt("Bookmark URL:");
+                if (title && url) {
+                    await chrome.bookmarks.create({ parentId: currentBookmarkFolderId, title, url });
+                    await loadBookmarksToPanel();
+                }
+            };
+            bmControls.appendChild(bmAddLinkBtn);
+
+            const bmAddDirBtn = document.createElement("button");
+            bmAddDirBtn.className = "button";
+            bmAddDirBtn.textContent = "+ Add Folder";
+            bmAddDirBtn.onclick = async () => {
+                const title = prompt("Folder Name:");
+                if (title) {
+                    await chrome.bookmarks.create({ parentId: currentBookmarkFolderId, title });
+                    await loadBookmarksToPanel();
+                }
+            };
+            bmControls.appendChild(bmAddDirBtn);
+
+            const bmPathBar = document.createElement("div");
+            bmPathBar.id = "bookmarks-path-bar";
+            bmPathBar.style.color = "#02ff88";
+            bmPathBar.style.fontSize = "13px";
+            bmPathBar.style.margin = "0 8px";
+            bmControls.appendChild(bmPathBar);
+
+            bookmarksView.appendChild(bmControls);
+
+            const bmTable = document.createElement("table");
+            bmTable.id = "bookmarks-table";
+            bmTable.className = "rwd-table";
+            bookmarksView.appendChild(bmTable);
+
+            const table = qs("#table");
+            if (table) filesView.appendChild(table);
+
+            const btns = nav.querySelectorAll(".nav-btn");
+            btns.forEach(btn => {
+                btn.onclick = async () => {
+                    btns.forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+
+                    const panel = btn.dataset.panel;
+                    activePanel = panel;
+
+                    filesView.style.display = panel === "files" ? "block" : "none";
+                    bookmarksView.style.display = panel === "bookmarks" ? "block" : "none";
+                    sessionsView.style.display = panel === "sessions" ? "block" : "none";
+
+                    if (panel === "files") {
+                        await loadFilesToTable();
+                    } else if (panel === "bookmarks") {
+                        await loadBookmarksToPanel();
+                    } else if (panel === "sessions") {
+                        await loadSessionsToPanel();
+                    }
+                };
+            });
+        }
 
         // file input: allow multiple
         const input = qs("#file-input");
@@ -1065,7 +1527,7 @@ export function handleZip(bytes) {
             const chartContainer = document.createElement("div");
             chartContainer.id = "storage-chart-container";
             chartContainer.style.display = "none";
-            center.insertBefore(chartContainer, qs("#table") || null);
+            (qs("#table") ? qs("#table").parentNode : center).insertBefore(chartContainer, qs("#table") || null);
         }
 
         // Ensure bulk-bar exists
@@ -1117,7 +1579,7 @@ export function handleZip(bytes) {
             bulkBar.appendChild(bulkDlBtn);
             bulkBar.appendChild(bulkMoveBtn);
             bulkBar.appendChild(bulkDelBtn);
-            center.insertBefore(bulkBar, qs("#table") || null);
+            (qs("#table") ? qs("#table").parentNode : center).insertBefore(bulkBar, qs("#table") || null);
         }
 
         if (!qs("#controls-bar")) {
@@ -1430,7 +1892,7 @@ export function handleZip(bytes) {
             bar.appendChild(analyticsBar);
             bar.appendChild(prog);
 
-            center.insertBefore(bar, qs("#table") || null);
+            (qs("#table") ? qs("#table").parentNode : center).insertBefore(bar, qs("#table") || null);
         }
 
         // Table head if missing
