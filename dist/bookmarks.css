@@ -996,8 +996,8 @@ body.light-mode .folder-icon {
     box-shadow: 0 4px 12px rgba(2, 255, 136, 0.2);
 }
 
-/* Sidebar/Mobile Responsive Collapse Styles (width <= 550px) */
-@media (max-width: 550px) {
+/* Sidebar/Mobile Responsive Collapse Styles (width <= 750px) */
+@media (max-width: 750px) {
     .main-container {
         padding: 8px !important;
     }
