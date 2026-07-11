@@ -38,7 +38,8 @@
         "bookmarks",
         "storage",
         "contextMenus",
-        "sidePanel"
+        "sidePanel",
+        "unlimitedStorage"
     ],
     "host_permissions": [
         "<all_urls>"

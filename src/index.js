@@ -3230,6 +3230,47 @@ export function handleZip(bytes) {
         }
     }
 
+    async function runAutoBackup() {
+        try {
+            const data = await chrome.storage.local.get(["bookmarkfs_last_backup", "bookmarkfs_backups"]);
+            const lastBackup = data.bookmarkfs_last_backup || 0;
+            const now = Date.now();
+            const weekMs = 7 * 24 * 60 * 60 * 1000;
+            if (now - lastBackup < weekMs) {
+                return;
+            }
+            const files = await listFiles();
+            const backupEntries = [];
+            for (const f of files) {
+                try {
+                    const raw = await f.read();
+                    const meta = await f.readMeta();
+                    backupEntries.push({
+                        title: f.handle.title,
+                        raw: raw,
+                        meta: meta
+                    });
+                } catch {}
+            }
+            let backups = data.bookmarkfs_backups || [];
+            backups.push({
+                timestamp: now,
+                date: new Date().toISOString(),
+                data: backupEntries
+            });
+            if (backups.length > 5) {
+                backups = backups.slice(backups.length - 5);
+            }
+            await chrome.storage.local.set({
+                bookmarkfs_last_backup: now,
+                bookmarkfs_backups: backups
+            });
+            console.log("[AutoBackup] Weekly snapshots created successfully.");
+        } catch (err) {
+            console.error("[AutoBackup] Failed:", err);
+        }
+    }
+
     // ---------- Wire up events on load ----------
     window.addEventListener("load", async() => {
         detectContext();
@@ -3296,6 +3337,7 @@ export function handleZip(bytes) {
         // initial render
         await loadFilesToTable();
         applySettings(); // apply saved settings immediately
+        runAutoBackup();
     });
 
     // ---------- CSS injection for transitions and light-mode theme ----------
