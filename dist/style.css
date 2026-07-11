@@ -275,3 +275,39 @@ input[type="checkbox"].row-select,
 .spinner {
     animation: spin 1s linear infinite;
 }
+
+/* Responsive sidebar viewports (widths < 500px) */
+@media (max-width: 500px) {
+    .rwd-table th:nth-child(2), .rwd-table td:nth-child(2), /* Preview */
+    .rwd-table th:nth-child(4), .rwd-table td:nth-child(4), /* Size */
+    .rwd-table th:nth-child(5), .rwd-table td:nth-child(5)  /* Date */ {
+        display: none !important;
+    }
+    
+    body {
+        width: 100% !important;
+        min-width: 100% !important;
+        padding: 8px !important;
+        overflow-x: hidden !important;
+    }
+    
+    #controls-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 8px !important;
+        gap: 6px !important;
+    }
+    
+    #controls-bar input, 
+    #controls-bar select, 
+    .button {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    #storage-chart-container, 
+    #bulk-bar {
+        padding: 8px !important;
+        margin: 8px 0 !important;
+    }
+}

@@ -24,6 +24,9 @@
         "title": "BookmarkFS",
         "default_popup": "./dist/index.html"
     },
+    "side_panel": {
+        "default_path": "./dist/index.html"
+    },
     "web_accessible_resources": [{
         "resources": ["dist/unrar.wasm"],
         "matches": ["<all_urls>"]
@@ -34,7 +37,8 @@
     "permissions": [
         "bookmarks",
         "storage",
-        "contextMenus"
+        "contextMenus",
+        "sidePanel"
     ],
     "host_permissions": [
         "<all_urls>"

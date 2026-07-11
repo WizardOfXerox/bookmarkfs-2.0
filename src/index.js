@@ -1293,6 +1293,25 @@ export function handleZip(bytes) {
             progBar.style.background = "#02ff88";
             prog.appendChild(progBar);
 
+            // Sidebar Button
+            const sidebarBtn = document.createElement("button");
+            sidebarBtn.id = "sidebar-btn";
+            sidebarBtn.className = "button";
+            sidebarBtn.textContent = "📑 Sidebar";
+            sidebarBtn.title = "Open in Chrome Sidebar";
+            sidebarBtn.onclick = async () => {
+                try {
+                    const win = await chrome.windows.getCurrent();
+                    await chrome.sidePanel.open({ windowId: win.id });
+                    const isPopup = chrome.extension && typeof chrome.extension.getViews === "function" && chrome.extension.getViews({ type: "popup" }).includes(window);
+                    if (isPopup) {
+                        window.close();
+                    }
+                } catch (err) {
+                    alert("To open the sidebar, click the Chrome Side Panel toolbar icon next to your URL bar, or check extension settings.");
+                }
+            };
+
             bar.appendChild(search);
             bar.appendChild(tagFilter);
             bar.appendChild(folderInput);
@@ -1306,6 +1325,7 @@ export function handleZip(bytes) {
             bar.appendChild(importInput);
             bar.appendChild(shareImportBtn);
             bar.appendChild(settingsBtn);
+            bar.appendChild(sidebarBtn);
             bar.appendChild(prevBtn);
             bar.appendChild(pageInfo);
             bar.appendChild(nextBtn);
