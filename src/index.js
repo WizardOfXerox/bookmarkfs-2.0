@@ -431,34 +431,58 @@ export function handleZip(bytes) {
         popup.style.justifyContent = "center";
 
         const box = document.createElement("div");
-        box.style.background = "#222";
-        box.style.color = "#fff";
+        box.style.background = "var(--bg-card)";
+        box.style.color = "var(--text-primary)";
+        box.style.border = "1px solid var(--border)";
+        box.style.boxShadow = "var(--shadow)";
         box.style.padding = "20px";
         box.style.borderRadius = "12px";
-        box.style.minWidth = "300px";
+        box.style.minWidth = "320px";
 
         box.innerHTML = `
-      <h2>⚙ Settings</h2>
-      <label>Max Bookmark Size: <input type="number" id="setting-maxsize" min="1000"></label><br><br>
-      <label>Page Size: <input type="number" id="setting-pagesize" min="5" max="200"></label><br><br>
-      <fieldset>
-        <legend>Show Columns</legend>
-        <label><input type="checkbox" data-col="preview"> Preview</label><br>
-        <label><input type="checkbox" data-col="name"> Name</label><br>
-        <label><input type="checkbox" data-col="size"> Size</label><br>
-        <label><input type="checkbox" data-col="date"> Date</label><br>
-        <label><input type="checkbox" data-col="download"> Download</label><br>
-        <label><input type="checkbox" data-col="clipboard"> Clipboard</label><br>
-        <label><input type="checkbox" data-col="share"> Share</label><br>
-        <label><input type="checkbox" data-col="rename"> Rename</label><br>
-        <label><input type="checkbox" data-col="delete"> Delete</label><br>
+      <h2 style="margin-top: 0; display: flex; align-items: center; gap: 8px; color: var(--accent);">⚙ Settings</h2>
+      <div style="margin-bottom: 12px;">
+        <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span>Max Bookmark Size:</span>
+          <input type="number" id="setting-maxsize" min="1000" style="width: 80px; padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none;">
+        </label>
+        <label style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Page Size:</span>
+          <input type="number" id="setting-pagesize" min="5" max="200" style="width: 80px; padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none;">
+        </label>
+      </div>
+      <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">Show Columns</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+          <label><input type="checkbox" data-col="preview"> Preview</label>
+          <label><input type="checkbox" data-col="name"> Name</label>
+          <label><input type="checkbox" data-col="size"> Size</label>
+          <label><input type="checkbox" data-col="date"> Date</label>
+          <label><input type="checkbox" data-col="download"> Download</label>
+          <label><input type="checkbox" data-col="clipboard"> Clipboard</label>
+          <label><input type="checkbox" data-col="share"> Share</label>
+          <label><input type="checkbox" data-col="rename"> Rename</label>
+          <label style="grid-column: span 2;"><input type="checkbox" data-col="delete"> Delete</label>
+        </div>
       </fieldset>
-      <br>
-      <hr>
-        <button id="settings-save" class="button" >Save</button>
-        <button id="settings-close" class="button">Close</button>
-        <button id="settings-deleteall" class="button">Delete All Files</button>
-      <hr>
+      
+      <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;">
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">Data Backup & Migration</legend>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button id="settings-export" class="button" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 12px;">📤 Export Database</button>
+          <label class="button" style="display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; width: 100%; box-sizing: border-box; padding: 6px 12px; margin: 0;">
+            📥 Import Database
+            <input type="file" id="settings-import-input" accept="application/json" style="display: none;">
+          </label>
+          <button id="settings-share-import" class="button" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 12px;">🔗 Import Share Link</button>
+        </div>
+      </fieldset>
+
+      <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+        <button id="settings-save" class="button" style="padding: 6px 16px;">Save</button>
+        <button id="settings-close" class="button" style="padding: 6px 16px;">Close</button>
+        <button id="settings-deleteall" class="button" style="background-color: #ef4444 !important; color: #fff !important; border-color: #ef4444 !important; padding: 6px 12px;">Delete All Files</button>
+      </div>
     `;
 
         popup.appendChild(box);
@@ -466,6 +490,31 @@ export function handleZip(bytes) {
 
         // Close logic
         qs("#settings-close").onclick = () => popup.style.display = "none";
+
+        // Share Import logic
+        qs("#settings-share-import").onclick = async () => {
+            const pasteStr = prompt("Paste the shareable Base64 string here:");
+            if (!pasteStr) return;
+            try {
+                const jsonStr = atob(pasteStr.trim());
+                const pkg = JSON.parse(jsonStr);
+                if (pkg.type !== "bookmarkfs-share") throw new Error("Invalid share package");
+                
+                let target = pkg.name;
+                while (await getFileByName(target)) target = incrementVersionedName(target);
+                
+                const fobj = await createNewFile(target);
+                if (pkg.meta) await fobj.writeMeta(migrateMeta(pkg.meta));
+                await fobj.write(pkg.serialized, (p) => setProgress(p));
+                
+                await loadFilesToTable();
+                alert(`Imported file: ${target}`);
+            } catch (err) {
+                alert("Import failed: " + err.message);
+            } finally {
+                setProgress(0);
+            }
+        };
 
         // Save logic
         qs("#settings-save").onclick = async () => {
@@ -1710,12 +1759,17 @@ export function handleZip(bytes) {
             const nav = document.createElement("div");
             nav.id = "panel-nav-bar";
             nav.innerHTML = `
-                <a href="index.html" class="nav-btn active" data-panel="files">📁 Files</a>
-                <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
-                <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
-                <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
-                <a href="notes.html" class="nav-btn" data-panel="notes">📝 Notes</a>
-                <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+                <div class="nav-links">
+                    <a href="index.html" class="nav-btn active" data-panel="files">📁 Files</a>
+                    <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
+                    <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
+                    <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
+                    <a href="notes.html" class="nav-btn" data-panel="notes">📝 Notes</a>
+                    <a href="/capture.html" class="nav-btn" data-panel="screenshot">📸 Screenshot</a>
+                </div>
+                <div class="nav-controls">
+                    <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+                </div>
             `;
             center.insertBefore(nav, center.firstChild);
 
@@ -2192,24 +2246,42 @@ export function handleZip(bytes) {
             bar.appendChild(search);
             bar.appendChild(filesSortSelect);
             bar.appendChild(tagFilter);
+            bar.appendChild(viewToggleBtn);
+            bar.appendChild(settingsBtn);
+
             bar.appendChild(pathBar);
             bar.appendChild(upBtn);
             bar.appendChild(uploadLabel);
             bar.appendChild(uploadInput);
             bar.appendChild(newFolderBtn);
-            bar.appendChild(exportBtn);
-            bar.appendChild(importLabel);
-            bar.appendChild(importInput);
-            bar.appendChild(shareImportBtn);
-            bar.appendChild(settingsBtn);
-            bar.appendChild(viewToggleBtn);
-            bar.appendChild(prevBtn);
-            bar.appendChild(pageInfo);
-            bar.appendChild(nextBtn);
-            bar.appendChild(analyticsBar);
-            bar.appendChild(prog);
+            
             const ref = qs(".table-responsive-container") || qs("#table") || null;
             (ref ? ref.parentNode : center).insertBefore(bar, ref);
+
+            // Pagination & Storage Info Bar placed neatly BELOW the file list table
+            if (!qs("#pagination-bar")) {
+                const pager = document.createElement("div");
+                pager.id = "pagination-bar";
+                pager.style.margin = "16px 0";
+                pager.style.display = "flex";
+                pager.style.justifyContent = "center";
+                pager.style.alignItems = "center";
+                pager.style.gap = "12px";
+                pager.style.flexWrap = "wrap";
+                pager.style.width = "100%";
+
+                pager.appendChild(prevBtn);
+                pager.appendChild(pageInfo);
+                pager.appendChild(nextBtn);
+                pager.appendChild(analyticsBar);
+                pager.appendChild(prog);
+
+                if (ref) {
+                    ref.parentNode.insertBefore(pager, ref.nextSibling);
+                } else {
+                    center.appendChild(pager);
+                }
+            }
         }
 
         // Table head if missing
@@ -4356,13 +4428,17 @@ export function handleZip(bytes) {
             updatePathBar();
         });
 
-        // export/import
-        const exportBtn = qs("#export-btn");
+        // export/import inside Settings popup
+        const exportBtn = qs("#settings-export");
         if (exportBtn) exportBtn.addEventListener("click", exportAll);
-        const importInput = qs("#import-input");
+        const importInput = qs("#settings-import-input");
         if (importInput) importInput.addEventListener("change", async function() {
             const f = this.files && this.files[0];
-            if (f) await importAllFromFile(f);
+            if (f) {
+                await importAllFromFile(f);
+                const popup = qs("#settings-popup");
+                if (popup) popup.style.display = "none";
+            }
             this.value = "";
         });
 

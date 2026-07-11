@@ -99,22 +99,32 @@
             /* Responsive Redirection Navbar */
             #panel-nav-bar {
                 width: 100% !important;
-                border-radius: 8px !important;
-                box-sizing: border-box !important;
-                justify-content: space-around !important;
-                gap: 4px !important;
-                margin: 8px 0 !important;
-                padding: 4px !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                border-radius: 0 !important;
+                margin: 0 0 8px 0 !important;
+                padding: 8px !important;
+                gap: 8px !important;
+            }
+            .nav-links {
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+                width: 100% !important;
+                gap: 6px !important;
+            }
+            .nav-controls {
+                justify-content: center !important;
+                width: 100% !important;
             }
             .nav-btn {
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 gap: 4px !important;
-                padding: 6px 8px !important;
+                padding: 6px 10px !important;
                 font-size: 11px !important;
                 border-radius: 6px !important;
-                flex: 1 !important;
+                flex: 1 1 auto !important;
                 text-align: center !important;
                 text-decoration: none !important;
                 white-space: nowrap !important;
@@ -123,13 +133,19 @@
     </style>
 </head>
 <body>
+    <script src="/screenshot-theme.js"></script>
     <div id="panel-nav-bar">
-        <a href="index.html" class="nav-btn">📁 Files</a>
-        <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
-        <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
-        <a href="web.html" class="nav-btn active">🌐 Web</a>
-        <a href="notes.html" class="nav-btn">📝 Notes</a>
-        <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+        <div class="nav-links">
+            <a href="index.html" class="nav-btn">📁 Files</a>
+            <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
+            <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
+            <a href="web.html" class="nav-btn active">🌐 Web</a>
+            <a href="notes.html" class="nav-btn">📝 Notes</a>
+            <a href="/capture.html" class="nav-btn">📸 Screenshot</a>
+        </div>
+        <div class="nav-controls">
+            <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+        </div>
     </div>
 
     <div class="web-browser-container">

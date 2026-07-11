@@ -16,6 +16,12 @@ function initContextMenu() {
         });
 
         chrome.contextMenus.create({
+            id: "capture-full-page-screenshot",
+            title: "Capture Full-Page Screenshot to BookmarkFS",
+            contexts: ["page"]
+        });
+
+        chrome.contextMenus.create({
             id: "add-page-to-bookmarks",
             title: "Add Page to Bookmarks",
             contexts: ["page", "link"]
@@ -150,6 +156,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         } catch (err) {
             console.error("Failed to save image via context menu:", err);
         }
+    } else if (info.menuItemId === "capture-full-page-screenshot") {
+        captureFullPage(tab);
     } else if (info.menuItemId === "add-page-to-bookmarks") {
         const url = info.linkUrl || tab.url;
         const title = tab.title || url;
@@ -523,4 +531,418 @@ async function restoreLatestSessionOnStartup() {
     } catch (err) {
         console.error("Failed to auto-restore latest session:", err);
     }
+}
+
+// --- GoFullPage-Style Full Page Screenshot Capture Integration ---
+async function captureFullPage(tab) {
+    if (!tab || !tab.id) return;
+
+    try {
+        console.log("Starting full-page screenshot capture for tab:", tab.id);
+
+        // 1. Set up a listener for the handshake message before we execute the script
+        const readyPromise = new Promise((resolve) => {
+            const handler = (msg, sender) => {
+                if (msg.action === "capture-ready" && sender.tab && sender.tab.id === tab.id) {
+                    chrome.runtime.onMessage.removeListener(handler);
+                    resolve(true);
+                }
+            };
+            chrome.runtime.onMessage.addListener(handler);
+        });
+
+        // 2. Inject content script Capture module
+        await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: contentScriptCaptureMain
+        });
+
+        // 3. Wait for the injected content script to report "ready"
+        await Promise.race([
+            readyPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout waiting for capture page response")), 2000))
+        ]);
+
+        // 4. Prepare capture dimensions and scroll grids
+        const prep = await chrome.tabs.sendMessage(tab.id, { action: "prepare" });
+        if (!prep || !prep.coords) {
+            throw new Error("Failed to prepare page capture grid details.");
+        }
+
+        const { coords, totalWidth, totalHeight, viewportWidth, viewportHeight, dpr } = prep;
+        console.log(`Page details: ${totalWidth}x${totalHeight}, Viewport: ${viewportWidth}x${viewportHeight}, DPR: ${dpr}, Slices count: ${coords.length}`);
+
+        const slices = [];
+
+        // 5. Scroll and capture viewport slides loop
+        let currentSliceIdx = 0;
+        for (const coord of coords) {
+            currentSliceIdx++;
+            await chrome.tabs.sendMessage(tab.id, {
+                action: "update-progress",
+                current: currentSliceIdx,
+                total: coords.length
+            }).catch(() => {});
+
+            await chrome.tabs.sendMessage(tab.id, { action: "scroll", x: coord.x, y: coord.y });
+            
+            // Wait additional 300ms for browser paint cycle (total ~600ms scroll+paint delay)
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Capture the current visible tab window viewport with retry on rate limit
+            let dataUrl = null;
+            let retries = 5;
+            while (retries > 0) {
+                try {
+                    dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+                    break;
+                } catch (err) {
+                    if (err.message && err.message.includes("MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND")) {
+                        console.warn(`Quota rate limit hit (slice ${currentSliceIdx}), retrying in 800ms...`);
+                        await new Promise(resolve => setTimeout(resolve, 800));
+                        retries--;
+                    } else {
+                        throw err;
+                    }
+                }
+            }
+
+            if (!dataUrl) {
+                throw new Error("Failed to capture tab viewport due to Google Chrome rate limits. Please try again.");
+            }
+
+            slices.push({
+                x: coord.x,
+                y: coord.y,
+                dataUrl: dataUrl
+            });
+        }
+
+        // 4. Send all captured slices back to page DOM canvas context for high-performance offscreen stitching
+        console.log("Stitching slices...");
+        const stitchRes = await chrome.tabs.sendMessage(tab.id, {
+            action: "stitch",
+            slices: slices,
+            totalWidth: totalWidth,
+            totalHeight: totalHeight,
+            dpr: dpr
+        });
+
+        // 5. Restore page scroll positions and layout visibility states
+        await chrome.tabs.sendMessage(tab.id, { action: "cleanup" });
+
+        if (stitchRes && stitchRes.dataUrl) {
+            // 6. Convert returned stitched Data URL back to raw binary bytes array
+            const base64Str = stitchRes.dataUrl.split(",")[1];
+            const binaryString = atob(base64Str);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            let domain = "page";
+            try {
+                const urlObj = new URL(tab.url);
+                domain = urlObj.hostname;
+            } catch (e) {}
+
+            const dateStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+            const filename = `screenshot-${domain}-${dateStr}.png`;
+
+            // Save raw bytes directly to BookmarkFS folder database
+            await storeRawBytesInBookmarks(filename, bytes, "image/png");
+            console.log("Full-page screenshot successfully saved as file:", filename);
+
+            // 7. Save capture object to GoFullPage's Dexie database "Test4"
+            const imageFilename = "capture_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + ".png";
+            const captureObj = {
+                domain: domain,
+                time: new Date(),
+                format: "png",
+                images: [ imageFilename ],
+                sizes: [ bytes.length ],
+                scaleMultiplier: dpr,
+                url: tab.url,
+                title: tab.title || "Screenshot",
+                edits: {}
+            };
+
+            const insertedId = await saveCaptureToDexie(captureObj);
+            console.log("Screenshot successfully saved to Dexie captures store, ID:", insertedId);
+
+            // 7.5 Store the Data URL in chrome.storage.local temporarily for capture.html to write to HTML5 Persistent FS
+            const storageKey = "temp_capture_file_" + imageFilename;
+            await chrome.storage.local.set({ [storageKey]: stitchRes.dataUrl });
+
+            // 8. Open the GoFullPage viewer tab to inspect and edit!
+            const captureViewerUrl = chrome.runtime.getURL(`capture.html?id=${insertedId}&url=${encodeURIComponent(tab.url)}`);
+            await chrome.tabs.create({ url: captureViewerUrl });
+
+            // 9. Show success Toast notification on captured page
+            await chrome.tabs.sendMessage(tab.id, {
+                action: "show-toast",
+                text: "Full-page screenshot captured & saved to BookmarkFS!"
+            });
+        } else {
+            throw new Error(stitchRes ? stitchRes.error : "Unknown stitching canvas error.");
+        }
+
+    } catch (err) {
+        console.error("Screenshot capture flow failed:", err);
+        try {
+            await chrome.tabs.sendMessage(tab.id, { action: "cleanup" });
+            await chrome.tabs.sendMessage(tab.id, {
+                action: "show-toast",
+                text: "Screenshot capture failed: " + err.message
+            });
+        } catch (e) {}
+    }
+}
+
+function saveCaptureToDexie(captureObj) {
+    return new Promise((resolve, reject) => {
+        // Open/Create the Dexie IndexedDB named "Test4" (without version parameter to match current version)
+        const request = indexedDB.open("Test4");
+        
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains("captures")) {
+                db.createObjectStore("captures", { keyPath: "id", autoIncrement: true });
+            }
+        };
+
+        request.onsuccess = (e) => {
+            const db = e.target.result;
+            const transaction = db.transaction(["captures"], "readwrite");
+            const store = transaction.objectStore("captures");
+            
+            const addReq = store.add(captureObj);
+            addReq.onsuccess = (ev) => {
+                resolve(ev.target.result);
+            };
+            addReq.onerror = (ev) => {
+                reject(ev.target.error || new Error("Failed to write to captures table"));
+            };
+        };
+
+        request.onerror = (e) => {
+            reject(e.target.error || new Error("Failed to open IndexedDB database"));
+        };
+    });
+}
+
+function contentScriptCaptureMain() {
+    if (window.__bookmarkfs_capture_initialized) {
+        try {
+            chrome.runtime.sendMessage({ action: "capture-ready" });
+        } catch (e) {}
+        return;
+    }
+    window.__bookmarkfs_capture_initialized = true;
+
+    // Listen to runtime scroll, stitch and toast commands
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "prepare") {
+            // Create progress indicator overlay
+            const overlay = document.createElement("div");
+            overlay.id = "bookmarkfs-capture-progress-overlay";
+            overlay.style.position = "fixed";
+            overlay.style.top = "0";
+            overlay.style.left = "0";
+            overlay.style.width = "100vw";
+            overlay.style.height = "100vh";
+            overlay.style.backgroundColor = "rgba(0, 0, 0, 0.45)";
+            overlay.style.zIndex = "2147483647"; // Max z-index
+            overlay.style.display = "flex";
+            overlay.style.alignItems = "center";
+            overlay.style.justifyContent = "center";
+            overlay.style.fontFamily = "Helvetica, -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+            
+            overlay.innerHTML = `
+                <div style="width: 324px; background: #ffffff; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); padding: 16px 20px; text-align: left; position: relative; border: 1px solid #ddd; box-sizing: border-box;">
+                    <div style="height: 50px; background: #161616; margin: -16px -20px 16px; padding: 0 20px; font-size: 20px; font-weight: 300; line-height: 50px; color: #fff; display: flex; align-items: center; border-top-left-radius: 5px; border-top-right-radius: 5px; box-sizing: border-box;">
+                        <img src="${chrome.runtime.getURL('images/icon-camera-fm.svg')}" style="width: 20px; height: 20px; margin-right: 10px; vertical-align: middle;">
+                        BookmarkFS
+                    </div>
+                    <div id="bookmarkfs-capture-progress-text" style="margin-bottom: 9px; font-size: 16px; color: #666; font-family: inherit;">Screen capture in progress…</div>
+                    <div style="height: 34px; margin-left: -12px; margin-right: -12px; position: relative; overflow: hidden; background: #fff;">
+                        <!-- dots background (gray dots) -->
+                        <div style="height: 12px; position: absolute; bottom: 11px; left: 12px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
+                            <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #ccc; position: absolute; bottom: 0; right: 0;"></div>
+                        </div>
+                        <!-- dots remaining (black dots) -->
+                        <div id="bookmarkfs-capture-progress-dots" style="height: 12px; position: absolute; bottom: 11px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
+                            <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #161616; position: absolute; bottom: 0; right: 0;"></div>
+                        </div>
+                        <!-- bar with Pacman gif -->
+                        <div id="bookmarkfs-capture-progress-fill" style="width: 0%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; background-image: url(${chrome.runtime.getURL('images/anim.gif')}); background-position: 100% 50%; background-size: 34px 34px; background-repeat: no-repeat;"></div>
+                    </div>
+                </div>
+            `;
+            (document.body || document.documentElement).appendChild(overlay);
+
+            // 1. Disable smooth scroll and transitions so viewports match coordinates exactly
+            const styleNode = document.createElement("style");
+            styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
+            document.head.appendChild(styleNode);
+
+            // 2. Hide fixed and sticky elements temporarily to avoid repeating patterns
+            const hiddenElts = [];
+            const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
+            let node;
+            while (node = walker.nextNode()) {
+                const style = window.getComputedStyle(node);
+                if (style.position === "fixed" || style.position === "sticky") {
+                    hiddenElts.push({ elt: node, originalDisplay: node.style.display });
+                    node.style.display = "none";
+                }
+            }
+
+            // Save original scroll states
+            const origX = window.scrollX;
+            const origY = window.scrollY;
+
+            const totalWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
+            const totalHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+
+            // Generate coordinate capture points grid
+            const coords = [];
+            for (let y = 0; y < totalHeight; y += viewportHeight) {
+                for (let x = 0; x < totalWidth; x += viewportWidth) {
+                    const scrollX = Math.min(x, totalWidth - viewportWidth);
+                    const scrollY = Math.min(y, totalHeight - viewportHeight);
+                    coords.push({
+                        x: Math.max(0, scrollX),
+                        y: Math.max(0, scrollY)
+                    });
+                }
+            }
+
+            // Filter out duplicate coordinate points
+            const uniqueCoords = [];
+            const seen = new Set();
+            for (const c of coords) {
+                const key = `${c.x},${c.y}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueCoords.push(c);
+                }
+            }
+
+            // Send page specifications back
+            sendResponse({
+                coords: uniqueCoords,
+                totalWidth,
+                totalHeight,
+                viewportWidth,
+                viewportHeight,
+                dpr,
+                origX,
+                origY
+            });
+
+            // Keep reference to cleanup
+            window.__bookmarkfs_capture_cleanup = () => {
+                if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
+                hiddenElts.forEach(h => {
+                    h.elt.style.display = h.originalDisplay;
+                });
+                const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
+                if (progressOverlay && progressOverlay.parentNode) {
+                    progressOverlay.parentNode.removeChild(progressOverlay);
+                }
+                window.scrollTo(origX, origY);
+                window.__bookmarkfs_capture_initialized = false;
+            };
+        }
+        else if (message.action === "scroll") {
+            window.scrollTo(message.x, message.y);
+            // Wait 300ms for browser viewport rendering engine to paint
+            setTimeout(() => {
+                sendResponse({ scrolled: true });
+            }, 300);
+            return true; // Keep message channel open for async response
+        }
+        else if (message.action === "stitch") {
+            const { slices, totalWidth, totalHeight, dpr } = message;
+            
+            // Create offscreen canvas block
+            const canvas = document.createElement("canvas");
+            canvas.width = totalWidth * dpr;
+            canvas.height = totalHeight * dpr;
+            const ctx = canvas.getContext("2d");
+
+            let loadedCount = 0;
+            slices.forEach(slice => {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, slice.x * dpr, slice.y * dpr);
+                    loadedCount++;
+                    if (loadedCount === slices.length) {
+                        try {
+                            const dataUrl = canvas.toDataURL("image/png");
+                            sendResponse({ dataUrl });
+                        } catch (err) {
+                            sendResponse({ error: "Canvas capture tainted or failed: " + err.message });
+                        }
+                    }
+                };
+                img.onerror = () => {
+                    sendResponse({ error: "Failed to load screenshot slice image." });
+                };
+                img.src = slice.dataUrl;
+            });
+            return true; // Keep message channel open
+        }
+        else if (message.action === "cleanup") {
+            if (typeof window.__bookmarkfs_capture_cleanup === "function") {
+                window.__bookmarkfs_capture_cleanup();
+            }
+            sendResponse({ cleaned: true });
+        }
+        else if (message.action === "update-progress") {
+            const pct = Math.round((message.current / message.total) * 100);
+            const fill = document.getElementById("bookmarkfs-capture-progress-fill");
+            const dots = document.getElementById("bookmarkfs-capture-progress-dots");
+            if (fill) fill.style.width = pct + "%";
+            if (dots) dots.style.width = Math.max(0, 100 - pct + 2) + "%";
+            sendResponse({ updated: true });
+        }
+        else if (message.action === "show-toast") {
+            // Display clean floating success notifier toast
+            const toast = document.createElement("div");
+            toast.textContent = "📸 " + message.text;
+            toast.style.position = "fixed";
+            toast.style.top = "20px";
+            toast.style.left = "50%";
+            toast.style.transform = "translateX(-50%)";
+            toast.style.backgroundColor = "#059669";
+            toast.style.color = "#fff";
+            toast.style.padding = "12px 24px";
+            toast.style.borderRadius = "8px";
+            toast.style.zIndex = "999999";
+            toast.style.fontSize = "14px";
+            toast.style.fontWeight = "600";
+            toast.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+            toast.style.fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+            toast.style.transition = "opacity 0.5s ease";
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 500);
+            }, 3000);
+            sendResponse({ toastShown: true });
+        }
+    });
+
+    try {
+        chrome.runtime.sendMessage({ action: "capture-ready" });
+    } catch (e) {}
 }

@@ -236,6 +236,31 @@
             background-color: rgba(239, 68, 68, 0.15);
         }
 
+        .web-btn {
+            background-color: var(--bg-button);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .web-btn:hover {
+            background-color: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-1px);
+        }
+
         /* Responsive adaptations for narrow width */
         @media (max-width: 750px) {
             body {
@@ -256,22 +281,32 @@
             /* Responsive Redirection Navbar */
             #panel-nav-bar {
                 width: 100% !important;
-                border-radius: 8px !important;
-                box-sizing: border-box !important;
-                justify-content: space-around !important;
-                gap: 4px !important;
-                margin: 8px 0 !important;
-                padding: 4px !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                border-radius: 0 !important;
+                margin: 0 0 8px 0 !important;
+                padding: 8px !important;
+                gap: 8px !important;
+            }
+            .nav-links {
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+                width: 100% !important;
+                gap: 6px !important;
+            }
+            .nav-controls {
+                justify-content: center !important;
+                width: 100% !important;
             }
             .nav-btn {
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 gap: 4px !important;
-                padding: 6px 8px !important;
+                padding: 6px 10px !important;
                 font-size: 11px !important;
                 border-radius: 6px !important;
-                flex: 1 !important;
+                flex: 1 1 auto !important;
                 text-align: center !important;
                 text-decoration: none !important;
                 white-space: nowrap !important;
@@ -280,29 +315,43 @@
     </style>
 </head>
 <body>
+    <script src="/screenshot-theme.js"></script>
     <div id="panel-nav-bar">
-        <a href="index.html" class="nav-btn">📁 Files</a>
-        <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
-        <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
-        <a href="web.html" class="nav-btn">🌐 Web</a>
-        <a href="notes.html" class="nav-btn active">📝 Notes</a>
-        <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+        <div class="nav-links">
+            <a href="index.html" class="nav-btn">📁 Files</a>
+            <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
+            <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
+            <a href="web.html" class="nav-btn">🌐 Web</a>
+            <a href="notes.html" class="nav-btn active">📝 Notes</a>
+            <a href="/capture.html" class="nav-btn">📸 Screenshot</a>
+        </div>
+        <div class="nav-controls">
+            <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+        </div>
     </div>
 
     <div class="notes-container">
         <!-- Main Note Editor -->
         <div class="notes-editor-card">
-            <div class="notes-header-row">
+            <div class="notes-header-row" style="margin-bottom: 8px;">
                 <div class="active-site-info">
                     <img id="active-favicon" class="site-favicon" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>">
                     <span id="active-domain" class="site-hostname">No Active Website</span>
                 </div>
                 <div class="scope-container">
                     <select id="notes-scope-selector">
-                        <option value="domain" selected>🏢 Domain Scope</option>
+                        <option value="general" selected>📝 General Note</option>
+                        <option value="domain">🏢 Domain Scope</option>
                         <option value="url">📄 Page URL Scope</option>
                     </select>
                 </div>
+            </div>
+            
+            <!-- Dedicated controls row for General Notes selection & operations -->
+            <div id="general-controls-row" style="display: none; align-items: center; gap: 8px; width: 100%; margin-bottom: 12px; box-sizing: border-box;">
+                <select id="general-note-selector" style="flex: 1; min-width: 0; background-color: var(--bg-button); border: 1px solid var(--border); color: var(--text-primary); padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; outline: none;"></select>
+                <button id="renameNoteBtn" class="web-btn" style="padding: 6px 10px; font-size: 12px; height: 32px; display: inline-flex; align-items: center;" title="Rename Note">✏️</button>
+                <button id="newNoteBtn" class="web-btn" style="padding: 6px 10px; font-size: 12px; height: 32px; display: inline-flex; align-items: center;" title="New General Note">➕</button>
             </div>
             
             <!-- MS Word-style Formatting Ribbon -->
@@ -317,15 +366,35 @@
             </div>
             <div id="notes-editor" class="editor-contenteditable" contenteditable="true" placeholder="Type notes here..."></div>
             
-            <div class="notes-footer-row">
-                <span id="notes-status-label">Saved</span>
-                <span id="notes-char-count">0 characters</span>
+            <!-- Attachments area -->
+            <div id="attachments-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 13px; font-weight: 600; color: var(--accent);">📎 Attachments</span>
+                    <label for="attachment-input" class="web-btn" style="cursor: pointer; padding: 4px 10px; font-size: 11px;">➕ Add Attachment</label>
+                    <input type="file" id="attachment-input" style="display: none;">
+                </div>
+                <div id="attachments-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+            </div>
+
+            <div class="notes-footer-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <span id="notes-status-label">Saved</span>
+                    <span id="notes-char-count" style="margin-left: 8px;">0 characters</span>
+                </div>
+                <button id="exportNoteBtn" class="web-btn" style="padding: 4px 8px; font-size: 11px;" title="Export Current Note">📥 Export Note</button>
             </div>
         </div>
 
         <!-- Saved Notes Index -->
         <div class="notes-index-card">
-            <h3 class="index-title">📝 Saved Notes Index</h3>
+            <div class="index-title-row" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
+                <h3 class="index-title" style="margin: 0; border: none; padding: 0;">📝 Saved Notes Index</h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label for="import-notes-input" class="web-btn" style="cursor: pointer; padding: 4px 8px; font-size: 11px;" title="Import Notes from JSON file">📥 Import</label>
+                    <input type="file" id="import-notes-input" style="display: none;" accept=".json">
+                    <button id="exportAllNotesBtn" class="web-btn" style="padding: 4px 8px; font-size: 11px;" title="Export All Notes & Attachments">📤 Export All</button>
+                </div>
+            </div>
             <div id="notes-index-list" class="notes-list">
                 <!-- List items of other websites -->
             </div>

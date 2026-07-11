@@ -1,0 +1,914 @@
+{
+  "tryEditingRequest": {
+    "message": "スクリーンショットの編集・注記を試してみてください",
+    "description": "Try editing and annotating your screenshot"
+  },
+  "tryEditingYes": {
+    "message": "はい",
+    "description": "Ok!"
+  },
+  "tryEditingNo": {
+    "message": "いいえ",
+    "description": "No thanks"
+  },
+  "goPremiumHeader": {
+    "message": "Full Page Screen Capture Premiumで、あなたのスクリーンショットを一つ上のレベルへ",
+    "description": "Take your screenshots to the next level with Full Page Screen Capture Premium"
+  },
+  "goPremiumSubHeader": {
+    "message": "アプリケーション内の進化したスクリーンショット編集・注記機能で、あなたの業務フローをスピードアップしましょう",
+    "description": "Speed up your workflow with advanced editing and annotation features directly in the extension!"
+  },
+  "goPremiumLink": {
+    "message": "始めてみる（１週間無料トライアル）",
+    "description": "Get started (free 1-week trial)"
+  },
+  "goPremiumSignInMessage": {
+    "message": "既にアカウントをお持ちですか？",
+    "description": "Already have an account?"
+  },
+  "goPremiumSignInLink": {
+    "message": "ログイン",
+    "description": "Sign in"
+  },
+  "appDesc": {
+    "message": "余分な権限を要求することなく、現在のページのスクリーンショットを完全に確実にキャプチャできます。",
+    "description": "[aws:2019-09-22 22:34:55] Capture a screenshot of your current page in entirety and reliably—without requesting any extra permissions!"
+  },
+  "_1filecouldnotberemoved": {
+    "message": "1 個のファイルを削除できませんでした。",
+    "description": "[aws:2019-09-22 22:34:56] 1 file could not be removed."
+  },
+  "_1filewassuccessfullyremoved": {
+    "message": "1 個のファイルが正常に削除されました。",
+    "description": "[aws:2019-09-22 22:34:57] 1 file was successfully removed."
+  },
+  "_Adjustrepeatingelements": {
+    "message": "繰り返し要素を調整する",
+    "description": "[aws:2019-09-22 22:34:57] Adjust repeating elements"
+  },
+  "_Advancedscrolling": {
+    "message": "高度なスクロール",
+    "description": "[aws:2019-09-22 22:34:58] Advanced scrolling"
+  },
+  "_Align": {
+    "message": "[位置合わせ]",
+    "description": "[aws:2019-09-22 22:34:59] Align"
+  },
+  "_Anyissues": {
+    "message": "何か問題でも？",
+    "description": "[aws:2019-09-22 22:35:00] Any issues?"
+  },
+  "_AnyoptionalpermissionsthatwerepreviouslygrantedwillappearcheckedhereYoucanrevokethematanytimeIftheyareneededagaininthefuturetheywillbererequested": {
+    "message": "以前に付与されたオプションのアクセス許可は、ここでチェックされた状態で表示されます。 いつでも取り消すことができます。 今後再び必要になった場合は、再要求されます。",
+    "description": "[aws:2019-09-22 22:35:01] Any optional permissions that were previously granted will appear checked here. You can revoke them at any time. If they are needed again in the future, they will be re-requested."
+  },
+  "_Areyouenjoyingthisextension": {
+    "message": "この拡張機能を楽しんでいますか？",
+    "description": "[aws:2019-09-22 22:35:02] Are you enjoying this extension?"
+  },
+  "_Areyousureyouwanttodelete1screencaptureThisactioncannotbeundone": {
+    "message": "1 つのスクリーンキャプチャを削除してもよろしいですか?\n (この操作は元に戻せません)。",
+    "description": "[aws:2019-09-22 22:35:03] Are you sure you want to delete 1 screencapture?\n (This action cannot be undone.)"
+  },
+  "_AreyousureyouwanttodeletethisscreenshotThisactioncannotbeundone": {
+    "message": "このスクリーンショットを削除してもよろしいですか?\n(この操作は元に戻せません)。",
+    "description": "[aws:2019-09-22 22:35:04] Are you sure you want to delete this screenshot?\n(This action cannot be undone.)"
+  },
+  "_Areyousureyouwanttoresettotheextensionsoriginalthemedefaults": {
+    "message": "拡張機能の元のテーマのデフォルトにリセットしてもよろしいですか?",
+    "description": "[aws:2019-09-22 22:35:05] Are you sure you want to reset to the extension’s original theme defaults?"
+  },
+  "_Arrow": {
+    "message": "矢印",
+    "description": "[aws:2019-09-22 22:35:05] Arrow"
+  },
+  "_Autodownloadfiles": {
+    "message": "ファイルの自動ダウンロード",
+    "description": "[aws:2019-09-22 22:35:06] Auto-download files"
+  },
+  "_AutomaticallydownloadyourscreenshotinsteadofopeningitinanewwindowThismeanstheextensioncapturetabwillnotopenYoucanreturnbackherebyrightclickingontheextensionandselectingOptions": {
+    "message": "スクリーンショットを新しいウィンドウで開くのではなく、自動的にダウンロードします。これは、拡張キャプチャタブが開かないことを意味します。 拡張機能を右クリックして「オプション」を選択すると、ここに戻ることができます。",
+    "description": "[aws:2019-09-22 22:35:07] Automatically download your screenshot instead of opening it in a new window.This means the extension capture tab will not open. You can return back here by right-clicking on the extension and selecting \"Options\"."
+  },
+  "_AutomaticallyshowasaveasdialogwhendownloadingyourscreenshotsIftheAskwheretosaveeachfilebeforedownloadingoptionisenabledinyourChromesettingsthenthattakespriority": {
+    "message": "スクリーンショットのダウンロード時に「名前を付けて保存」ダイアログを自動的に表示します。 Chrome設定で「ダウンロードする前に各ファイルを保存する場所を確認する」オプションが有効になっている場合は、これが優先されます。",
+    "description": "[aws:2019-09-22 22:35:08] Automatically show a \"save as\" dialog when downloading your screenshots. If the “Ask where to save each file before downloading” option is enabled in your Chrome settings, then that takes priority."
+  },
+  "_Backtocapturechangesareautosaved": {
+    "message": "キャプチャに戻る（変更は自動保存されます）",
+    "description": "[aws:2019-09-22 22:35:09] Back to capture (changes are auto-saved)"
+  },
+  "_billedannually": {
+    "message": "毎年請求",
+    "description": "[aws:2019-09-22 22:35:09] billed annually"
+  },
+  "_Blur": {
+    "message": "ぼかし",
+    "description": "[aws:2019-09-22 22:35:10] Blur"
+  },
+  "_Bold": {
+    "message": "太字",
+    "description": "[aws:2019-09-22 22:35:11] Bold"
+  },
+  "_cancelanytime": {
+    "message": "いつでもキャンセル",
+    "description": "[aws:2019-09-22 22:35:11] cancel anytime"
+  },
+  "_Cannotdownloadfiles": {
+    "message": "ファイルをダウンロードできません",
+    "description": "[aws:2019-09-22 22:35:12] Cannot download files"
+  },
+  "_Capture": {
+    "message": "捕獲",
+    "description": "[aws:2019-09-22 22:35:13] Capture"
+  },
+  "_ChromepreventsextensionsfromsavingfilesoutsideofthedefaultdownloadsdirectoryThepathyouenteredhasbeenupdatedaccordinglySorry": {
+    "message": "Chrome では、拡張機能によって既定のダウンロードディレクトリ以外のファイルが保存されないようにしています。 入力したパスはそれに応じて更新されました。 ごめんなさい！",
+    "description": "[aws:2019-09-22 22:35:13] Chrome prevents extensions from saving files outside of the default downloads directory. The path you entered has been updated accordingly. Sorry!"
+  },
+  "_Clickdraginlayerspane": {
+    "message": "レイヤーペインでクリック+ドラッグ",
+    "description": "[aws:2019-09-22 22:35:14] Click + drag in layers pane"
+  },
+  "_Color": {
+    "message": "[色]",
+    "description": "[aws:2019-09-22 22:35:15] Color"
+  },
+  "_ConfigureyoursettingsfortheFullPageScreenCaptureextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
+    "message": "全画面スクリーンキャプチャ拡張機能の設定を構成します。 今後のアップデートにご期待ください。 ベータ版の設定は今後変更される可能性があります。",
+    "description": "[aws:2019-09-22 22:35:15] Configure your settings for the Full Page Screen Capture extension. Stay tuned for further updates. Beta settings may change in the future."
+  },
+  "_Continueediting": {
+    "message": "編集を続行",
+    "description": "[aws:2019-09-22 22:35:16] Continue editing"
+  },
+  "_Cropeditannotateandexport": {
+    "message": "切り抜き、編集、注釈付け、書き出し",
+    "description": "[aws:2019-09-22 22:35:17] Crop, edit, annotate, and export"
+  },
+  "_CropImage": {
+    "message": "イメージのトリミング",
+    "description": "[aws:2019-09-22 22:35:17] Crop Image"
+  },
+  "_Delete": {
+    "message": "[削除]",
+    "description": "[aws:2019-09-22 22:35:18] Delete"
+  },
+  "_Deletecurrentselection": {
+    "message": "現在の選択を削除",
+    "description": "[aws:2019-09-22 22:35:19] Delete current selection"
+  },
+  "_Directory": {
+    "message": "ディレクトリ:",
+    "description": "[aws:2019-09-22 22:35:19] Directory:"
+  },
+  "_Document": {
+    "message": "ドキュメント",
+    "description": "[aws:2019-09-22 22:35:20] Document"
+  },
+  "_Documentedits": {
+    "message": "ドキュメントの編集",
+    "description": "[aws:2019-09-22 22:35:21] Document edits"
+  },
+  "_DoneCropping": {
+    "message": "クロップ完了",
+    "description": "[aws:2019-09-22 22:35:21] Done Cropping"
+  },
+  "_Download": {
+    "message": "ダウンロード",
+    "description": "[aws:2019-09-22 22:35:22] Download"
+  },
+  "_DownloadExport": {
+    "message": "ダウンロードとエクスポート",
+    "description": "[aws:2019-09-22 22:35:23] Download & Export"
+  },
+  "_Downloadpermissionisrequired": {
+    "message": "ダウンロード権限が必要です",
+    "description": "[aws:2019-09-22 22:35:23] Download permission is required"
+  },
+  "_Downloadpermissionnotgranted": {
+    "message": "ダウンロード権限が与えられていません",
+    "description": "[aws:2019-09-22 22:35:24] Download permission not granted"
+  },
+  "_Downloadspermission": {
+    "message": "ダウンロードの権限",
+    "description": "[aws:2019-09-22 22:35:25] Downloads permission"
+  },
+  "_Draglayercontrolpoints": {
+    "message": "レイヤーコントロールポイントをドラッグする",
+    "description": "[aws:2019-09-22 22:35:25] Drag layer control points"
+  },
+  "_Duplicateselection": {
+    "message": "重複した選択",
+    "description": "[aws:2019-09-22 22:35:26] Duplicate selection"
+  },
+  "_Edited": {
+    "message": "編集されました",
+    "description": "[aws:2019-09-22 22:35:27] Edited"
+  },
+  "_Elements": {
+    "message": "要素",
+    "description": "[aws:2019-09-22 22:35:27] Elements"
+  },
+  "_Emoji": {
+    "message": "絵文字",
+    "description": "[aws:2019-09-22 22:35:28] Emoji"
+  },
+  "_Enabled": {
+    "message": "有効",
+    "description": "[aws:2019-09-22 22:35:28] Enabled"
+  },
+  "_Entertexthere": {
+    "message": "ここにテキストを入力してください",
+    "description": "[aws:2019-09-22 22:35:29] Enter text here"
+  },
+  "_Error": {
+    "message": "エラー",
+    "description": "[aws:2019-09-22 22:35:30] Error"
+  },
+  "_Errordownloadingfile": {
+    "message": "ファイルのダウンロード中にエラーが発生しました",
+    "description": "[aws:2019-09-22 22:35:30] Error downloading file"
+  },
+  "_Errordownloadingfiles": {
+    "message": "ファイルのダウンロード中にエラーが発生しました",
+    "description": "[aws:2019-09-22 22:35:31] Error downloading files"
+  },
+  "_ErrorhandlingfilesPleasereportthisviatheflagreportingbuttonabove": {
+    "message": "ファイル処理エラーです。 上記のフラグレポートボタンから報告してください。",
+    "description": "[aws:2019-09-22 22:35:32] Error handling files. Please report this via the flag reporting button above."
+  },
+  "_Errorloadinghistory": {
+    "message": "履歴の読み込みエラー",
+    "description": "[aws:2019-09-22 22:35:33] Error loading history"
+  },
+  "_Errorloadingimage": {
+    "message": "イメージのロード中にエラーが発生しました",
+    "description": "[aws:2019-09-22 22:35:33] Error loading image"
+  },
+  "_Erroropeningscreenshot": {
+    "message": "スクリーンショットを開くときにエラーが発生しました",
+    "description": "[aws:2019-09-22 22:35:34] Error opening screenshot"
+  },
+  "_Errorremovingscreenshot": {
+    "message": "スクリーンショットの削除中にエラーが発生しました",
+    "description": "[aws:2019-09-22 22:35:34] Error removing screenshot"
+  },
+  "_Exitzoom": {
+    "message": "ズームを終了",
+    "description": "[aws:2019-09-22 22:35:35] Exit zoom"
+  },
+  "_Export": {
+    "message": "[書き出し]",
+    "description": "[aws:2019-09-22 22:35:36] Export"
+  },
+  "_Filenolongerexistsperhapsithasbeenclearedfromyourbrowser": {
+    "message": "ファイルは存在しません。ブラウザから消去された可能性があります。",
+    "description": "[aws:2019-09-22 22:35:36] File no longer exists—perhaps it has been cleared from your browser"
+  },
+  "_Fill": {
+    "message": "[塗りつぶし]",
+    "description": "[aws:2019-09-22 22:35:37] Fill"
+  },
+  "_Font": {
+    "message": "[フォント]",
+    "description": "[aws:2019-09-22 22:35:38] Font"
+  },
+  "_fullimage": {
+    "message": "フルイメージ",
+    "description": "[aws:2019-09-22 22:35:38] full image"
+  },
+  "_Getstarted": {
+    "message": "ご利用開始にあたって",
+    "description": "[aws:2019-09-22 22:35:39] Get started"
+  },
+  "_Gotit": {
+    "message": "分かった！",
+    "description": "[aws:2019-09-22 22:35:40] Got it!"
+  },
+  "_Gotoyouraccount": {
+    "message": "アカウントに移動する",
+    "description": "[aws:2019-09-22 22:35:40] Go to your account"
+  },
+  "_Help": {
+    "message": "助けて",
+    "description": "[aws:2019-09-22 22:35:41] Help"
+  },
+  "_HelpShortcuts": {
+    "message": "ヘルプ/ショートカット",
+    "description": "[aws:2019-09-22 22:35:42] Help / Shortcuts"
+  },
+  "_History": {
+    "message": "歴史",
+    "description": "[aws:2019-09-22 22:35:42] History"
+  },
+  "_Hooray": {
+    "message": "おい",
+    "description": "[aws:2019-09-22 22:35:43] Hooray"
+  },
+  "_Icon": {
+    "message": "アイコン",
+    "description": "[aws:2019-09-22 22:35:44] Icon"
+  },
+  "_iFramepermission": {
+    "message": "iFrame パーミッション",
+    "description": "[aws:2019-09-22 22:35:44] iFrame permission"
+  },
+  "_Ifthispersistspleasereportitviatheflagreportingbuttonabove": {
+    "message": "それでも問題が解決しない場合は、上のフラグレポートボタンから報告してください。",
+    "description": "[aws:2019-09-22 22:35:45] If this persists, please report it via the flag reporting button above."
+  },
+  "_IfyoudliketotrythisfeatureinthefutureclickontheEditbuttonuptop": {
+    "message": "今後、この機能をお試しになりたい場合は、上部の「編集」ボタンをクリックしてください。",
+    "description": "[aws:2019-09-22 22:35:46] If you’d like to try this feature in the future, click on the “Edit” button up top."
+  },
+  "_Imagedeleted": {
+    "message": "画像が削除されました",
+    "description": "[aws:2019-09-22 22:35:46] Image deleted"
+  },
+  "_Imageformat": {
+    "message": "画像形式:",
+    "description": "[aws:2019-09-22 22:35:47] Image format:"
+  },
+  "_Insertshapes": {
+    "message": "図形を挿入する",
+    "description": "[aws:2019-09-22 22:35:48] Insert shapes"
+  },
+  "_Italic": {
+    "message": "斜体",
+    "description": "[aws:2019-09-22 22:35:48] Italic"
+  },
+  "_Layers": {
+    "message": "[画層]",
+    "description": "[aws:2019-09-22 22:35:49] Layers"
+  },
+  "_Learnmore": {
+    "message": "詳細はこちら",
+    "description": "[aws:2019-09-22 22:35:50] Learn more"
+  },
+  "_Line": {
+    "message": "[線]",
+    "description": "[aws:2019-09-22 22:35:50] Line"
+  },
+  "_loading": {
+    "message": "ロード中...",
+    "description": "[aws:2019-09-22 22:35:51] loading…"
+  },
+  "_LogintoExport": {
+    "message": "ログインしてエクスポート",
+    "description": "[aws:2019-09-22 22:35:51] Login to Export"
+  },
+  "_Lookforanelementwithinthepagewithitsownscrollbarsandscrollthatitemduringthecapture": {
+    "message": "独自のスクロールバーがあるページ内の要素を探し、キャプチャ中にその項目をスクロールします。",
+    "description": "[aws:2019-09-22 22:35:52] Look for an element within the page with its own scroll bars and scroll that item during the capture."
+  },
+  "_MightyouconsidertakingaminutetorateitintheWebstore": {
+    "message": "Webstoreでそれを評価するために1分かかることを検討してもよろしいですか？",
+    "description": "[aws:2019-09-22 22:35:53] Might you consider taking a minute to rate it in the Webstore?"
+  },
+  "_More": {
+    "message": "もっと詳しく",
+    "description": "[aws:2019-09-22 22:35:54] More"
+  },
+  "_Mouseorarrowkeys": {
+    "message": "マウスまたは矢印キー",
+    "description": "[aws:2019-09-22 22:35:54] Mouse or arrow keys"
+  },
+  "_Mouseorlayerspane": {
+    "message": "マウスまたはレイヤーペイン",
+    "description": "[aws:2019-09-22 22:35:55] Mouse or layers pane"
+  },
+  "_Movelayer": {
+    "message": "レイヤを移動",
+    "description": "[aws:2019-09-22 22:35:55] Move layer"
+  },
+  "_None": {
+    "message": "無し",
+    "description": "[aws:2019-09-22 22:35:56] None"
+  },
+  "_NoscreencapturesfoundGomakesome": {
+    "message": "スクリーンキャプチャが見つかりません。 作ってみろ！",
+    "description": "[aws:2019-09-22 22:35:57] No screen captures found. Go make some!"
+  },
+  "_Nothanks": {
+    "message": "いいえ、結構です。",
+    "description": "[aws:2019-09-22 22:35:57] No, thanks."
+  },
+  "_Nothankscontinueediting": {
+    "message": "いいえ、編集を続行します",
+    "description": "[aws:2019-09-22 22:35:58] No thanks continue editing"
+  },
+  "_Notreally": {
+    "message": "本当に",
+    "description": "[aws:2019-09-22 22:35:59] Not really"
+  },
+  "_On": {
+    "message": "[オン",
+    "description": "[aws:2019-09-22 22:36:01] On"
+  },
+  "_OnMacChromethereareissueswithsaveasforautodownloadandwhendownloadingmultiplefilessoitisdisabledinthosescenarios": {
+    "message": "Mac Chromeでは、自動ダウンロードや複数のファイルをダウンロードするときに「名前を付けて保存」に問題があるため、これらのシナリオでは無効になっています。",
+    "description": "[aws:2019-09-22 22:36:02] On Mac Chrome there are issues with \"save as\" for auto-download and when downloading multiple files, so it is disabled in those scenarios."
+  },
+  "_Options": {
+    "message": "オプション",
+    "description": "[aws:2019-09-22 22:36:02] Options"
+  },
+  "_or": {
+    "message": "または",
+    "description": "[aws:2019-09-22 22:36:03] or"
+  },
+  "_Orderlayer": {
+    "message": "オーダレイヤー",
+    "description": "[aws:2019-09-22 22:36:04] Order layer"
+  },
+  "_Outline": {
+    "message": "[アウトライン]",
+    "description": "[aws:2019-09-22 22:36:04] Outline"
+  },
+  "_Oval": {
+    "message": "楕円形",
+    "description": "[aws:2019-09-22 22:36:05] Oval"
+  },
+  "_Pad": {
+    "message": "パッド",
+    "description": "[aws:2019-09-22 22:36:06] Pad"
+  },
+  "_Padding": {
+    "message": "パディング",
+    "description": "[aws:2019-09-22 22:36:06] Padding"
+  },
+  "_PaddingBorder": {
+    "message": "パディング/ ボーダー",
+    "description": "[aws:2019-09-22 22:36:07] Padding / Border"
+  },
+  "_PDFsize": {
+    "message": "PDFのサイズ:",
+    "description": "[aws:2019-09-22 22:36:07] PDF size:"
+  },
+  "_Permissionneededtodownloadfiles": {
+    "message": "ファイルのダウンロードに必要な権限",
+    "description": "[aws:2019-09-22 22:36:08] Permission needed to download files"
+  },
+  "_Permissions": {
+    "message": "アクセス許可",
+    "description": "[aws:2019-09-22 22:36:09] Permissions"
+  },
+  "_PNGislosslessandshouldmatchexactlywhatisseenonthescreenbutwillusuallyhavelargerfilesizesthanJPGwhichusescompression": {
+    "message": "PNG は可逆性であり、画面に表示されるものと正確に一致する必要がありますが、通常、圧縮を使用する JPG よりもファイルサイズが大きくなります。",
+    "description": "[aws:2019-09-22 22:36:10] PNG is lossless and should match exactly what is seen on the screen, but will usually have larger file sizes than JPG, which uses compression."
+  },
+  "_Position": {
+    "message": "[位置]",
+    "description": "[aws:2019-09-22 22:36:11] Position"
+  },
+  "_Radius": {
+    "message": "[半径]",
+    "description": "[aws:2019-09-22 22:36:11] Radius"
+  },
+  "_Rectangle": {
+    "message": "[長方形]",
+    "description": "[aws:2019-09-22 22:36:12] Rectangle"
+  },
+  "_Redo": {
+    "message": "やり直し",
+    "description": "[aws:2019-09-22 22:36:13] Redo"
+  },
+  "_Removefiles": {
+    "message": "ファイルの削除",
+    "description": "[aws:2019-09-22 22:36:13] Remove files"
+  },
+  "_Reportissue": {
+    "message": "問題を報告します。",
+    "description": "[aws:2019-09-22 22:36:14] Report issue."
+  },
+  "_Resizelayer": {
+    "message": "レイヤーのサイズ変更",
+    "description": "[aws:2019-09-22 22:36:15] Resize layer"
+  },
+  "_restorefactorydefaults": {
+    "message": "工場出荷時のデフォルトに戻す",
+    "description": "[aws:2019-09-22 22:36:15] restore factory defaults"
+  },
+  "_Roundedcorners": {
+    "message": "丸みを帯びたコーナー",
+    "description": "[aws:2019-09-22 22:36:16] Rounded corners"
+  },
+  "_Saveas": {
+    "message": "名前を付けて保存",
+    "description": "[aws:2019-09-22 22:36:16] Save as"
+  },
+  "_Saved": {
+    "message": "保存されました",
+    "description": "[aws:2019-09-22 22:36:17] Saved"
+  },
+  "_SavethispermissionifacceptedforfuturecapturesItcanstillberevokedlaterfromtheoptionspage": {
+    "message": "この権限を今後のキャプチャ用に保存します (許可されている場合)。 後でオプションページから取り消すことができます。",
+    "description": "[aws:2019-09-22 22:36:18] Save this permission (if accepted) for future captures. It can still be revoked later from the options page."
+  },
+  "_search": {
+    "message": "検索...",
+    "description": "[aws:2019-09-22 22:36:18] search…"
+  },
+  "_Select1ormorescreenshotstousethisaction": {
+    "message": "このアクションを使用するには、1 つ以上のスクリーンショットを選択します。",
+    "description": "[aws:2019-09-22 22:36:19] Select 1 or more screenshots to use this action."
+  },
+  "_Selected": {
+    "message": "[選択]",
+    "description": "[aws:2019-09-22 22:36:20] Selected"
+  },
+  "_Selectlayer": {
+    "message": "画層を選択",
+    "description": "[aws:2019-09-22 22:36:20] Select layer"
+  },
+  "_Setthemedefaults": {
+    "message": "テーマの既定を設定する",
+    "description": "[aws:2019-09-22 22:36:21] Set theme defaults"
+  },
+  "_Shapes": {
+    "message": "[図形]",
+    "description": "[aws:2019-09-22 22:36:22] Shapes"
+  },
+  "_Signupforafree7daytrialtounlocktheeditoranddownloadyourmasterpiece": {
+    "message": "7日間の無料トライアルにサインアップして、エディタのロックを解除し、傑作をダウンロードしてください。",
+    "description": "[aws:2019-09-22 22:36:22] Sign up for a free 7-day trial to unlock the editor and download your masterpiece."
+  },
+  "_SignuptoExport": {
+    "message": "エクスポートにサインアップ",
+    "description": "[aws:2019-09-22 22:36:23] Sign up to Export"
+  },
+  "_Size": {
+    "message": "サイズ",
+    "description": "[aws:2019-09-22 22:36:24] Size"
+  },
+  "_Somethingwentwrongdeletingyourscreenshot": {
+    "message": "スクリーンショットの削除中に問題が発生しました。",
+    "description": "[aws:2019-09-22 22:36:24] Something went wrong deleting your screenshot."
+  },
+  "_Somethingwentwrongopeningthisscreenshotintoanew": {
+    "message": "このスクリーンショットを新しいで開く際に問題が発生しました。",
+    "description": "[aws:2019-09-22 22:36:25] Something went wrong opening this screenshot into a new."
+  },
+  "_SometimeselementslikeabacktotopbuttonorastickyfooterwillrepeatonthepageThistriestopositionthemabsolutelytostopthemfromrepeatinginascreeshot": {
+    "message": "「トップに戻る」ボタンやスティッキーフッターなどの要素がページに繰り返されることがあります。 これは、スクリーンショットで繰り返すのを止めるために、それらを絶対に配置しようとします。",
+    "description": "[aws:2019-09-22 22:36:26] Sometimes elements, like a “back to top” button or a sticky footer will repeat on the page. This tries to position them absolutely to stop them from repeating in a screeshot."
+  },
+  "_Sorry": {
+    "message": "すみません",
+    "description": "[aws:2019-09-22 22:36:27] Sorry"
+  },
+  "_SpecifyadirectoryunderneathyourdownloadsdirectorytosaveyourscreenshotssuchasscreencapturesDefaultstothedownloadsdirectoryifblankPleaselimitittolettersnumbersdashesunderscoresandslashesinvalidcharacterswillautomaticallyberemoved": {
+    "message": "ダウンロードディレクトリの下にあるディレクトリを指定して、スクリーンショットを保存します（「スクリーンキャプチャ」など）。 空白の場合は、デフォルトでダウンロードディレクトリになります。 （文字、数字、ダッシュ、アンダースコア、スラッシュに制限してください。無効な文字は自動的に削除されます）。",
+    "description": "[aws:2019-09-22 22:36:27] Specify a directory underneath your downloads directory to save your screenshots, such as “screencaptures”. Defaults to the downloads directory if blank. (Please limit it to letters, numbers, dashes, underscores, and slashes—invalid characters will automatically be removed)."
+  },
+  "_SpecifytheformatsizeofPDFsforwhenexportingtoPDF": {
+    "message": "PDF に書き出すときの PDF の形式サイズを指定します。",
+    "description": "[aws:2019-09-22 22:36:28] Specify the format size of PDFs for when exporting to PDF."
+  },
+  "_Startyourfreetrial": {
+    "message": "無料トライアルを開始",
+    "description": "[aws:2019-09-22 22:36:29] Start your free trial"
+  },
+  "_Stickers": {
+    "message": "ステッカー",
+    "description": "[aws:2019-09-22 22:36:30] Stickers"
+  },
+  "_Stillloading": {
+    "message": "まだロード中",
+    "description": "[aws:2019-09-22 22:36:30] Still loading"
+  },
+  "_TakemetotheWebstore": {
+    "message": "ウェブストアに連れて行ってくれ！",
+    "description": "[aws:2019-09-22 22:36:31] Take me to the Webstore!"
+  },
+  "_Text": {
+    "message": "テキスト",
+    "description": "[aws:2019-09-22 22:36:31] Text"
+  },
+  "_ThankyouforsupportingFullPageScreenCapture": {
+    "message": "フルページスクリーンキャプチャをサポートしていただきありがとうございます",
+    "description": "[aws:2019-09-22 22:36:32] Thank you for supporting Full Page Screen Capture"
+  },
+  "_Thebestandsafestwaytocaptureascreenshotofanentirewebpage": {
+    "message": "ウェブページ全体のスクリーンショットをキャプチャするための最良かつ安全な方法。",
+    "description": "[aws:2019-09-22 22:36:33] The best and safest way to capture a screenshot of an entire web page."
+  },
+  "_ThedownloadpermissionisrequiredtoenablethedownloadasPDFfeature": {
+    "message": "PDF としてダウンロード機能を有効にするには、ダウンロード権限が必要です。",
+    "description": "[aws:2019-09-22 22:36:33] The download permission is required to enable the download as PDF feature."
+  },
+  "_Thefollowingfilescouldnotbedownloaded": {
+    "message": "次のファイルをダウンロードできませんでした:",
+    "description": "[aws:2019-09-22 22:36:34] The following files could not be downloaded:"
+  },
+  "_ThemeDefaults": {
+    "message": "テーマの既定値",
+    "description": "[aws:2019-09-22 22:36:35] Theme Defaults"
+  },
+  "_Therewasanerrordownloadingfilespleasereportitviatheflagbuttonabove": {
+    "message": "ファイルのダウンロード中にエラーが発生しました。上のフラグボタンから報告してください。",
+    "description": "[aws:2019-09-22 22:36:36] There was an error downloading files, please report it via the flag button above."
+  },
+  "_ThesesettingswillapplytoallfutureeditsofscreenshotsChangesareautosaved": {
+    "message": "これらの設定は、スクリーンショットの今後の編集すべてに適用されます。 変更は自動保存されます。",
+    "description": "[aws:2019-09-22 22:36:37] These settings will apply to all future edits of screenshots. Changes are autosaved."
+  },
+  "_Thespecifiedimagecouldnotbefound": {
+    "message": "指定されたイメージが見つかりませんでした。",
+    "description": "[aws:2019-09-22 22:36:37] The specified image could not be found."
+  },
+  "_ThisextensiontakesalotofworktomaintainItsreallymeaningfultohearthatyoufindituseful": {
+    "message": "この拡張は、維持するために多くの作業を必要とします。 あなたがそれが役に立つと聞いて本当に意味があります！",
+    "description": "[aws:2019-09-22 22:36:38] This extension takes a lot of work to maintain. It’s really meaningful to hear that you find it useful!"
+  },
+  "_ThisistakinglongertoloadthanexpectedHangtightIfnothingupdatesafterawhilepleasereportthisviathereportingflagbuttonabove": {
+    "message": "これは予想以上にロードに時間がかかっています。 しっかり吊るして！ しばらくしてから何も更新されない場合は、上の報告フラグボタンから報告してください。",
+    "description": "[aws:2019-09-22 22:36:39] This is taking longer to load than expected. Hang tight! If nothing updates after a while, please report this via the reporting flag button above."
+  },
+  "_ThispermissionallowsgreatercontroloverhowdownloadsworkwithintheextensionYourpreferencehasbeensavedandthisdownloadbuttonwillnowfallbacktodefaultbrowseronclickdownloadsHoweveryoustillbepromptedforitinordertouseanyoftheadvancedfeaturesontheHistoryorOptionspagessincetheyneedthispermissionstowork": {
+    "message": "この権限により、拡張機能内でのダウンロードのしくみをより細かく制御できます。 あなたの設定が保存され、このダウンロードボタンは、デフォルトのブラウザクリック時のダウンロードにフォールバックされるようになりました。 ただし、[履歴] ページまたは [オプション] ページの高度な機能を使用するには、この権限が必要であるため、この権限を要求するメッセージが表示されます。",
+    "description": "[aws:2019-09-22 22:36:40] This permission allows greater control over how downloads work within the extension. Your preference has been saved, and this download button will now fallback to default browser on-click downloads. However, you still be prompted for it in order to use any of the advanced features on the History or Options pages, since they need this permissions to work."
+  },
+  "_Thispermissionisrequiredforthedownloadbuttonsandtheautodownloadfeature": {
+    "message": "この権限は、ダウンロードボタンと自動ダウンロード機能に必要です。",
+    "description": "[aws:2019-09-22 22:36:40] This permission is required for the download buttons and the auto-download feature."
+  },
+  "_Thisscreenshotbeensuccessfullyremoved": {
+    "message": "このスクリーンショットは正常に削除されました。",
+    "description": "[aws:2019-09-22 22:36:42] This screenshot been successfully removed."
+  },
+  "_Togglecrop": {
+    "message": "切り抜きの切り替え",
+    "description": "[aws:2019-09-22 22:36:43] Toggle crop"
+  },
+  "_Togglepaddingborder": {
+    "message": "パディング/境界線の切り替え",
+    "description": "[aws:2019-09-22 22:36:43] Toggle padding / border"
+  },
+  "_ToggleURLbrowser": {
+    "message": "URL /ブラウザを切り替える",
+    "description": "[aws:2019-09-22 22:36:44] Toggle URL / browser"
+  },
+  "_Type": {
+    "message": "タイプ",
+    "description": "[aws:2019-09-22 22:36:45] Type"
+  },
+  "_Unabletofindimage": {
+    "message": "画像が見つかりません",
+    "description": "[aws:2019-09-22 22:36:45] Unable to find image"
+  },
+  "_Unabletoloadimage": {
+    "message": "イメージを読み込めません",
+    "description": "[aws:2019-09-22 22:36:46] Unable to load image"
+  },
+  "_Undo": {
+    "message": "[元に戻す]",
+    "description": "[aws:2019-09-22 22:36:46] Undo"
+  },
+  "_upontrialcompletion": {
+    "message": "トライアル完了時",
+    "description": "[aws:2019-09-22 22:36:47] upon trial completion"
+  },
+  "_URLBrowser": {
+    "message": "URL/ブラウザ",
+    "description": "[aws:2019-09-22 22:36:48] URL / Browser"
+  },
+  "_URLonbottom": {
+    "message": "下部にURLがあります",
+    "description": "[aws:2019-09-22 22:36:48] URL on bottom"
+  },
+  "_URLontop": {
+    "message": "上部の URL",
+    "description": "[aws:2019-09-22 22:36:49] URL on top"
+  },
+  "_version": {
+    "message": "バージョンです",
+    "description": "[aws:2019-09-22 22:36:50] version"
+  },
+  "_watchademovideo": {
+    "message": "デモビデオを見る",
+    "description": "[aws:2019-09-22 22:36:50] watch a demo video"
+  },
+  "_WatchDemo": {
+    "message": "デモを見る",
+    "description": "[aws:2019-09-22 22:36:51] Watch Demo"
+  },
+  "_WelcometotheFullPageEditor": {
+    "message": "フルページエディタへようこそ！",
+    "description": "[aws:2019-09-22 22:36:52] Welcome to the Full Page Editor!"
+  },
+  "_WelcometotheofficialFullPageEditor": {
+    "message": "公式フルページエディタへようこそ！",
+    "description": "[aws:2019-09-22 22:36:52] Welcome to the official Full Page Editor!"
+  },
+  "_Wereexcitedtohaveyouaboard": {
+    "message": "ご乗船できることを嬉しいです。",
+    "description": "[aws:2019-09-22 22:36:53] We’re excited to have you aboard."
+  },
+  "_Width": {
+    "message": "[幅]",
+    "description": "[aws:2019-09-22 22:36:54] Width"
+  },
+  "_Wouldyouliketoreportanyissuesyoureexperiencingsowecanimprovethisextensiontogether": {
+    "message": "発生した問題を報告して、この拡張機能を一緒に改善できるようにしますか？",
+    "description": "[aws:2019-09-22 22:36:54] Would you like to report any issues you’re experiencing, so we can improve this extension together?"
+  },
+  "_Yes": {
+    "message": "はい！",
+    "description": "[aws:2019-09-22 22:36:55] Yes!"
+  },
+  "_Youneedtograntthedownloadprivilegeinordertodownloadfiles": {
+    "message": "ファイルをダウンロードするには、ダウンロード権限を付与する必要があります",
+    "description": "[aws:2019-09-22 22:36:56] You need to grant the download privilege in order to download files"
+  },
+  "_Zoom": {
+    "message": "[ズーム]",
+    "description": "[aws:2019-09-22 22:36:56] Zoom"
+  },
+  "_Zoomin": {
+    "message": "拡大表示",
+    "description": "[aws:2019-09-22 22:36:57] Zoom in"
+  },
+  "_Zoomout": {
+    "message": "縮小",
+    "description": "[aws:2019-09-22 22:36:57] Zoom out"
+  },
+  "actionClose": {
+    "message": "閉じる",
+    "description": "[aws:2019-09-22 22:36:58] Close"
+  },
+  "actionDeleteImage": {
+    "message": "画像を削除",
+    "description": "[aws:2019-09-22 22:36:59] Delete image"
+  },
+  "actionDownloadImage": {
+    "message": "画像をダウンロードする",
+    "description": "[aws:2019-09-22 22:36:59] Download image"
+  },
+  "actionDownloadPDF": {
+    "message": "PDFをダウンロード",
+    "description": "[aws:2019-09-22 22:37:00] Download PDF"
+  },
+  "actionEdit": {
+    "message": "[編集]",
+    "description": "[aws:2019-09-22 22:37:01] Edit"
+  },
+  "actionOK": {
+    "message": "OK",
+    "description": "[aws:2019-09-22 22:37:01] OK"
+  },
+  "actionReport": {
+    "message": "問題を報告する",
+    "description": "[aws:2019-09-22 22:37:02] Report issue"
+  },
+  "navHistory": {
+    "message": "歴史",
+    "description": "[aws:2019-09-22 22:37:02] History"
+  },
+  "navOptions": {
+    "message": "オプション",
+    "description": "[aws:2019-09-22 22:37:03] Options"
+  },
+  "_AreyousureyouwanttodeletecountscreencapturesThisactioncannotbeundone": {
+    "message": "$count$の画面キャプチャを削除してもよろしいですか？\n (この操作は元に戻せません)。",
+    "description": "[aws:2019-09-22 23:04:46] Are you sure you want to delete $count$ screen captures?\n (This action cannot be undone.)",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "_numfilescouldnotberemoved": {
+    "message": "$num$ ファイルを削除できませんでした。",
+    "description": "[aws:2019-09-22 23:04:47] $num$ files could not be removed.",
+    "placeholders": {
+      "num": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "_numfilesweresuccessfullyremoved": {
+    "message": "$num$ ファイルが正常に削除されました。",
+    "description": "[aws:2019-09-22 23:04:48] $num$ files were successfully removed.",
+    "placeholders": {
+      "num": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "_Thispermissionisrequiredinordertoscrolltheinnercontentsofiframesorframesets": {
+    "message": "このパーミッションは、$iframes$ または $framesets$ の内部コンテンツをスクロールするために必要です。",
+    "description": "[aws:2019-09-22 23:04:49] This permission is required in order to scroll the inner contents of $iframes$ or $framesets$.",
+    "placeholders": {
+      "iframes": {
+        "content": "<a class=\"dim\" target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframes</a>",
+        "example": "iframes"
+      },
+      "framesets": {
+        "content": "<a class=\"dim\" target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset\">framesets</a>",
+        "example": "framesets"
+      }
+    }
+  },
+  "_AutodownloadisenabledYoucanchangethisinahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
+    "message": "自動ダウンロードはイネーブルです。 このオプションは <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">オプションで</a>変更できます。",
+    "description": "[aws:2019-09-23 19:21:48] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+  },
+  "_Cancel": {
+    "message": "キャンセルします",
+    "description": "[aws:2019-09-23 19:21:49] Cancel"
+  },
+  "_CannotautodownloadyouneedtoreapprovetheDownloadspermissioninahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
+    "message": "自動ダウンロードできません。 <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">オプション</a>の [ダウンロード] 権限を再承認する必要があります。",
+    "description": "[aws:2019-09-23 19:21:50] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+  },
+  "_ChromedoesnotallowaccesstosomeURLsforsecurityreasonsThisincludesthewebstoregalleryotherchromeextensionsandchromeURLsThecurrentpageappearstobearestrictedURL": {
+    "message": "Chrome では、セキュリティ上の理由から、一部の URL へのアクセスが許可されていません。 これには、ウェブストアギャラリー、その他のクロムエクステンション、および chrome: // URL が含まれます。 現在のページは制限された URL のようです。",
+    "description": "[aws:2019-09-23 19:21:50] Chrome does not allow access to some URLs for security reasons. This includes the webstore gallery, other chrome extensions, and chrome:// URLs. The current page appears to be a restricted URL."
+  },
+  "_close": {
+    "message": "閉じる",
+    "description": "[aws:2019-09-23 19:21:51] close"
+  },
+  "_details": {
+    "message": "詳細...",
+    "description": "[aws:2019-09-23 19:21:52] details…"
+  },
+  "_Extensionsettings": {
+    "message": "拡張機能の設定",
+    "description": "[aws:2019-09-23 19:21:52] Extension settings"
+  },
+  "_Extrapermissionsarerequiredtoaccesstheunderlyingpage": {
+    "message": "基になるページにアクセスするには、追加の権限が必要です。",
+    "description": "[aws:2019-09-23 19:21:53] Extra permissions are required to access the underlying page."
+  },
+  "_Extrapermissionsrequired": {
+    "message": "追加の権限が必要です",
+    "description": "[aws:2019-09-23 19:21:54] Extra permissions required"
+  },
+  "_Fileaccessneeded": {
+    "message": "必要なファイルアクセス",
+    "description": "[aws:2019-09-23 19:21:54] File access needed"
+  },
+  "_Foradditionalquestionsaidinvalidlinkdatahrefhttpsscreencapturemrcolescomhrefhttpsscreencapturemrcolescomtargetblankrelnoopenernoreferrercontactusa": {
+    "message": "その他のご質問は、 <a id=\"invalid-link\" data-href=\"https://screencapture.mrcoles.com/\" href=\"https://screencapture.mrcoles.com/\" target=\"_blank\" rel=\"noopener noreferrer\">当社までお問い合わせください</a>。",
+    "description": "[aws:2019-09-23 19:21:55] For additional questions, <a id=\"invalid-link\" data-href=\"https://screencapture.mrcoles.com/\" href=\"https://screencapture.mrcoles.com/\" target=\"_blank\" rel=\"noopener noreferrer\">contact us</a>."
+  },
+  "_Loadpermissionsdialog": {
+    "message": "パーミッションの読み込みダイアログしますか?",
+    "description": "[aws:2019-09-23 19:21:56] Load permissions dialog?"
+  },
+  "_NotethispageistoolargefortheChromebrowsertocaptureasoneimageItwillbesplitintospanidscreenshotcountmultiplespanimages": {
+    "message": "注:このページは大きすぎるため、Chrome ブラウザでは 1 つの画像としてキャプチャできません。 <span id=\"screenshot-count\">複数の</span> 画像に分割されます。",
+    "description": "[aws:2019-09-23 19:21:56] Note: this page is too large for the Chrome browser to capture as one image. It will be split into <span id=\"screenshot-count\">multiple</span> images."
+  },
+  "_OK": {
+    "message": "OK",
+    "description": "[aws:2019-09-23 19:21:57] OK"
+  },
+  "_PleasegotoyourChromeextensionsettingsandenablestrongx201CAllowaccesstofileURLsx201Dstrongsotheextensioncanaccessthispagebrbr": {
+    "message": "Chrome 拡張機能の設定で [ <strong>ファイル URL へのアクセスを許可する]</strong>を有効にして、拡張機能がこのページにアクセスできるようにしてください。 <br><br>",
+    "description": "[aws:2019-09-23 19:21:58] Please go to your Chrome extension settings and enable <strong>&#x201C;Allow access to file URLs&#x201D;</strong>, so the extension can access this page. <br><br>"
+  },
+  "_Screencaptureinprogress": {
+    "message": "スクリーンキャプチャを実行中...",
+    "description": "[aws:2019-09-23 19:21:58] Screen capture in progress…"
+  },
+  "_SomethingwentwrongTryrefreshingthepageandrunningthisagainbrbrIfthispersistspleaseaidreportlinkclassnowrapdatahrefhttpsscreencapturemrcolescomhrefhttpsscreencapturemrcolescomtargetblankrelnoopenernoreferrercontactusa": {
+    "message": "問題が発生しました。 ページを更新して、もう一度実行してみてください。 <br><br>問題が解決しない場合は、 <a id=\"report-link\" class=\"nowrap\" data-href=\"https://screencapture.mrcoles.com/\" href=\"https://screencapture.mrcoles.com/\" target=\"_blank\" rel=\"noopener noreferrer\">お問い合わせください</a>。",
+    "description": "[aws:2019-09-23 19:21:59] Something went wrong. Try refreshing the page and running this again. <br><br> If this persists, please <a id=\"report-link\" class=\"nowrap\" data-href=\"https://screencapture.mrcoles.com/\" href=\"https://screencapture.mrcoles.com/\" target=\"_blank\" rel=\"noopener noreferrer\">contact us</a>."
+  },
+  "_ThissiteappearstohaveembeddedcontentwithinanaatargetblankrelnoopenernoreferrerhrefhttpsdevelopermozillaorgenUSdocsWebHTMLElementframesetframeseta": {
+    "message": "このサイトでは、 <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset\">フレームセット</a>内にコンテンツが埋め込まれているようです。",
+    "description": "[aws:2019-09-23 19:22:00] This site appears to have embedded content within an a <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/frameset\">frameset</a>."
+  },
+  "_ThissiteappearstohaveembeddedcontentwithinanatargetblankrelnoopenernoreferrerhrefhttpsdevelopermozillaorgenUSdocsWebHTMLElementiframeiframea": {
+    "message": "このサイトは <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>内にコンテンツが埋め込まれているようです。",
+    "description": "[aws:2019-09-23 19:22:01] This site appears to have embedded content within an <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>."
+  },
+  "_ThistestversionhasexpiredPleasereachouttogetanupdateorswitchovertotheproperextensionintheahrefhttpschromegooglecomwebstoredetailfullpagescreencapturefdpohaocaechififmbbbbbknoalclaclhlenUStargetblankrelnoopenernoreferrerChromeWebStorea": {
+    "message": "このテストバージョンの有効期限が切れています。 <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome ウェブストア</a>でアップデートを入手するか、適切な拡張機能に切り替えるために連絡してください。",
+    "description": "[aws:2019-09-23 19:22:02] This test version has expired. Please reach out to get an update or switch over to the proper extension in the <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome Web Store</a>."
+  },
+  "_WarningtheextensionisnotdesignedtohandleextremelylargecapturesItmightfailtocompleteacaptureofthispage": {
+    "message": "警告:拡張機能は、非常に大きなキャプチャを処理するように設計されていません。 このページのキャプチャを完了できない可能性があります。",
+    "description": "[aws:2019-09-23 19:22:03] Warning: the extension is not designed to handle extremely large captures. It might fail to complete a capture of this page."
+  },
+  "_WelcometotheFullPageScreenCaptureextension": {
+    "message": "全画面スクリーンキャプチャ拡張機能へようこそ。",
+    "description": "[aws:2019-09-23 19:22:04] Welcome to the Full Page Screen Capture extension."
+  },
+  "_YoucanrunthisonanywebpageexceptforoneswherethebrowserrestrictsextensionsfromrunningscriptsThisincludestheChromewebstorebrowsersettingspagesandotherextensions": {
+    "message": "これは、ブラウザが拡張機能がスクリプトの実行を制限しているものを除いて、任意のWebページで実行できます。 これには、Chrome ウェブストア、ブラウザの設定ページ、その他の拡張機能が含まれます。",
+    "description": "[aws:2019-09-23 19:22:04] You can run this on any webpage, except for ones where the browser restricts extensions from running scripts. This includes the Chrome web store, browser settings pages, and other extensions."
+  },
+  "_YoumayneedtoreruntheextensionafterinteractingwiththedialogIfyoucancelitwillcapturejustthevisiblescreen": {
+    "message": "ダイアログを操作した後、拡張機能を再実行する必要があります。 キャンセルすると、表示されている画面だけがキャプチャされます。",
+    "description": "[aws:2019-09-23 19:22:05] You may need to re-run the extension after interacting with the dialog. If you cancel, it will capture just the visible screen."
+  }
+}
