@@ -50,6 +50,10 @@
         const idStr = urlParams.get("id");
         const id = idStr ? parseInt(idStr, 10) : null;
 
+        if (!id || isNaN(id)) {
+            document.body.classList.add("history-mode");
+        }
+
         if (id && !isNaN(id)) {
             // Flow for viewing a captured page
             lookupCaptureFilename(id).then((filename) => {
