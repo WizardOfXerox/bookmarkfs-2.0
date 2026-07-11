@@ -328,9 +328,7 @@ table.rwd-table.grid-mode tbody {
 }
 
 table.rwd-table.grid-mode tr {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
+    display: block !important;
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
     border-radius: 12px !important;
@@ -340,6 +338,7 @@ table.rwd-table.grid-mode tr {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     height: 180px !important;
     box-sizing: border-box !important;
+    text-align: center !important;
 }
 
 table.rwd-table.grid-mode tr:hover {
@@ -358,7 +357,7 @@ table.rwd-table.grid-mode td {
 }
 
 /* Hide checkbox cell and make checkbox float top-left */
-table.rwd-table.grid-mode td:nth-child(1) {
+table.rwd-table.grid-mode td:has(input[type="checkbox"]) {
     position: absolute !important;
     top: 8px !important;
     left: 8px !important;
@@ -409,4 +408,9 @@ table.rwd-table.grid-mode td:nth-child(9) {
     display: inline-block !important;
     width: auto !important;
     margin: 0 3px !important;
+}
+
+/* Hide empty cells in grid mode (folders spacers) */
+table.rwd-table.grid-mode td.cell-empty {
+    display: none !important;
 }

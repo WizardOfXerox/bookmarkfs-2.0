@@ -2151,6 +2151,7 @@ export function handleZip(bytes) {
                 for (let i = 0; i < 6; i++) {
                     const td = document.createElement("td");
                     td.textContent = "-";
+                    td.className = "cell-empty";
                     tr.appendChild(td);
                 }
                 tbody.appendChild(tr);
