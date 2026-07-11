@@ -1864,11 +1864,14 @@ export function handleZip(bytes) {
             filesSortSelect.style.background = "#242424";
             filesSortSelect.style.color = "inherit";
             filesSortSelect.innerHTML = `
-                <option value="name">Sort: Name</option>
-                <option value="date">Sort: Date</option>
-                <option value="size">Sort: Size</option>
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="size_desc">Size (Largest)</option>
+                <option value="size_asc">Size (Smallest)</option>
+                <option value="date_desc">Date (Newest)</option>
+                <option value="date_asc">Date (Oldest)</option>
             `;
-            filesSortSelect.value = localStorage.getItem("bookmarkfs_files_sort") || "name";
+            filesSortSelect.value = localStorage.getItem("bookmarkfs_files_sort") || "name_asc";
             filesSortSelect.onchange = async () => {
                 localStorage.setItem("bookmarkfs_files_sort", filesSortSelect.value);
                 await loadFilesToTable();
@@ -2269,26 +2272,28 @@ export function handleZip(bytes) {
         }
         const folderEntries = [...folders.values()].sort().map((f) => ({ folder: true, name: f }));
         
-        const sortType = localStorage.getItem("bookmarkfs_files_sort") || "name";
-        if (sortType === "name") {
-            fileEntries.sort((a, b) => a.displayName.localeCompare(b.displayName));
-        } else if (sortType === "date") {
-            fileEntries.sort((a, b) => {
-                const metaA = metaMap.get(a.file.handle.id);
-                const metaB = metaMap.get(b.file.handle.id);
+        const sortValue = localStorage.getItem("bookmarkfs_files_sort") || "name_asc";
+        fileEntries.sort((a, b) => {
+            const metaA = metaMap.get(a.file.handle.id);
+            const metaB = metaMap.get(b.file.handle.id);
+            
+            if (sortValue.startsWith("name")) {
+                const cmp = a.displayName.localeCompare(b.displayName);
+                return sortValue === "name_desc" ? -cmp : cmp;
+            }
+            if (sortValue.startsWith("size")) {
+                const sizeA = metaA?.sizeOriginal || 0;
+                const sizeB = metaB?.sizeOriginal || 0;
+                return sortValue === "size_desc" ? sizeB - sizeA : sizeA - sizeB;
+            }
+            if (sortValue.startsWith("date")) {
                 const dateA = metaA?.dateISO || "";
                 const dateB = metaB?.dateISO || "";
-                return dateB.localeCompare(dateA);
-            });
-        } else if (sortType === "size") {
-            fileEntries.sort((a, b) => {
-                const metaA = metaMap.get(a.file.handle.id);
-                const metaB = metaMap.get(b.file.handle.id);
-                const sizeA = metaA?.size || 0;
-                const sizeB = metaB?.size || 0;
-                return sizeB - sizeA;
-            });
-        }
+                const cmp = dateA.localeCompare(dateB);
+                return sortValue === "date_desc" ? -cmp : cmp;
+            }
+            return 0;
+        });
         return folderEntries.concat(fileEntries);
     }
 
