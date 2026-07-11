@@ -401,7 +401,7 @@ export function handleZip(bytes) {
         qs("#settings-close").onclick = () => popup.style.display = "none";
 
         // Save logic
-        qs("#settings-save").onclick = () => {
+        qs("#settings-save").onclick = async () => {
             const settings = {
                 maxSize: parseInt(qs("#setting-maxsize").value, 10) || 9092,
                 pageSize: parseInt(qs("#setting-pagesize").value, 10) || 25,
@@ -413,7 +413,8 @@ export function handleZip(bytes) {
             setSettings(settings);
             qs("#settings-popup").style.display = "none";
 
-            applySettings(); // apply right away
+            applySettings();
+            await loadFilesToTable();
         };
 
         // wire up Delete All (place after saveBtn / closeBtn wiring in createSettingsPopup)
@@ -2305,11 +2306,12 @@ export function handleZip(bytes) {
         return handle;
     }
 
-    function FileObj(handle) {
+    function FileObj(handle, cachedChildren) {
         handle.children = handle.children || [];
         return {
             handle,
             async getChildrenFresh() {
+                if (cachedChildren) return cachedChildren;
                 try {
                     return (await chrome.bookmarks.getChildren(this.handle.id)) || [];
                 } catch {
@@ -2490,7 +2492,22 @@ export function handleZip(bytes) {
 
     async function findFileByHash(contentHash) {
         if (!contentHash) return null;
-        const files = await listFiles();
+        const root = await fsRoot();
+        const subtree = await chrome.bookmarks.getSubTree(root.id);
+        const rootNode = subtree[0];
+        const childrenMap = new Map();
+        function cacheNode(node) {
+            if (node.children) {
+                childrenMap.set(node.id, node.children);
+                node.children.forEach(cacheNode);
+            }
+        }
+        cacheNode(rootNode);
+
+        const rootChildren = childrenMap.get(rootNode.id) || [];
+        const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
+            .map(c => FileObj(c, childrenMap.get(c.id)));
+
         for (const f of files) {
             const meta = await f.readMeta();
             if (meta && meta.contentHash === contentHash) return f;
@@ -2800,7 +2817,22 @@ export function handleZip(bytes) {
         const tagFilter = qs("#tag-filter");
         const tagFilterValue = tagFilter ? tagFilter.value : "";
 
-        const files = await listFiles();
+        const root = await fsRoot();
+        const subtree = await chrome.bookmarks.getSubTree(root.id);
+        const rootNode = subtree[0];
+        const childrenMap = new Map();
+        function cacheNode(node) {
+            if (node.children) {
+                childrenMap.set(node.id, node.children);
+                node.children.forEach(cacheNode);
+            }
+        }
+        cacheNode(rootNode);
+
+        const rootChildren = childrenMap.get(rootNode.id) || [];
+        const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
+            .map(c => FileObj(c, childrenMap.get(c.id)));
+
         const metas = await Promise.all(files.map(async f => {
             try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
         }));
