@@ -11,15 +11,20 @@ function initContextMenu() {
     chrome.contextMenus.removeAll(() => {
         chrome.contextMenus.create({
             id: "save-image-to-bookmarkfs",
-            title: "Save to BookmarkFS",
+            title: "Save Image to BookmarkFS",
             contexts: ["image"]
-        }, () => {
-            if (chrome.runtime.lastError) {
-                // Ignore duplicate errors or similar warnings
-                console.log("Context menu registration context:", chrome.runtime.lastError.message);
-            } else {
-                console.log("Successfully registered Save to BookmarkFS context menu");
-            }
+        });
+
+        chrome.contextMenus.create({
+            id: "add-page-to-bookmarks",
+            title: "Add Page to Bookmarks",
+            contexts: ["page", "link"]
+        });
+
+        chrome.contextMenus.create({
+            id: "open-bookmarkfs-dashboard",
+            title: "Open BookmarkFS Dashboard",
+            contexts: ["page", "image"]
         });
     });
 }
@@ -60,6 +65,17 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         } catch (err) {
             console.error("Failed to save image via context menu:", err);
         }
+    } else if (info.menuItemId === "add-page-to-bookmarks") {
+        const url = info.linkUrl || tab.url;
+        const title = tab.title || url;
+        try {
+            await chrome.bookmarks.create({ title, url, parentId: "1" }); // Bookmarks bar
+            console.log("Page added to bookmarks:", title);
+        } catch (err) {
+            console.error("Failed to add page to bookmarks:", err);
+        }
+    } else if (info.menuItemId === "open-bookmarkfs-dashboard") {
+        chrome.tabs.create({ url: chrome.runtime.getURL("dist/index.html") });
     }
 });
 
