@@ -1640,7 +1640,7 @@ export function handleZip(bytes) {
                 const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
                 const isLight = theme === "light";
                 document.body.classList.toggle("light-mode", isLight);
-                document.body.classList.toggle("dark-mode", isLight);
+                document.body.classList.toggle("dark-mode", !isLight);
                 
                 const toggleBtn = document.getElementById("global-theme-toggle");
                 if (toggleBtn) {
@@ -2212,7 +2212,7 @@ export function handleZip(bytes) {
         const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
         const isLight = theme === "light";
         document.body.classList.toggle("light-mode", isLight);
-        document.body.classList.toggle("dark-mode", isLight);
+        document.body.classList.toggle("dark-mode", !isLight);
     }
 
     function toggleDark() {

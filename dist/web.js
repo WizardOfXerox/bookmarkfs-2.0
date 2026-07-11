@@ -31,8 +31,13 @@
     }
 
     // Navigation history stack
-    let historyStack = ["https://www.wikipedia.org"];
+    const savedUrl = localStorage.getItem("bookmarkfs_web_last_url") || "https://www.wikipedia.org";
+    let historyStack = [savedUrl];
     let historyIndex = 0;
+    
+    // Set initial iframe and input values
+    iframe.src = savedUrl;
+    addressBar.value = savedUrl;
 
     function navigateTo(url) {
         let targetUrl = url.trim();
@@ -44,6 +49,9 @@
         } else if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
             targetUrl = "https://" + targetUrl;
         }
+
+        // Save last loaded URL to localStorage for state persistence
+        localStorage.setItem("bookmarkfs_web_last_url", targetUrl);
 
         // Load page in iframe
         iframe.src = targetUrl;
