@@ -492,15 +492,21 @@ table.rwd-table.grid-mode td.cell-empty {
 }
 
 .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    padding: 8px 20px;
+    padding: 8px 16px;
     font-size: 14px;
     font-weight: 600;
     border-radius: 20px;
+    text-decoration: none;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
 }
 
 .nav-btn:hover {
@@ -594,10 +600,16 @@ table.rwd-table.grid-mode td.cell-empty {
         padding: 4px !important;
     }
     .nav-btn {
-        padding: 6px 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 4px !important;
+        padding: 6px 8px !important;
         font-size: 11px !important;
         border-radius: 6px !important;
         flex: 1 !important;
         text-align: center !important;
+        text-decoration: none !important;
+        white-space: nowrap !important;
     }
 }
