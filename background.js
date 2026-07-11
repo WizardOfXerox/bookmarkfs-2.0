@@ -96,6 +96,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
     initContextMenu();
     initDeclarativeNetRequest();
+    restoreLatestSessionOnStartup();
 });
 
 // Also run immediately on worker script execution to ensure it works during active dev reloads
@@ -406,3 +407,105 @@ chrome.storage.onChanged.addListener(async (changes, areaName) => {
         } catch (err) {}
     }
 });
+
+async function restoreLatestSessionOnStartup() {
+    try {
+        const stored = await chrome.storage.local.get("bookmarkfs_sessions_auto_restore");
+        if (stored.bookmarkfs_sessions_auto_restore !== true) {
+            console.log("Auto-restore is not enabled.");
+            return;
+        }
+
+        console.log("Auto-restore is enabled. Querying bookmarks for latest session...");
+        const root = await fsRoot();
+        const tree = await chrome.bookmarks.getSubTree(root.id);
+        const rootNode = tree[0];
+        if (!rootNode || !rootNode.children) return;
+
+        const childrenMap = new Map();
+        function cacheNode(node) {
+            if (node.children) {
+                childrenMap.set(node.id, node.children);
+                node.children.forEach(cacheNode);
+            }
+        }
+        cacheNode(rootNode);
+
+        const files = rootNode.children.filter(c => !c.url && c.title !== "__chunks__");
+        const sessions = [];
+
+        function getMetaFromCachedChildren(fileId) {
+            const children = childrenMap.get(fileId) || [];
+            const metaNode = children.find(c => c.title && c.title.startsWith("!meta:"));
+            if (!metaNode) return null;
+            try {
+                const str = metaNode.title.slice("!meta:".length);
+                const decoded = atob(str);
+                return JSON.parse(decoded);
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function getRawFromCachedTree(fileId) {
+            const chunksRoot = rootNode.children.find(c => !c.url && c.title === "__chunks__");
+            if (!chunksRoot || !chunksRoot.children) return "";
+            const fileChunksFolder = chunksRoot.children.find(c => !c.url && c.title === String(fileId));
+            if (!fileChunksFolder || !fileChunksFolder.children) return "";
+            
+            let data = "";
+            for (const c of fileChunksFolder.children) {
+                data += c.title || "";
+            }
+            return data;
+        }
+
+        for (const f of files) {
+            const meta = getMetaFromCachedChildren(f.id);
+            if (!meta) continue;
+            const isSessionFile = f.title.startsWith("session-") || (meta.tags && meta.tags.includes("session"));
+            if (!isSessionFile) continue;
+
+            const serialized = getRawFromCachedTree(f.id);
+            if (!serialized) continue;
+
+            try {
+                const payload = serialized.slice(1);
+                const decodedB64 = atob(payload);
+                const tabs = JSON.parse(decodedB64);
+                if (Array.isArray(tabs)) {
+                    sessions.push({
+                        title: f.title,
+                        meta: meta,
+                        tabs: tabs
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to parse session", f.title, e);
+            }
+        }
+
+        if (sessions.length > 0) {
+            sessions.sort((a, b) => {
+                const dateA = a.meta && a.meta.dateISO ? new Date(a.meta.dateISO) : 0;
+                const dateB = b.meta && b.meta.dateISO ? new Date(b.meta.dateISO) : 0;
+                return dateB - dateA;
+            });
+
+            const latest = sessions[0];
+            console.log("Restoring latest session workspace upon browser startup:", latest.title);
+
+            // Guard to sync with sessions.js tab load timestamp
+            chrome.storage.local.set({ last_auto_restore_timestamp: Date.now() });
+
+            for (const t of latest.tabs) {
+                if (t.url) {
+                    await chrome.tabs.create({ url: t.url, active: false });
+                }
+            }
+            console.log(`Auto-restored ${latest.tabs.length} tabs on browser startup.`);
+        }
+    } catch (err) {
+        console.error("Failed to auto-restore latest session:", err);
+    }
+}

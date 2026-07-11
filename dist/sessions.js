@@ -331,23 +331,30 @@
             }
 
             // Auto-restore last session on load if configured
-            if (localStorage.getItem("bookmarkfs_sessions_auto_restore") === "true" && !sessionStorage.getItem("bookmarkfs_session_restored")) {
-                sessionStorage.setItem("bookmarkfs_session_restored", "true");
-                if (savedSessions.length > 0) {
-                    const sorted = [...savedSessions].sort((a, b) => {
-                        const dateA = a.meta && a.meta.dateISO ? new Date(a.meta.dateISO) : 0;
-                        const dateB = b.meta && b.meta.dateISO ? new Date(b.meta.dateISO) : 0;
-                        return dateB - dateA;
-                    });
-                    const latestSession = sorted[0];
-                    if (latestSession && latestSession.tabs && latestSession.tabs.length > 0) {
-                        console.log("Auto-restoring latest session workspace:", latestSession.title);
-                        latestSession.tabs.forEach(t => {
-                            if (t.url) chrome.tabs.create({ url: t.url, active: false });
-                        });
+            chrome.storage.local.get(["bookmarkfs_sessions_auto_restore", "last_auto_restore_timestamp"], (res) => {
+                if (res.bookmarkfs_sessions_auto_restore === true) {
+                    const lastRestore = res.last_auto_restore_timestamp || 0;
+                    const timeDiff = Date.now() - lastRestore;
+                    if (timeDiff > 15000 && !sessionStorage.getItem("bookmarkfs_session_restored")) {
+                        sessionStorage.setItem("bookmarkfs_session_restored", "true");
+                        chrome.storage.local.set({ last_auto_restore_timestamp: Date.now() });
+                        if (savedSessions.length > 0) {
+                            const sorted = [...savedSessions].sort((a, b) => {
+                                const dateA = a.meta && a.meta.dateISO ? new Date(a.meta.dateISO) : 0;
+                                const dateB = b.meta && b.meta.dateISO ? new Date(b.meta.dateISO) : 0;
+                                return dateB - dateA;
+                            });
+                            const latestSession = sorted[0];
+                            if (latestSession && latestSession.tabs && latestSession.tabs.length > 0) {
+                                console.log("Auto-restoring latest session workspace:", latestSession.title);
+                                latestSession.tabs.forEach(t => {
+                                    if (t.url) chrome.tabs.create({ url: t.url, active: false });
+                                });
+                            }
+                        }
                     }
                 }
-            }
+            });
         } catch (err) {
             console.error("Failed to load workspaces list:", err);
         }
@@ -541,10 +548,11 @@
 
     const autoRestoreCheckbox = document.getElementById("auto-restore-checkbox");
     if (autoRestoreCheckbox) {
-        const enabled = localStorage.getItem("bookmarkfs_sessions_auto_restore") === "true";
-        autoRestoreCheckbox.checked = enabled;
+        chrome.storage.local.get("bookmarkfs_sessions_auto_restore", (res) => {
+            autoRestoreCheckbox.checked = res.bookmarkfs_sessions_auto_restore === true;
+        });
         autoRestoreCheckbox.addEventListener("change", (e) => {
-            localStorage.setItem("bookmarkfs_sessions_auto_restore", e.target.checked);
+            chrome.storage.local.set({ bookmarkfs_sessions_auto_restore: e.target.checked });
         });
     }
 
