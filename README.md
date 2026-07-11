@@ -1,4 +1,4 @@
-# BookmarkFS 3.0 📂🔖
+# BookmarkFS 2.0 📂🔖
 
 > Exploits Google Chrome's bookmark sync service to store files in the cloud for free without freezing the browser.
 
@@ -8,15 +8,17 @@ BookmarkFS is a Chrome extension that turns your browser's bookmark storage into
 
 ## 🌟 Upstream Credits & Acknowledgment
 
-BookmarkFS 3.0 is a heavily upgraded fork. The original concept and base structure were created by **velzie**.
+BookmarkFS 2.0 is a heavily upgraded fork. The original concept and base structure were created by **velzie**.
 - **Original Repository**: [velzie/bookmarkfs](https://github.com/velzie/bookmarkfs)
 - **Upstream Author**: [velzie](https://github.com/velzie)
 
-All credits for the core bookmark exploit concept go to the original creator. BookmarkFS 3.0 builds upon that foundation with modern extensions, library compression, strong client-side encryption, and interactive preview tools.
+All credits for the core bookmark exploit concept go to the original creator. BookmarkFS 2.0 builds upon that foundation with modern extensions, library compression, strong client-side encryption, and interactive preview tools.
 
 ---
 
-## 🚀 Key Features in BookmarkFS 3.0
+## 🚀 Key Features in BookmarkFS 2.0
+
+*   **📸 Full-Page Screenshot, Viewer & Local Editor**: Capture full scrollable pages directly from your sidebar. Edit, crop, draw, add shapes (rectangles, arrows, blurs, text), and annotate screenshots. Download them as PNGs or PDFs using custom options—**100% locally with zero logins or signup walls**.
 
 *   **⚡ Chrome Freeze Prevention (Schema 3)**: Relocates raw data chunk bookmark nodes into a centralized hidden `__chunks__` folder. The user-facing directories only contain metadata node bookmarks, preventing Chrome from freezing or crashing when rendering bookmark folders.
 *   **⚡ Subtree-Caching Optimization (100x Faster)**: Prefetches the entire virtual files structure in a single `chrome.bookmarks.getSubTree` request, eliminating redundant nested IPC database calls to load file lists instantly.
