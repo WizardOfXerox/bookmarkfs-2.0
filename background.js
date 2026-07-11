@@ -26,6 +26,12 @@ function initContextMenu() {
             title: "Open BookmarkFS Dashboard",
             contexts: ["page", "image"]
         });
+
+        chrome.contextMenus.create({
+            id: "open-in-sidebar-browser",
+            title: "Open Link/Page in Sidebar Browser",
+            contexts: ["page", "link"]
+        });
     });
 }
 
@@ -139,6 +145,17 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         }
     } else if (info.menuItemId === "open-bookmarkfs-dashboard") {
         chrome.tabs.create({ url: chrome.runtime.getURL("dist/index.html") });
+    } else if (info.menuItemId === "open-in-sidebar-browser") {
+        const url = info.linkUrl || info.pageUrl || tab.url;
+        if (url) {
+            chrome.storage.local.set({ bookmarkfs_web_last_url: url }, () => {
+                if (chrome.sidePanel && chrome.sidePanel.open) {
+                    chrome.sidePanel.open({ windowId: tab.windowId }).catch(err => {
+                        console.error("Failed to open sidePanel:", err);
+                    });
+                }
+            });
+        }
     }
 });
 

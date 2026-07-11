@@ -31,13 +31,21 @@
     }
 
     // Navigation history stack
-    const savedUrl = localStorage.getItem("bookmarkfs_web_last_url") || "https://www.wikipedia.org";
-    let historyStack = [savedUrl];
+    let historyStack = ["https://www.wikipedia.org"];
     let historyIndex = 0;
-    
-    // Set initial iframe and input values
-    iframe.src = savedUrl;
-    addressBar.value = savedUrl;
+
+    // Load initial URL from storage or url parameters
+    chrome.storage.local.get(["bookmarkfs_web_last_url"], (res) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const loadUrl = urlParams.get("load");
+        const savedUrl = loadUrl || res.bookmarkfs_web_last_url || "https://www.wikipedia.org";
+        
+        historyStack = [savedUrl];
+        historyIndex = 0;
+        iframe.src = savedUrl;
+        addressBar.value = savedUrl;
+        updateNavButtons();
+    });
 
     function navigateTo(url) {
         let targetUrl = url.trim();
@@ -50,8 +58,8 @@
             targetUrl = "https://" + targetUrl;
         }
 
-        // Save last loaded URL to localStorage for state persistence
-        localStorage.setItem("bookmarkfs_web_last_url", targetUrl);
+        // Save last loaded URL to chrome.storage.local for state persistence
+        chrome.storage.local.set({ bookmarkfs_web_last_url: targetUrl });
 
         // Load page in iframe
         iframe.src = targetUrl;
@@ -121,13 +129,6 @@
             navigateTo(target);
         }
     });
-
-    // Check for load parameter on launch
-    const urlParams = new URLSearchParams(window.location.search);
-    const loadUrl = urlParams.get("load");
-    if (loadUrl) {
-        navigateTo(loadUrl);
-    }
 
     // Initialize nav button states
     updateNavButtons();
