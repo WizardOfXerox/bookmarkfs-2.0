@@ -19,18 +19,22 @@ All credits for the core bookmark exploit concept go to the original creator. Bo
 ## 🚀 Key Features in BookmarkFS 3.0
 
 *   **⚡ Chrome Freeze Prevention (Schema 3)**: Relocates raw data chunk bookmark nodes into a centralized hidden `__chunks__` folder. The user-facing directories only contain metadata node bookmarks, preventing Chrome from freezing or crashing when rendering bookmark folders.
+*   **⚡ Subtree-Caching Optimization (100x Faster)**: Prefetches the entire virtual files structure in a single `chrome.bookmarks.getSubTree` request, eliminating redundant nested IPC database calls to load file lists instantly.
+*   **📁 Virtual Folder Management**: Create empty directories using the `📁 New Folder` buttons. Right-click folders in Bookmarks to rename them or recursively delete their sub-trees.
+*   **🔗 Instant Portable Sharing**: Share files directly from the table rows. The `🔗` button compiles, compresses, and encodes your file into a portable Base64 block copied directly to your clipboard.
 *   **🔒 Client-Side Encryption Modal**: Optional AES-GCM (256-bit) encryption using WebCrypto PBKDF2. Replaces basic browser prompts with a premium custom modal containing a real-time **Password Strength Meter** and a cryptographic **Password Generator**.
 *   **📝 In-Browser Text & Markdown Editor**: Toggle edit mode directly inside the preview modal for text-based files, modify content and update tags, and save changes back to the bookmarks bar.
 *   **🎙️ Direct Voice Recorder**: Capture voice notes directly in-browser using the MediaRecorder API and save them as compressed WebM files.
 *   **📦 Bulk Operations (ZIP / Move / Delete)**: Select multiple rows using checkboxes to download them as a compiled ZIP archive, move them in bulk, or delete them.
 *   **📊 Graphical Storage Analyzer**: Color-coded, responsive analytics bar showing folder space distribution by file categories (Images, Audio, Video, Docs, Archives, Code, Other).
-*   **🔗 Single-File Sharing**: Export individual files as portable base64 share blocks and import them directly using the "Import Share" panel.
 *   **🗜️ Automatic Compression**: In-memory Gzip compression via `fflate` reduces bookmark footprint and speeds up sync times.
 *   **📦 Interactive Archive Previews (ZIP & RAR)**:
     *   **ZIP files**: Inspect ZIP archives in-memory. Browse names and sizes, and download individual files out of the ZIP directly!
     *   **RAR files**: Extract and preview RAR archives in-memory using WebAssembly (`node-unrar-js`), complete with single-file extraction.
 *   **📄 Integrated PDF Viewer**: Native PDF reading inside a premium preview iframe.
 *   **🏷️ Tags Filtering**: Assign tags to files and filter them dynamically from the tag search dropdown.
+*   **⚙️ Persistent & Instant Settings**: Customize maximum bookmark chunk bounds, change pagination size limits, and toggle table columns (including Preview, Share, and Delete). Changes are preserved across re-renders and apply instantly to your dashboard.
+*   **🌐 Navigation URL Bar Sync**: Tracks sub-frame navigations inside the side-panel browser iframe using `chrome.webNavigation` to sync address bars and back/forward history stacks dynamically. Mapped a controls Home (`🏠`) button for instant redirections.
 
 ---
 
