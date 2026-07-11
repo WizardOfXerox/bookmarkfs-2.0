@@ -1951,8 +1951,9 @@ export function handleZip(bytes) {
         const tagFilterValue = tagFilter ? tagFilter.value : "";
 
         const files = await listFiles();
-        const metas = [];
-        for (const f of files) metas.push({ file: f, meta: await f.readMeta() });
+        const metas = await Promise.all(files.map(async f => {
+            try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
+        }));
         updateAnalytics(metas);
         updateStorageChart(metas);
 
@@ -2797,9 +2798,19 @@ export function handleZip(bytes) {
             btnDel.innerHTML = "🗑️";
             btnDel.title = "Delete";
             btnDel.onclick = async() => {
-                if (!confirm(`Delete \"${entry.fullName}\"?`)) return;
-                await file.delete();
-                await loadFilesToTable();
+                if (!confirm(`Delete "${entry.fullName}"?`)) return;
+                tr.style.opacity = "0";
+                tr.style.transform = "translateX(-20px)";
+                setTimeout(async () => {
+                    tr.remove();
+                    await file.delete();
+                    const files = await listFiles();
+                    const metas = await Promise.all(files.map(async f => {
+                        try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
+                    }));
+                    updateAnalytics(metas);
+                    updateStorageChart(metas);
+                }, 300);
             };
             tdDel.appendChild(btnDel);
 

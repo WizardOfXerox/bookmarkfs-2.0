@@ -4,6 +4,10 @@ chrome.action.onClicked.addListener(function () {
 
 // Robust context menu registration function
 function initContextMenu() {
+    if (!chrome.contextMenus) {
+        console.warn("chrome.contextMenus is undefined. Ensure 'contextMenus' permission is in manifest.json.");
+        return;
+    }
     chrome.contextMenus.removeAll(() => {
         chrome.contextMenus.create({
             id: "save-image-to-bookmarkfs",
