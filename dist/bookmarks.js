@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editBookmarkModal = document.getElementById('editBookmarkModal');
     const settingsBtn = document.getElementById('settingsBtn');
     const addBookmarkBtn = document.getElementById('addBookmarkBtn');
+    const addFolderBtn = document.getElementById('addFolderBtn');
     
     // Settings elements
     const gridSize = document.getElementById('gridSize');
@@ -174,6 +175,31 @@ document.addEventListener('DOMContentLoaded', () => {
         gridViewBtn.addEventListener('click', () => setViewMode('grid'));
         listViewBtn.addEventListener('click', () => setViewMode('list'));
         
+        // Folder CRUD & management controls
+        addFolderBtn.addEventListener('click', () => {
+            const folderName = prompt("Enter new folder name:");
+            if (!folderName) return;
+            const cleanName = folderName.trim();
+            if (!cleanName) return;
+
+            const parentId = (currentFolder && currentFolder.id && currentFolder.id !== 'all') ? currentFolder.id : '1';
+
+            chrome.bookmarks.create({
+                title: cleanName,
+                parentId: parentId
+            }, (result) => {
+                if (chrome.runtime.lastError) {
+                    showToast('Error creating folder: ' + chrome.runtime.lastError.message, 'error');
+                } else {
+                    showToast('Folder created successfully!', 'success');
+                    loadInitialBookmarks();
+                }
+            });
+        });
+
+        primaryFolderTabs.addEventListener('contextmenu', handleFolderContextMenu);
+        subFolderTabs.addEventListener('contextmenu', handleFolderContextMenu);
+
         // Modal controls
         settingsBtn.addEventListener('click', () => openModal(settingsModal));
         addBookmarkBtn.addEventListener('click', () => openModal(addBookmarkModal));
@@ -210,6 +236,55 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 closeModals();
+            }
+        });
+    }
+
+    function handleFolderContextMenu(event) {
+        const clickedTab = event.target.closest('.folder-tab');
+        if (!clickedTab) return;
+
+        const folderId = clickedTab.dataset.id;
+        if (folderId === 'all') return;
+
+        event.preventDefault();
+
+        chrome.bookmarks.get(folderId, (results) => {
+            if (!results || results.length === 0) return;
+            const folderNode = results[0];
+
+            const action = prompt(
+                `Manage Folder "${folderNode.title}":\n` +
+                `Type "rename" to change its name, or "delete" to permanently delete it along with all its bookmarks.`, 
+                "rename"
+            );
+            if (!action) return;
+
+            if (action.toLowerCase() === 'rename') {
+                const newTitle = prompt("Enter new folder name:", folderNode.title);
+                if (newTitle && newTitle.trim() !== "") {
+                    chrome.bookmarks.update(folderId, { title: newTitle.trim() }, () => {
+                        if (chrome.runtime.lastError) {
+                            showToast("Error renaming folder: " + chrome.runtime.lastError.message, "error");
+                        } else {
+                            showToast("Folder renamed successfully!", "success");
+                            loadInitialBookmarks();
+                        }
+                    });
+                }
+            } else if (action.toLowerCase() === 'delete') {
+                if (confirm(`⚠️ Are you sure you want to permanently delete "${folderNode.title}" and all its subfolders/bookmarks?`)) {
+                    chrome.bookmarks.removeTree(folderId, () => {
+                        if (chrome.runtime.lastError) {
+                            showToast("Error deleting folder: " + chrome.runtime.lastError.message, "error");
+                        } else {
+                            showToast("Folder deleted successfully!", "success");
+                            const allTab = primaryFolderTabs.querySelector('[data-id="all"]');
+                            if (allTab) allTab.click();
+                            loadInitialBookmarks();
+                        }
+                    });
+                }
             }
         });
     }
