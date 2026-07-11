@@ -2062,23 +2062,17 @@ export function handleZip(bytes) {
             };
 
             bar.appendChild(search);
-            bar.appendChild(searchEngine);
             bar.appendChild(filesSortSelect);
-            bar.appendChild(filesSizeSelect);
             bar.appendChild(tagFilter);
-            bar.appendChild(folderInput);
             bar.appendChild(pathBar);
             bar.appendChild(upBtn);
             bar.appendChild(uploadLabel);
             bar.appendChild(uploadInput);
-            bar.appendChild(recordBtn);
-            bar.appendChild(saveSessionBtn);
             bar.appendChild(exportBtn);
             bar.appendChild(importLabel);
             bar.appendChild(importInput);
             bar.appendChild(shareImportBtn);
             bar.appendChild(settingsBtn);
-            bar.appendChild(sidebarBtn);
             bar.appendChild(viewToggleBtn);
             bar.appendChild(prevBtn);
             bar.appendChild(pageInfo);
@@ -3802,7 +3796,7 @@ export function handleZip(bytes) {
             return;
         }
 
-        const folderValue = normalizeVirtualPath((qs("#folder-input") && qs("#folder-input").value) || "");
+        const folderValue = currentPath;
         let targetName = folderValue ? `${folderValue}/${file.name}` : file.name;
         let existing = await getFileByName(targetName);
         if (existing) {
