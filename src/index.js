@@ -1155,6 +1155,98 @@ export function handleZip(bytes) {
             search.style.background = "transparent";
             search.style.color = "inherit";
 
+            // Web Search Engine Selector (Easy Bookmark Viewer feature)
+            const searchEngine = document.createElement("select");
+            searchEngine.id = "search-engine-select";
+            searchEngine.style.padding = "8px 12px";
+            searchEngine.style.borderRadius = "8px";
+            searchEngine.style.border = "1px solid #02ff88";
+            searchEngine.style.background = "#242424";
+            searchEngine.style.color = "inherit";
+            searchEngine.innerHTML = `
+                <option value="local">Search Local Files</option>
+                <option value="google">Google</option>
+                <option value="ddg">DuckDuckGo</option>
+                <option value="bing">Bing</option>
+            `;
+            search.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    const engine = searchEngine.value;
+                    const query = search.value.trim();
+                    if (!query) return;
+                    if (engine === "google") {
+                        chrome.tabs.create({ url: `https://www.google.com/search?q=${encodeURIComponent(query)}` });
+                    } else if (engine === "ddg") {
+                        chrome.tabs.create({ url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}` });
+                    } else if (engine === "bing") {
+                        chrome.tabs.create({ url: `https://www.bing.com/search?q=${encodeURIComponent(query)}` });
+                    }
+                }
+            });
+
+            // View Mode Toggle (Easy Bookmark Viewer feature)
+            const viewToggleBtn = document.createElement("button");
+            viewToggleBtn.id = "view-toggle-btn";
+            viewToggleBtn.className = "button";
+            const initialMode = localStorage.getItem("bookmarkfs_view_mode") || "list";
+            viewToggleBtn.innerHTML = initialMode === "grid" ? "☰ List View" : "⚃ Grid View";
+            viewToggleBtn.onclick = async () => {
+                const currentMode = localStorage.getItem("bookmarkfs_view_mode") || "list";
+                const nextMode = currentMode === "list" ? "grid" : "list";
+                localStorage.setItem("bookmarkfs_view_mode", nextMode);
+                viewToggleBtn.innerHTML = nextMode === "grid" ? "☰ List View" : "⚃ Grid View";
+                await loadFilesToTable();
+            };
+
+            // Tab Session Saver (TabXpert feature)
+            const saveSessionBtn = document.createElement("button");
+            saveSessionBtn.id = "save-session-btn";
+            saveSessionBtn.className = "button";
+            saveSessionBtn.textContent = "💾 Save Tabs";
+            saveSessionBtn.title = "Save all open tabs in this window as a session file";
+            saveSessionBtn.onclick = async () => {
+                try {
+                    const tabs = await chrome.tabs.query({ currentWindow: true });
+                    const sessionData = tabs.map(t => ({ title: t.title, url: t.url }));
+                    const serializedText = JSON.stringify(sessionData, null, 2);
+                    const bytes = new TextEncoder().encode(serializedText);
+                    
+                    const dateStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                    const folderValue = normalizeVirtualPath((qs("#folder-input") && qs("#folder-input").value) || "");
+                    const filename = `session-${dateStr}.json`;
+                    let targetName = folderValue ? `${folderValue}/${filename}` : filename;
+                    
+                    let pass = cachedSessionPassphrase;
+                    if (!pass) {
+                        pass = prompt("Optional Passphrase to encrypt session (cancel to skip encryption):", "");
+                        if (pass === null) return;
+                    }
+                    
+                    const { serialized, metaObj, metaHeader } = await prepareSerializedFromDataURL(
+                        await new Promise(resolve => {
+                            const r = new FileReader();
+                            r.onload = () => resolve(r.result);
+                            r.readAsDataURL(new Blob([bytes], { type: "application/json" }));
+                        }),
+                        { passphrase: pass || "" }
+                    );
+                    metaObj.name = filename;
+                    metaObj.metaHeader = metaHeader;
+                    metaObj.tags = ["session", "tabxpert"];
+                    
+                    while (await getFileByName(targetName)) targetName = incrementVersionedName(targetName);
+                    
+                    const fobj = await createNewFile(targetName);
+                    await fobj.writeMeta(metaObj);
+                    await fobj.write(serialized, () => {});
+                    
+                    alert(`Session tabs saved successfully: ${targetName}`);
+                    await loadFilesToTable();
+                } catch (err) {
+                    alert("Failed to save session: " + err.message);
+                }
+            };
+
             const folderInput = document.createElement("input");
             folderInput.id = "folder-input";
             folderInput.placeholder = "Folder path (optional)";
@@ -1313,6 +1405,7 @@ export function handleZip(bytes) {
             };
 
             bar.appendChild(search);
+            bar.appendChild(searchEngine);
             bar.appendChild(tagFilter);
             bar.appendChild(folderInput);
             bar.appendChild(pathBar);
@@ -1320,12 +1413,14 @@ export function handleZip(bytes) {
             bar.appendChild(uploadLabel);
             bar.appendChild(uploadInput);
             bar.appendChild(recordBtn);
+            bar.appendChild(saveSessionBtn);
             bar.appendChild(exportBtn);
             bar.appendChild(importLabel);
             bar.appendChild(importInput);
             bar.appendChild(shareImportBtn);
             bar.appendChild(settingsBtn);
             bar.appendChild(sidebarBtn);
+            bar.appendChild(viewToggleBtn);
             bar.appendChild(prevBtn);
             bar.appendChild(pageInfo);
             bar.appendChild(nextBtn);
