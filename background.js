@@ -64,7 +64,7 @@ async function initDeclarativeNetRequest() {
                     },
                     condition: {
                         resourceTypes: ["sub_frame"],
-                        excludeRequestDomains: ["facebook.com", "www.facebook.com", "m.facebook.com"]
+                        excludedRequestDomains: ["facebook.com", "www.facebook.com", "m.facebook.com"]
                     }
                 }
             ];
