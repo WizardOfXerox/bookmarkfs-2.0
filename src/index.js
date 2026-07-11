@@ -1630,6 +1630,8 @@ export function handleZip(bytes) {
                 <a href="index.html" class="nav-btn active" data-panel="files">📁 Files</a>
                 <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
                 <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
+                <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
+                <a href="notes.html" class="nav-btn" data-panel="notes">📝 Notes</a>
                 <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
             `;
             center.insertBefore(nav, center.firstChild);

@@ -40,7 +40,8 @@
         "sidePanel",
         "unlimitedStorage",
         "tabGroups",
-        "topSites"
+        "topSites",
+        "declarativeNetRequest"
     ],
     "host_permissions": [
         "<all_urls>"

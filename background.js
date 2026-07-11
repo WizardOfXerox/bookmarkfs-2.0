@@ -29,19 +29,52 @@ function initContextMenu() {
     });
 }
 
+async function initDeclarativeNetRequest() {
+    if (chrome.declarativeNetRequest) {
+        try {
+            const rule = {
+                id: 1,
+                priority: 1,
+                action: {
+                    type: "modifyHeaders",
+                    responseHeaders: [
+                        { header: "frame-options", operation: "remove" },
+                        { header: "x-frame-options", operation: "remove" },
+                        { header: "content-security-policy", operation: "remove" }
+                    ]
+                },
+                condition: {
+                    urlFilter: "*",
+                    resourceTypes: ["sub_frame"]
+                }
+            };
+            await chrome.declarativeNetRequest.updateDynamicRules({
+                removeRuleIds: [1],
+                addRules: [rule]
+            });
+            console.log("Successfully registered declarativeNetRequest CSP rules");
+        } catch (err) {
+            console.error("Failed to register declarativeNetRequest CSP rules:", err);
+        }
+    }
+}
+
 // Register listeners to trigger context menu setup
 chrome.runtime.onInstalled.addListener(() => {
     initContextMenu();
+    initDeclarativeNetRequest();
     if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
     }
 });
 chrome.runtime.onStartup.addListener(() => {
     initContextMenu();
+    initDeclarativeNetRequest();
 });
 
 // Also run immediately on worker script execution to ensure it works during active dev reloads
 initContextMenu();
+initDeclarativeNetRequest();
 if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }

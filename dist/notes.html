@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BookmarkFS - Page Notes</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .notes-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            margin-top: 10px;
+            box-sizing: border-box;
+        }
+
+        .notes-editor-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius-large);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .notes-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .active-site-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .site-favicon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .site-hostname {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .scope-container select {
+            background-color: var(--bg-button);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .scope-container select:focus {
+            border-color: var(--accent);
+        }
+
+        .editor-textarea {
+            width: 100%;
+            height: 220px;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .editor-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .notes-footer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        #notes-status-label {
+            color: var(--accent);
+        }
+
+        /* Notes Index Card */
+        .notes-index-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius-large);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+
+        .index-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .notes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-index-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background-color: var(--bg-button);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .note-index-item:hover {
+            border-color: var(--accent);
+        }
+
+        .note-item-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .note-item-title {
+            font-size: 12.5px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .note-item-preview {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+
+        .note-item-delete {
+            background: transparent;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .note-item-delete:hover {
+            background-color: rgba(239, 68, 68, 0.15);
+        }
+
+        /* Responsive adaptations for narrow width */
+        @media (max-width: 750px) {
+            body {
+                padding: 8px !important;
+            }
+            .notes-container {
+                margin-top: 5px;
+                gap: 10px !important;
+            }
+            .notes-editor-card, .notes-index-card {
+                padding: 12px !important;
+                border-radius: 10px !important;
+            }
+            .editor-textarea {
+                height: 180px !important;
+            }
+            
+            /* Responsive Redirection Navbar */
+            #panel-nav-bar {
+                width: 100% !important;
+                border-radius: 8px !important;
+                box-sizing: border-box !important;
+                justify-content: space-around !important;
+                gap: 4px !important;
+                margin: 8px 0 !important;
+                padding: 4px !important;
+            }
+            .nav-btn {
+                padding: 6px 10px !important;
+                font-size: 11px !important;
+                border-radius: 6px !important;
+                flex: 1 !important;
+                text-align: center !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="panel-nav-bar">
+        <a href="index.html" class="nav-btn">📁 Files</a>
+        <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
+        <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
+        <a href="web.html" class="nav-btn">🌐 Web</a>
+        <a href="notes.html" class="nav-btn active">📝 Notes</a>
+        <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+    </div>
+
+    <div class="notes-container">
+        <!-- Main Note Editor -->
+        <div class="notes-editor-card">
+            <div class="notes-header-row">
+                <div class="active-site-info">
+                    <img id="active-favicon" class="site-favicon" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>">
+                    <span id="active-domain" class="site-hostname">No Active Website</span>
+                </div>
+                <div class="scope-container">
+                    <select id="notes-scope-selector">
+                        <option value="domain" selected>🏢 Domain Scope</option>
+                        <option value="url">📄 Page URL Scope</option>
+                    </select>
+                </div>
+            </div>
+            
+            <textarea id="notes-textarea" class="editor-textarea" placeholder="Type notes here..."></textarea>
+            
+            <div class="notes-footer-row">
+                <span id="notes-status-label">Saved</span>
+                <span id="notes-char-count">0 characters</span>
+            </div>
+        </div>
+
+        <!-- Saved Notes Index -->
+        <div class="notes-index-card">
+            <h3 class="index-title">📝 Saved Notes Index</h3>
+            <div id="notes-index-list" class="notes-list">
+                <!-- List items of other websites -->
+            </div>
+        </div>
+    </div>
+
+    <script src="notes.js"></script>
+</body>
+</html>

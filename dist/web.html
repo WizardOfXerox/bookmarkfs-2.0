@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BookmarkFS - Web Browser</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .web-browser-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 80px);
+            width: 100%;
+            margin-top: 10px;
+            box-sizing: border-box;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius-large);
+            overflow: hidden;
+        }
+
+        /* Web Controls toolbar */
+        .web-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            background-color: var(--bg-card);
+            flex-wrap: wrap;
+        }
+
+        .web-navigation-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .web-btn {
+            background-color: var(--bg-button);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .web-btn:hover {
+            background-color: var(--accent-glow);
+            border-color: var(--accent);
+        }
+
+        #web-address-bar {
+            flex: 1;
+            min-width: 150px;
+            padding: 6px 12px;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        #web-address-bar:focus {
+            border-color: var(--accent);
+        }
+
+        /* Main iframe viewport */
+        .web-viewport {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background-color: #ffffff;
+        }
+
+        /* Responsive adaptations for narrow width */
+        @media (max-width: 750px) {
+            body {
+                padding: 8px !important;
+            }
+            .web-browser-container {
+                height: calc(100vh - 100px);
+                margin-top: 5px;
+            }
+            .web-controls {
+                gap: 6px !important;
+                padding: 8px !important;
+            }
+            #web-address-bar {
+                width: 100% !important;
+                flex: none !important;
+                order: -1;
+            }
+            
+            /* Responsive Redirection Navbar */
+            #panel-nav-bar {
+                width: 100% !important;
+                border-radius: 8px !important;
+                box-sizing: border-box !important;
+                justify-content: space-around !important;
+                gap: 4px !important;
+                margin: 8px 0 !important;
+                padding: 4px !important;
+            }
+            .nav-btn {
+                padding: 6px 10px !important;
+                font-size: 11px !important;
+                border-radius: 6px !important;
+                flex: 1 !important;
+                text-align: center !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="panel-nav-bar">
+        <a href="index.html" class="nav-btn">📁 Files</a>
+        <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
+        <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
+        <a href="web.html" class="nav-btn active">🌐 Web</a>
+        <a href="notes.html" class="nav-btn">📝 Notes</a>
+        <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+    </div>
+
+    <div class="web-browser-container">
+        <div class="web-controls">
+            <div class="web-navigation-buttons">
+                <button id="web-back" class="web-btn" title="Back">◀</button>
+                <button id="web-forward" class="web-btn" title="Forward">▶</button>
+                <button id="web-reload" class="web-btn" title="Reload">🔄</button>
+            </div>
+            <input type="text" id="web-address-bar" placeholder="Type URL or search Google..." value="https://www.wikipedia.org">
+            <button id="web-go" class="web-btn" title="Go">➔</button>
+            <button id="web-tab" class="web-btn" title="Open in new Tab">↗</button>
+        </div>
+        <iframe id="web-iframe" class="web-viewport" src="https://www.wikipedia.org"></iframe>
+    </div>
+
+    <script src="web.js"></script>
+</body>
+</html>
