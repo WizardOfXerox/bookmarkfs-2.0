@@ -1,4 +1,4 @@
-import { unzipSync } from "fflate";
+import { unzipSync, zipSync, gzipSync as fflateGzip, gunzipSync as fflateGunzip } from "fflate";
 import { createExtractorFromData } from "node-unrar-js";
 
 async function handleRar(bytes) {
@@ -21,13 +21,19 @@ export function handleZip(bytes) {
     let maxBookmarkSize = 9092; // safe Chrome limit for title characters
     const SETTINGS_KEY = "bookmarkfs_settings";
     const UPLOAD_CHECKPOINT_KEY = "bookmarkfs_upload_checkpoint_v1";
-    const APP_SCHEMA_VERSION = 2;
+    const APP_SCHEMA_VERSION = 3; // Upgraded schema version to 3 (centralized chunking)
     const CHUNK_PREFIX = "!data:";
     const META_PREFIX = "!meta:";
     let currentPath = "";
     let currentPage = 1;
     let pageSize = 25;
     let cachedSessionPassphrase = "";
+
+    // Recorder State
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordTimer = null;
+    let recordSeconds = 0;
 
     // ---------- Utilities ----------
     const te = new TextEncoder();
@@ -166,12 +172,12 @@ export function handleZip(bytes) {
     // gzip/gunzip adapters (fflate if present)
     function gzipSync(bytes) {
         if (hasFflate) return window.fflate.gzipSync(bytes);
-        return bytes;
+        return fflateGzip(bytes);
     }
 
     function gunzipSync(bytes) {
         if (hasFflate) return window.fflate.gunzipSync(bytes);
-        return bytes;
+        return fflateGunzip(bytes);
     }
 
     // ---------- WebCrypto AES-GCM helpers ----------
@@ -470,8 +476,8 @@ export function handleZip(bytes) {
         // Apply column visibility
         const allCols = ["preview", "name", "size", "date", "download", "clipboard", "rename", "delete"];
         allCols.forEach((col, idx) => {
-            const th = qs(`#table thead th:nth-child(${idx+1})`);
-            const cells = document.querySelectorAll(`#table tbody tr td:nth-child(${idx+1})`);
+            const th = qs(`#table thead th:nth-child(${idx+2})`);
+            const cells = document.querySelectorAll(`#table tbody tr td:nth-child(${idx+2})`);
             const show = !s.columns || s.columns.includes(col);
             if (th) th.style.display = show ? "" : "none";
             cells.forEach(td => td.style.display = show ? "" : "none");
@@ -497,7 +503,555 @@ export function handleZip(bytes) {
         qs("#setting-dark").checked = !!s.dark;
     }
 
+    function showEncryptDecryptModal(title, isUpload, callback) {
+        const modal = document.createElement("div");
+        modal.style.position = "fixed";
+        modal.style.inset = "0";
+        modal.style.background = "rgba(10, 10, 10, 0.85)";
+        modal.style.backdropFilter = "blur(8px)";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+        modal.style.zIndex = "100000";
 
+        const box = document.createElement("div");
+        box.style.background = "#18181b";
+        box.style.border = "1px solid #27272a";
+        box.style.color = "#f4f4f5";
+        box.style.padding = "20px";
+        box.style.borderRadius = "12px";
+        box.style.width = "min(380px, 90%)";
+        box.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.5)";
+        box.style.display = "flex";
+        box.style.flexDirection = "column";
+        box.style.gap = "12px";
+
+        const heading = document.createElement("h3");
+        heading.style.margin = "0";
+        heading.style.fontSize = "16px";
+        heading.style.fontWeight = "600";
+        heading.style.color = "#02ff88";
+        heading.textContent = title;
+
+        const desc = document.createElement("p");
+        desc.style.margin = "0";
+        desc.style.fontSize = "12px";
+        desc.style.color = "#a1a1aa";
+        desc.textContent = isUpload 
+            ? "Optional passphrase (AES-GCM). Leave blank to store unencrypted."
+            : "Enter the passphrase to decrypt this file:";
+
+        const input = document.createElement("input");
+        input.type = "password";
+        input.placeholder = "Enter passphrase...";
+        input.style.width = "100%";
+        input.style.padding = "8px 12px";
+        input.style.borderRadius = "6px";
+        input.style.border = "1px solid #27272a";
+        input.style.background = "#09090b";
+        input.style.color = "#f4f4f5";
+        input.style.boxSizing = "border-box";
+
+        const eyeBtn = document.createElement("button");
+        eyeBtn.type = "button";
+        eyeBtn.style.position = "absolute";
+        eyeBtn.style.right = "8px";
+        eyeBtn.style.top = "6px";
+        eyeBtn.style.background = "none";
+        eyeBtn.style.border = "none";
+        eyeBtn.style.color = "#a1a1aa";
+        eyeBtn.style.cursor = "pointer";
+        eyeBtn.innerHTML = "👁️";
+
+        const inputWrapper = document.createElement("div");
+        inputWrapper.style.position = "relative";
+        inputWrapper.appendChild(input);
+        inputWrapper.appendChild(eyeBtn);
+
+        eyeBtn.onclick = () => {
+            if (input.type === "password") {
+                input.type = "text";
+                eyeBtn.innerHTML = "🙈";
+            } else {
+                input.type = "password";
+                eyeBtn.innerHTML = "👁️";
+            }
+        };
+
+        const strengthBar = document.createElement("div");
+        strengthBar.style.height = "4px";
+        strengthBar.style.width = "100%";
+        strengthBar.style.background = "#27272a";
+        strengthBar.style.borderRadius = "2px";
+        strengthBar.style.overflow = "hidden";
+        strengthBar.style.display = isUpload ? "block" : "none";
+
+        const strengthFill = document.createElement("div");
+        strengthFill.style.height = "100%";
+        strengthFill.style.width = "0%";
+        strengthFill.style.transition = "width 0.3s, background-color 0.3s";
+        strengthBar.appendChild(strengthFill);
+
+        const strengthLabel = document.createElement("span");
+        strengthLabel.style.fontSize = "11px";
+        strengthLabel.style.color = "#71717a";
+        strengthLabel.style.display = isUpload ? "block" : "none";
+        strengthLabel.textContent = "Strength: Empty";
+
+        input.oninput = () => {
+            if (!isUpload) return;
+            const val = input.value;
+            let score = 0;
+            if (val.length >= 6) score++;
+            if (val.length >= 10) score++;
+            if (/[A-Z]/.test(val)) score++;
+            if (/[a-z]/.test(val)) score++;
+            if (/[0-9]/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+
+            let percent = 0;
+            let color = "#ef4444";
+            let text = "Weak";
+
+            if (val.length === 0) {
+                percent = 0;
+                text = "Empty";
+                color = "#27272a";
+            } else if (score <= 2) {
+                percent = 33;
+                color = "#ef4444";
+                text = "Weak";
+            } else if (score <= 4) {
+                percent = 66;
+                color = "#f59e0b";
+                text = "Medium";
+            } else {
+                percent = 100;
+                color = "#10b981";
+                text = "Strong";
+            }
+
+            strengthFill.style.width = percent + "%";
+            strengthFill.style.backgroundColor = color;
+            strengthLabel.textContent = `Strength: ${text}`;
+        };
+
+        const buttonRow = document.createElement("div");
+        buttonRow.style.display = "flex";
+        buttonRow.style.gap = "8px";
+        buttonRow.style.justifyContent = "flex-end";
+        buttonRow.style.marginTop = "8px";
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.className = "button";
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.onclick = () => {
+            modal.remove();
+            callback(null);
+        };
+
+        const okBtn = document.createElement("button");
+        okBtn.className = "button";
+        okBtn.textContent = "OK";
+        okBtn.style.borderColor = "#02ff88";
+        okBtn.style.color = "#02ff88";
+
+        const cacheRow = document.createElement("label");
+        cacheRow.style.display = "flex";
+        cacheRow.style.alignItems = "center";
+        cacheRow.style.gap = "6px";
+        cacheRow.style.fontSize = "11px";
+        cacheRow.style.color = "#a1a1aa";
+        cacheRow.style.cursor = "pointer";
+
+        const cacheCheckbox = document.createElement("input");
+        cacheCheckbox.type = "checkbox";
+        cacheCheckbox.checked = true;
+        cacheRow.appendChild(cacheCheckbox);
+        cacheRow.appendChild(document.createTextNode("Cache this passphrase for this session"));
+
+        const submitAction = () => {
+            const val = input.value;
+            const cacheChecked = cacheCheckbox.checked;
+            modal.remove();
+            callback(val, cacheChecked);
+        };
+
+        okBtn.onclick = submitAction;
+        input.onkeydown = (e) => {
+            if (e.key === "Enter") submitAction();
+        };
+
+        buttonRow.appendChild(cancelBtn);
+        buttonRow.appendChild(okBtn);
+
+        box.appendChild(heading);
+        box.appendChild(desc);
+
+        if (isUpload) {
+            const genBtn = document.createElement("button");
+            genBtn.className = "button";
+            genBtn.textContent = "🔑 Generate Secure Password";
+            genBtn.style.fontSize = "11px";
+            genBtn.style.padding = "4px 8px";
+            genBtn.style.width = "fit-content";
+            genBtn.onclick = () => {
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+                let pass = "";
+                const array = new Uint32Array(16);
+                crypto.getRandomValues(array);
+                for (let i = 0; i < 16; i++) {
+                    pass += chars[array[i] % chars.length];
+                }
+                input.value = pass;
+                input.type = "text";
+                eyeBtn.innerHTML = "🙈";
+                input.oninput();
+                
+                navigator.clipboard.writeText(pass).then(() => {
+                    alert("Password generated and copied to clipboard!");
+                });
+            };
+            box.appendChild(genBtn);
+        }
+
+        box.appendChild(inputWrapper);
+        if (isUpload) {
+            box.appendChild(strengthBar);
+            box.appendChild(strengthLabel);
+        }
+
+        box.appendChild(cacheRow);
+        box.appendChild(buttonRow);
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+        input.focus();
+    }
+
+    function getFileCategory(name, mime) {
+        const type = (mime || "").toLowerCase();
+        const ext = name.split('.').pop().toLowerCase();
+        
+        if (type.startsWith("image/")) return "images";
+        if (type.startsWith("audio/")) return "audio";
+        if (type.startsWith("video/")) return "video";
+        if (type === "application/pdf" || type.startsWith("application/msword") || type.includes("officedocument") || ["txt", "md", "pdf"].includes(ext)) return "docs";
+        if (type === "application/zip" || type === "application/vnd.rar" || ["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "archives";
+        if (["js", "ts", "jsx", "tsx", "py", "sh", "yml", "yaml", "c", "cpp", "h", "cs", "go", "rs", "java", "sql", "html", "css", "json", "xml"].includes(ext)) return "code";
+        return "other";
+    }
+
+    function updateStorageChart(metas) {
+        const chartContainer = qs("#storage-chart-container");
+        if (!chartContainer) return;
+
+        const categories = {
+            images: { label: "Images", size: 0, color: "#3b82f6" },
+            audio: { label: "Audio", size: 0, color: "#10b981" },
+            video: { label: "Video", size: 0, color: "#8b5cf6" },
+            docs: { label: "Docs", size: 0, color: "#f59e0b" },
+            archives: { label: "Archives", size: 0, color: "#ef4444" },
+            code: { label: "Code", size: 0, color: "#eab308" },
+            other: { label: "Other", size: 0, color: "#6b7280" }
+        };
+
+        let totalSize = 0;
+        for (const m of metas) {
+            const size = (m.meta && Number.isFinite(m.meta.sizeStored)) ? m.meta.sizeStored : 0;
+            const category = getFileCategory(m.file.handle.title, m.meta ? m.meta.type : "");
+            categories[category].size += size;
+            totalSize += size;
+        }
+
+        chartContainer.innerHTML = "";
+        if (totalSize === 0) {
+            chartContainer.style.display = "none";
+            return;
+        }
+        chartContainer.style.display = "block";
+        chartContainer.style.margin = "12px auto";
+        chartContainer.style.width = "100%";
+        chartContainer.style.maxWidth = "980px";
+        chartContainer.style.boxSizing = "border-box";
+        chartContainer.style.background = "#18181b";
+        chartContainer.style.border = "1px solid #27272a";
+        chartContainer.style.borderRadius = "8px";
+        chartContainer.style.padding = "12px";
+
+        const title = document.createElement("div");
+        title.style.fontSize = "12px";
+        title.style.color = "#a1a1aa";
+        title.style.marginBottom = "8px";
+        title.style.fontWeight = "bold";
+        title.textContent = `📊 Storage Analysis (Total synced: ${niceBytes(totalSize)})`;
+        chartContainer.appendChild(title);
+
+        const bar = document.createElement("div");
+        bar.style.display = "flex";
+        bar.style.height = "12px";
+        bar.style.borderRadius = "6px";
+        bar.style.overflow = "hidden";
+        bar.style.background = "#27272a";
+        bar.style.width = "100%";
+        bar.style.marginBottom = "8px";
+        bar.style.border = "1px solid #3f3f46";
+
+        const legend = document.createElement("div");
+        legend.style.display = "flex";
+        legend.style.flexWrap = "wrap";
+        legend.style.gap = "12px";
+        legend.style.justifyContent = "center";
+        legend.style.fontSize = "11px";
+        legend.style.color = "#a1a1aa";
+
+        Object.keys(categories).forEach(key => {
+            const cat = categories[key];
+            if (cat.size === 0) return;
+            const pct = (cat.size / totalSize) * 100;
+
+            const segment = document.createElement("div");
+            segment.style.width = pct.toFixed(2) + "%";
+            segment.style.height = "100%";
+            segment.style.backgroundColor = cat.color;
+            segment.title = `${cat.label}: ${niceBytes(cat.size)} (${pct.toFixed(1)}%)`;
+            bar.appendChild(segment);
+
+            const item = document.createElement("div");
+            item.style.display = "flex";
+            item.style.alignItems = "center";
+            item.style.gap = "4px";
+
+            const dot = document.createElement("span");
+            dot.style.width = "8px";
+            dot.style.height = "8px";
+            dot.style.borderRadius = "50%";
+            dot.style.display = "inline-block";
+            dot.style.backgroundColor = cat.color;
+
+            const text = document.createElement("span");
+            text.textContent = `${cat.label}: ${niceBytes(cat.size)} (${pct.toFixed(1)}%)`;
+
+            item.appendChild(dot);
+            item.appendChild(text);
+            legend.appendChild(item);
+        });
+
+        chartContainer.appendChild(bar);
+        chartContainer.appendChild(legend);
+    }
+
+    async function toggleAudioRecording(btn) {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            btn.textContent = "🎙 Record Note";
+            btn.style.borderColor = "";
+            btn.style.color = "";
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            recordedChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                    recordedChunks.push(e.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                clearInterval(recordTimer);
+                stream.getTracks().forEach(t => t.stop());
+
+                const blob = new Blob(recordedChunks, { type: "audio/webm" });
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+                const defaultName = `voice-note-${timestamp}.webm`;
+                
+                const name = prompt("Save recording as:", defaultName);
+                if (!name) return;
+
+                const file = new File([blob], name, { type: "audio/webm", lastModified: Date.now() });
+                
+                let pass = cachedSessionPassphrase;
+                if (!pass) {
+                    showEncryptDecryptModal("Optional Passphrase for Voice Note", true, async (typedPass, shouldCache) => {
+                        if (typedPass === null) return;
+                        if (typedPass && shouldCache) cachedSessionPassphrase = typedPass;
+                        await processAndStoreFile(file, typedPass || "");
+                        await loadFilesToTable();
+                    });
+                } else {
+                    await processAndStoreFile(file, pass);
+                    await loadFilesToTable();
+                }
+            };
+
+            mediaRecorder.start();
+            recordSeconds = 0;
+            btn.textContent = "🔴 Stop (0s)";
+            btn.style.borderColor = "#ef4444";
+            btn.style.color = "#ef4444";
+
+            recordTimer = setInterval(() => {
+                recordSeconds++;
+                btn.textContent = `🔴 Stop (${recordSeconds}s)`;
+            }, 1000);
+
+        } catch (err) {
+            alert("Could not access microphone: " + err.message);
+        }
+    }
+
+    function incrementVersionedName(name) {
+        const dot = name.lastIndexOf(".");
+        const hasExt = dot > 0;
+        const base = hasExt ? name.slice(0, dot) : name;
+        const ext = hasExt ? name.slice(dot) : "";
+        const m = base.match(/^(.*) \((\d+)\)$/);
+        if (!m) return `${base} (2)${ext}`;
+        return `${m[1]} (${Number(m[2]) + 1})${ext}`;
+    }
+
+    async function handleBulkDownload() {
+        const checked = [...document.querySelectorAll(".row-select:checked")];
+        const filesToPack = [];
+        
+        const files = await listFiles();
+        for (const cb of checked) {
+            const isFile = cb.dataset.type === "file";
+            const id = cb.dataset.id;
+            if (isFile) {
+                const f = files.find(x => x.handle.id === id);
+                if (f) filesToPack.push(f);
+            } else {
+                const folderPath = id;
+                const prefix = folderPath + "/";
+                const matches = files.filter(x => x.handle.title === folderPath || x.handle.title.startsWith(prefix));
+                filesToPack.push(...matches);
+            }
+        }
+
+        const uniqueFiles = [...new Set(filesToPack)];
+        if (uniqueFiles.length === 0) {
+            alert("No files selected.");
+            return;
+        }
+
+        const zipData = {};
+        const bulkBar = qs("#bulk-bar");
+        const countSpan = qs("#bulk-count");
+        countSpan.textContent = `Downloading ${uniqueFiles.length} files...`;
+
+        try {
+            for (let i = 0; i < uniqueFiles.length; i++) {
+                const f = uniqueFiles[i];
+                countSpan.textContent = `Processing (${i + 1}/${uniqueFiles.length}): ${f.handle.title}`;
+                const raw = await f.read();
+                const meta = await f.readMeta();
+                const reconstructed = await reconstructBytesFromSerialized(raw, meta);
+                zipData[f.handle.title] = reconstructed.bytes;
+            }
+
+            countSpan.textContent = "Compressing ZIP archive...";
+            const zipped = zipSync(zipData);
+            const blob = new Blob([zipped], { type: "application/zip" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `bookmarkfs-bundle-${new Date().toISOString().slice(0, 10)}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            
+            clearBulkSelection();
+        } catch (err) {
+            alert("Bulk download failed: " + err.message);
+        } finally {
+            updateBulkBar();
+        }
+    }
+
+    async function handleBulkDelete() {
+        const checked = [...document.querySelectorAll(".row-select:checked")];
+        if (!confirm(`Are you sure you want to delete the ${checked.length} selected items?`)) return;
+
+        const files = await listFiles();
+        for (const cb of checked) {
+            const isFile = cb.dataset.type === "file";
+            const id = cb.dataset.id;
+            if (isFile) {
+                const f = files.find(x => x.handle.id === id);
+                if (f) await f.delete();
+            } else {
+                const folderPath = id;
+                const prefix = folderPath + "/";
+                const matches = files.filter(x => x.handle.title === folderPath || x.handle.title.startsWith(prefix));
+                for (const f of matches) {
+                    await f.delete();
+                }
+            }
+        }
+        clearBulkSelection();
+        await loadFilesToTable();
+    }
+
+    async function handleBulkMove() {
+        const checked = [...document.querySelectorAll(".row-select:checked")];
+        const nextFolder = prompt("Move selected items to folder path (optional):", currentPath);
+        if (nextFolder === null) return;
+        const targetFolder = normalizeVirtualPath(nextFolder);
+
+        const files = await listFiles();
+        for (const cb of checked) {
+            const isFile = cb.dataset.type === "file";
+            const id = cb.dataset.id;
+            if (isFile) {
+                const f = files.find(x => x.handle.id === id);
+                if (f) {
+                    const nameParts = splitVirtualName(f.handle.title);
+                    const newName = joinVirtualName(targetFolder, nameParts.base);
+                    await f.rename(newName);
+                }
+            } else {
+                const folderPath = id;
+                const prefix = folderPath + "/";
+                const matches = files.filter(x => x.handle.title === folderPath || x.handle.title.startsWith(prefix));
+                for (const f of matches) {
+                    const relativePath = f.handle.title.slice(folderPath.length);
+                    const newName = targetFolder ? `${targetFolder}/${folderPath.split("/").pop()}${relativePath}` : `${folderPath.split("/").pop()}${relativePath}`;
+                    await f.rename(normalizeVirtualPath(newName));
+                }
+            }
+        }
+        clearBulkSelection();
+        await loadFilesToTable();
+    }
+
+    function updateBulkBar() {
+        const checked = document.querySelectorAll(".row-select:checked");
+        const bulkBar = qs("#bulk-bar");
+        const countSpan = qs("#bulk-count");
+        if (bulkBar && countSpan) {
+            if (checked.length > 0) {
+                bulkBar.style.display = "flex";
+                countSpan.textContent = `${checked.length} item(s) selected`;
+            } else {
+                bulkBar.style.display = "none";
+                const selectAll = qs("#bulk-select-all");
+                if (selectAll) selectAll.checked = false;
+            }
+        }
+    }
+
+    function clearBulkSelection() {
+        const cbs = document.querySelectorAll(".row-select");
+        cbs.forEach(cb => cb.checked = false);
+        const selectAll = qs("#bulk-select-all");
+        if (selectAll) selectAll.checked = false;
+        updateBulkBar();
+    }
 
     function ensureUI() {
         const center = document.querySelector("center") || document.body;
@@ -505,6 +1059,66 @@ export function handleZip(bytes) {
         // file input: allow multiple
         const input = qs("#file-input");
         if (input) input.multiple = true;
+
+        // Ensure storage-chart-container exists
+        if (!qs("#storage-chart-container")) {
+            const chartContainer = document.createElement("div");
+            chartContainer.id = "storage-chart-container";
+            chartContainer.style.display = "none";
+            center.insertBefore(chartContainer, qs("#table") || null);
+        }
+
+        // Ensure bulk-bar exists
+        if (!qs("#bulk-bar")) {
+            const bulkBar = document.createElement("div");
+            bulkBar.id = "bulk-bar";
+            bulkBar.style.margin = "12px auto";
+            bulkBar.style.padding = "10px 16px";
+            bulkBar.style.background = "#18181b";
+            bulkBar.style.border = "1px solid #27272a";
+            bulkBar.style.borderRadius = "8px";
+            bulkBar.style.display = "none"; // hidden by default
+            bulkBar.style.alignItems = "center";
+            bulkBar.style.gap = "12px";
+            bulkBar.style.width = "100%";
+            bulkBar.style.maxWidth = "980px";
+            bulkBar.style.boxSizing = "border-box";
+
+            const countSpan = document.createElement("span");
+            countSpan.id = "bulk-count";
+            countSpan.style.fontSize = "13px";
+            countSpan.style.color = "#a1a1aa";
+            countSpan.textContent = "0 items selected";
+
+            const bulkDlBtn = document.createElement("button");
+            bulkDlBtn.className = "button";
+            bulkDlBtn.textContent = "📦 Download ZIP";
+            bulkDlBtn.onclick = async () => {
+                await handleBulkDownload();
+            };
+
+            const bulkMoveBtn = document.createElement("button");
+            bulkMoveBtn.className = "button";
+            bulkMoveBtn.textContent = "📂 Move Selected";
+            bulkMoveBtn.onclick = async () => {
+                await handleBulkMove();
+            };
+
+            const bulkDelBtn = document.createElement("button");
+            bulkDelBtn.className = "button";
+            bulkDelBtn.textContent = "🗑 Delete Selected";
+            bulkDelBtn.style.borderColor = "#ef4444";
+            bulkDelBtn.style.color = "#ef4444";
+            bulkDelBtn.onclick = async () => {
+                await handleBulkDelete();
+            };
+
+            bulkBar.appendChild(countSpan);
+            bulkBar.appendChild(bulkDlBtn);
+            bulkBar.appendChild(bulkMoveBtn);
+            bulkBar.appendChild(bulkDelBtn);
+            center.insertBefore(bulkBar, qs("#table") || null);
+        }
 
         if (!qs("#controls-bar")) {
             const bar = document.createElement("div");
@@ -521,15 +1135,12 @@ export function handleZip(bytes) {
             bar.style.borderRadius = "50px";
             bar.style.alignItems = "center";
 
-
             //Settings
             const settingsBtn = document.createElement("button");
             settingsBtn.textContent = "⚙ Settings";
             settingsBtn.className = "button";
             settingsBtn.onclick = () => {
-                // create popup if missing
                 if (!qs("#settings-popup")) createSettingsPopup();
-
                 qs("#settings-popup").style.display = "flex";
                 loadSettingsIntoPopup();
             };
@@ -552,6 +1163,20 @@ export function handleZip(bytes) {
             folderInput.style.border = "1px solid #02ff88";
             folderInput.style.background = "transparent";
             folderInput.style.color = "inherit";
+
+            // Tag search dropdown filter
+            const tagFilter = document.createElement("select");
+            tagFilter.id = "tag-filter";
+            tagFilter.style.padding = "8px 12px";
+            tagFilter.style.borderRadius = "8px";
+            tagFilter.style.border = "1px solid #02ff88";
+            tagFilter.style.background = "#242424";
+            tagFilter.style.color = "inherit";
+            tagFilter.innerHTML = '<option value="">All Tags</option>';
+            tagFilter.onchange = async () => {
+                currentPage = 1;
+                await loadFilesToTable();
+            };
 
             const pathBar = document.createElement("div");
             pathBar.id = "path-bar";
@@ -588,6 +1213,44 @@ export function handleZip(bytes) {
             importInput.id = "import-input";
             importInput.accept = "application/json";
             importInput.style.display = "none";
+
+            // Share Import
+            const shareImportBtn = document.createElement("button");
+            shareImportBtn.id = "share-import-btn";
+            shareImportBtn.className = "button";
+            shareImportBtn.textContent = "Import Share";
+            shareImportBtn.onclick = async () => {
+                const pasteStr = prompt("Paste the shareable Base64 string here:");
+                if (!pasteStr) return;
+                try {
+                    const jsonStr = atob(pasteStr.trim());
+                    const pkg = JSON.parse(jsonStr);
+                    if (pkg.type !== "bookmarkfs-share") throw new Error("Invalid share package");
+                    
+                    let target = pkg.name;
+                    while (await getFileByName(target)) target = incrementVersionedName(target);
+                    
+                    const fobj = await createNewFile(target);
+                    if (pkg.meta) await fobj.writeMeta(migrateMeta(pkg.meta));
+                    await fobj.write(pkg.serialized, (p) => setProgress(p));
+                    
+                    await loadFilesToTable();
+                    alert(`Imported file: ${target}`);
+                } catch (err) {
+                    alert("Import failed: " + err.message);
+                } finally {
+                    setProgress(0);
+                }
+            };
+
+            // Voice Recorder
+            const recordBtn = document.createElement("button");
+            recordBtn.id = "record-btn";
+            recordBtn.className = "button";
+            recordBtn.textContent = "🎙 Record Note";
+            recordBtn.onclick = async () => {
+                await toggleAudioRecording(recordBtn);
+            };
 
             const uploadLabel = document.createElement("label");
             uploadLabel.className = "button";
@@ -631,14 +1294,17 @@ export function handleZip(bytes) {
             prog.appendChild(progBar);
 
             bar.appendChild(search);
+            bar.appendChild(tagFilter);
             bar.appendChild(folderInput);
             bar.appendChild(pathBar);
             bar.appendChild(upBtn);
             bar.appendChild(uploadLabel);
             bar.appendChild(uploadInput);
+            bar.appendChild(recordBtn);
             bar.appendChild(exportBtn);
             bar.appendChild(importLabel);
             bar.appendChild(importInput);
+            bar.appendChild(shareImportBtn);
             bar.appendChild(settingsBtn);
             bar.appendChild(prevBtn);
             bar.appendChild(pageInfo);
@@ -646,7 +1312,6 @@ export function handleZip(bytes) {
             bar.appendChild(analyticsBar);
             bar.appendChild(prog);
 
-            // insert before table if present, otherwise append
             center.insertBefore(bar, qs("#table") || null);
         }
 
@@ -657,6 +1322,7 @@ export function handleZip(bytes) {
             const thead = document.createElement("thead");
             thead.innerHTML = `
         <tr>
+          <th style="width: 40px; text-align:center;"><input type="checkbox" id="bulk-select-all"></th>
           <th>Preview</th>
           <th>Name</th>
           <th>Size</th>
@@ -670,6 +1336,14 @@ export function handleZip(bytes) {
             table.appendChild(thead);
             table.appendChild(tbody);
             table.style.width = "min(980px, 95%)";
+
+            // Wire up select all checkbox
+            const selectAllCb = thead.querySelector("#bulk-select-all");
+            selectAllCb.onchange = () => {
+                const cbs = document.querySelectorAll(".row-select");
+                cbs.forEach(cb => cb.checked = selectAllCb.checked);
+                updateBulkBar();
+            };
         }
     }
 
@@ -697,16 +1371,31 @@ export function handleZip(bytes) {
         if (folder && folder.value !== currentPath) folder.value = currentPath;
     }
 
-    function getVisibleEntries(files, searchTerm) {
+    function getVisibleEntries(files, searchTerm, tagFilterValue, metas) {
         const q = (searchTerm || "").toLowerCase();
         const prefix = currentPath ? `${currentPath}/` : "";
         const folders = new Map();
         const fileEntries = [];
+
+        const metaMap = new Map();
+        if (metas) {
+            for (const item of metas) {
+                metaMap.set(item.file.handle.id, item.meta);
+            }
+        }
+
         for (const file of files) {
             const full = file.handle.title;
             if (!full.startsWith(prefix)) continue;
             const rest = full.slice(prefix.length);
             if (!rest) continue;
+
+            if (tagFilterValue) {
+                const m = metaMap.get(file.handle.id);
+                const tags = (m && Array.isArray(m.tags)) ? m.tags : [];
+                if (!tags.includes(tagFilterValue)) continue;
+            }
+
             const slash = rest.indexOf("/");
             if (slash >= 0) {
                 const folder = rest.slice(0, slash);
@@ -744,6 +1433,26 @@ export function handleZip(bytes) {
     }
 
     // ---------- Bookmark FS primitives (based on your original) ----------
+    async function getChunksRoot() {
+        const root = await fsRoot();
+        const children = await chrome.bookmarks.getChildren(root.id);
+        let chunksFolder = children.find(c => !c.url && c.title === "__chunks__");
+        if (!chunksFolder) {
+            chunksFolder = await chrome.bookmarks.create({ parentId: root.id, title: "__chunks__" });
+        }
+        return chunksFolder;
+    }
+
+    async function getFileChunksFolder(fileId, createIfMissing = false) {
+        const chunksRoot = await getChunksRoot();
+        const children = await chrome.bookmarks.getChildren(chunksRoot.id);
+        let folder = children.find(c => !c.url && c.title === String(fileId));
+        if (!folder && createIfMissing) {
+            folder = await chrome.bookmarks.create({ parentId: chunksRoot.id, title: String(fileId) });
+        }
+        return folder;
+    }
+
     async function fsRoot() {
         const tree = await chrome.bookmarks.getTree();
         // usually tree[0].children[1] is bookmarks bar
@@ -767,12 +1476,47 @@ export function handleZip(bytes) {
                 }
             },
             async readRaw() {
-                // concatenate all child titles but skip meta node(s)
+                // 1. Try to find the centralized chunk folder for this file ID (Schema 3)
+                const chunkFolder = await getFileChunksFolder(this.handle.id);
+                if (chunkFolder) {
+                    const children = await chrome.bookmarks.getChildren(chunkFolder.id);
+                    let data = "";
+                    for (const c of (children || [])) {
+                        data += c.title || "";
+                    }
+                    return data;
+                }
+
+                // 2. Legacy format (Schema 2): read from the file folder itself
                 let data = "";
                 const children = await this.getChildrenFresh();
-                for (const c of(children || [])) {
+                for (const c of (children || [])) {
                     if (c.title && c.title.startsWith(META_PREFIX)) continue;
                     data += c.title || "";
+                }
+
+                // Auto-migrate to Schema 3 (centralized chunking)
+                const meta = await this.readMeta();
+                if (meta && data.length > 0) {
+                    try {
+                        console.log("Migrating file to Schema 3 (centralized chunking):", this.handle.title);
+                        const newChunkFolder = await getFileChunksFolder(this.handle.id, true);
+                        const CHUNK = meta.chunkSize || maxBookmarkSize;
+                        for (let i = 0; i < data.length; i += CHUNK) {
+                            const part = data.substring(i, i + CHUNK);
+                            await chrome.bookmarks.create({ parentId: newChunkFolder.id, title: part });
+                        }
+                        // Delete legacy chunk nodes from file folder
+                        for (const c of (children || [])) {
+                            if (c.title && !c.title.startsWith(META_PREFIX)) {
+                                try { await chrome.bookmarks.remove(c.id); } catch {}
+                            }
+                        }
+                        meta.schemaVersion = 3;
+                        await this.writeMeta(meta);
+                    } catch (migrationErr) {
+                        console.warn("Auto-migration to Schema 3 failed:", migrationErr);
+                    }
                 }
                 return data;
             },
@@ -780,6 +1524,9 @@ export function handleZip(bytes) {
                 return this.readRaw();
             },
             async write(rawString, onProgress, options) {
+                // Get or create chunk folder under __chunks__
+                const chunkFolder = await getFileChunksFolder(this.handle.id, true);
+
                 // chunk into maxBookmarkSize pieces
                 const CHUNK = (options && options.chunkSize) ? options.chunkSize : maxBookmarkSize;
                 const startChunk = (options && Number.isFinite(options.startChunk)) ? options.startChunk : 0;
@@ -787,32 +1534,25 @@ export function handleZip(bytes) {
                 for (let i = 0; i < rawString.length; i += CHUNK) {
                     pieces.push(rawString.substring(i, i + CHUNK));
                 }
-                // get current children (fresh)
-                const existing = (await this.getChildrenFresh()).slice(); // copy snapshot
-                const dataNodes = existing.filter(n => n.title && !n.title.startsWith(META_PREFIX));
-                // delete extra trailing children if any
-                if (startChunk === 0 && pieces.length < dataNodes.length) {
-                    // remove the trailing nodes (delete from end to avoid reindex issues)
-                    for (let i = dataNodes.length - 1; i >= pieces.length; i--) {
-                        try { await chrome.bookmarks.remove(dataNodes[i].id); } catch (e) { /* ignore */ }
+
+                // Get current children of the chunk folder
+                const existing = await chrome.bookmarks.getChildren(chunkFolder.id);
+
+                // Delete extra trailing children if any
+                if (startChunk === 0 && pieces.length < existing.length) {
+                    for (let i = existing.length - 1; i >= pieces.length; i--) {
+                        try { await chrome.bookmarks.remove(existing[i].id); } catch {}
                     }
                 }
-                // re-fetch current data nodes from the bookmark children to get an up-to-date list
-                let currentChildren = [];
-                try {
-                    // try to use getChildren to get fresh children
-                    currentChildren = (await chrome.bookmarks.getChildren(this.handle.id)) || [];
-                } catch (e) {
-                    // fallback to whatever we have locally
-                    currentChildren = (this.handle.children || []);
-                }
-                const currentDataNodes = currentChildren.filter(n => n.title && !n.title.startsWith(META_PREFIX));
+
+                // Re-fetch current chunk nodes
+                const currentDataNodes = await chrome.bookmarks.getChildren(chunkFolder.id);
 
                 for (let i = startChunk; i < pieces.length; i++) {
                     const title = pieces[i];
                     const node = currentDataNodes[i];
                     if (!node) {
-                        await chrome.bookmarks.create({ parentId: this.handle.id, title: title });
+                        await chrome.bookmarks.create({ parentId: chunkFolder.id, title: title });
                     } else {
                         await chrome.bookmarks.update(node.id, { title: title });
                     }
@@ -841,12 +1581,10 @@ export function handleZip(bytes) {
                 if (!metaNode) return null;
                 try {
                     const str = metaNode.title.slice(META_PREFIX.length);
-                    // Try base64-decoded JSON first
                     try {
                         const decoded = atob(str);
                         return migrateMeta(JSON.parse(decoded));
                     } catch (e) {
-                        // If not valid base64, maybe it's raw JSON already
                         try {
                             return migrateMeta(JSON.parse(str));
                         } catch (err) {
@@ -858,14 +1596,25 @@ export function handleZip(bytes) {
                     return null;
                 }
             },
-
             async rename(newName) {
                 await chrome.bookmarks.update(this.handle.id, { title: newName });
             },
             async delete() {
-                // remove children then folder
+                // remove centralized chunk folder if any
+                const chunkFolder = await getFileChunksFolder(this.handle.id);
+                if (chunkFolder) {
+                    try {
+                        const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
+                        for (const node of (chunkChildren || [])) {
+                            try { await chrome.bookmarks.remove(node.id); } catch {}
+                        }
+                        await chrome.bookmarks.remove(chunkFolder.id);
+                    } catch {}
+                }
+
+                // remove file folder children then folder
                 const children = await this.getChildrenFresh();
-                for (const node of(children || [])) {
+                for (const node of (children || [])) {
                     try { await chrome.bookmarks.remove(node.id); } catch (e) { /* ignore */ }
                 }
                 try { await chrome.bookmarks.remove(this.handle.id); } catch (e) { /* ignore */ }
@@ -876,11 +1625,12 @@ export function handleZip(bytes) {
     async function listFiles() {
         const root = await fsRoot();
         const children = await chrome.bookmarks.getChildren(root.id);
-        // only folders (no url)
-        return children.filter(c => !c.url).map(c => FileObj(c));
+        // only folders (no url) and skip system chunk directories
+        return children.filter(c => !c.url && c.title !== "__chunks__").map(c => FileObj(c));
     }
 
     async function getFileByName(name) {
+        if (name === "__chunks__") return null;
         const root = await fsRoot();
         const children = await chrome.bookmarks.getChildren(root.id);
         const h = children.find(b => b.title === name);
@@ -888,6 +1638,7 @@ export function handleZip(bytes) {
     }
 
     async function createNewFile(name) {
+        if (name === "__chunks__") throw new Error("reserved name");
         const root = await fsRoot();
         const children = await chrome.bookmarks.getChildren(root.id);
         const exists = children.some(b => b.title === name);
@@ -1025,9 +1776,13 @@ export function handleZip(bytes) {
         if (meta.encrypted) {
             let pass = cachedSessionPassphrase || "";
             if (!pass) {
-                pass = prompt("Enter passphrase to decrypt:");
+                pass = await new Promise((resolve) => {
+                    showEncryptDecryptModal("Enter Decryption Passphrase", false, (typedPass, shouldCache) => {
+                        if (typedPass && shouldCache) cachedSessionPassphrase = typedPass;
+                        resolve(typedPass || "");
+                    });
+                });
                 if (!pass) throw new Error("Passphrase required");
-                if (confirm("Cache this passphrase for this session?")) cachedSessionPassphrase = pass;
             }
             const saltB64 = meta.enc && (meta.enc.saltB64 || meta.enc.salt || meta.enc.salt64);
             const ivB64 = meta.enc && (meta.enc.ivB64 || meta.enc.iv || meta.enc.iv64);
@@ -1192,16 +1947,44 @@ export function handleZip(bytes) {
 
         updatePathBar();
         const q = (qs("#search-bar") && qs("#search-bar").value) ? qs("#search-bar").value : "";
+        const tagFilter = qs("#tag-filter");
+        const tagFilterValue = tagFilter ? tagFilter.value : "";
+
         const files = await listFiles();
         const metas = [];
         for (const f of files) metas.push({ file: f, meta: await f.readMeta() });
         updateAnalytics(metas);
+        updateStorageChart(metas);
 
-        const entries = getVisibleEntries(files, q);
+        // Dynamically update tag filter list
+        const tagsSet = new Set();
+        for (const m of metas) {
+            if (m.meta && Array.isArray(m.meta.tags)) {
+                m.meta.tags.forEach(t => tagsSet.add(t));
+            }
+        }
+        if (tagFilter) {
+            const selected = tagFilter.value;
+            tagFilter.innerHTML = '<option value="">All Tags</option>';
+            [...tagsSet].sort().forEach(tag => {
+                const opt = document.createElement("option");
+                opt.value = tag;
+                opt.textContent = tag;
+                if (tag === selected) opt.selected = true;
+                tagFilter.appendChild(opt);
+            });
+        }
+
+        const entries = getVisibleEntries(files, q, tagFilterValue, metas);
         const totalPages = Math.max(1, Math.ceil(entries.length / Math.max(1, pageSize)));
         if (currentPage > totalPages) currentPage = totalPages;
         const pageInfo = qs("#page-info");
         if (pageInfo) pageInfo.textContent = `Page ${currentPage}/${totalPages}`;
+
+        // Reset select all checkbox and bulk bar
+        const selectAll = qs("#bulk-select-all");
+        if (selectAll) selectAll.checked = false;
+        updateBulkBar();
 
         const start = (currentPage - 1) * pageSize;
         const pageEntries = entries.slice(start, start + pageSize);
@@ -1210,6 +1993,17 @@ export function handleZip(bytes) {
             tr.style.borderBottom = "1px solid #444";
 
             if (entry.folder) {
+                const tdSelect = document.createElement("td");
+                tdSelect.style.textAlign = "center";
+                const cb = document.createElement("input");
+                cb.type = "checkbox";
+                cb.className = "row-select";
+                cb.dataset.type = "folder";
+                cb.dataset.id = entry.name;
+                cb.onchange = () => updateBulkBar();
+                tdSelect.appendChild(cb);
+                tr.appendChild(tdSelect);
+
                 const tdPreview = document.createElement("td");
                 const icon = document.createElement("img");
                 icon.src = placeholderDataUrl("DIR", "#2b4d2b");
@@ -1241,6 +2035,17 @@ export function handleZip(bytes) {
             const file = entry.file;
             const meta = await file.readMeta();
             const name = entry.displayName;
+
+            const tdSelect = document.createElement("td");
+            tdSelect.style.textAlign = "center";
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.className = "row-select";
+            cb.dataset.type = "file";
+            cb.dataset.id = file.handle.id;
+            cb.onchange = () => updateBulkBar();
+            tdSelect.appendChild(cb);
+            tr.appendChild(tdSelect);
 
             const tdPreview = document.createElement("td");
             const img = document.createElement("img");
@@ -1360,8 +2165,250 @@ export function handleZip(bytes) {
                         if (objectUrl) URL.revokeObjectURL(objectUrl);
                     };
 
-                    header.appendChild(titleSpan);
-                    header.appendChild(closeBtn);
+                    // Header Left container
+                    const headerLeft = document.createElement("div");
+                    headerLeft.style.display = "flex";
+                    headerLeft.style.alignItems = "center";
+                    headerLeft.style.gap = "12px";
+                    headerLeft.appendChild(titleSpan);
+
+                    // Add tags label to header if present
+                    if (Array.isArray(m.tags) && m.tags.length > 0) {
+                        const tagsLabel = document.createElement("span");
+                        tagsLabel.style.fontSize = "11px";
+                        tagsLabel.style.background = "#27272a";
+                        tagsLabel.style.color = "#a1a1aa";
+                        tagsLabel.style.padding = "2px 6px";
+                        tagsLabel.style.borderRadius = "4px";
+                        tagsLabel.style.border = "1px solid #3f3f46";
+                        tagsLabel.textContent = `Tags: ${m.tags.join(", ")}`;
+                        headerLeft.appendChild(tagsLabel);
+                    }
+
+                    // Header Right buttons container
+                    const btnContainer = document.createElement("div");
+                    btnContainer.style.display = "flex";
+                    btnContainer.style.gap = "8px";
+                    btnContainer.style.alignItems = "center";
+
+                    const shareBtn = document.createElement("button");
+                    shareBtn.className = "button";
+                    shareBtn.textContent = "🔗 Share";
+                    shareBtn.style.padding = "4px 8px";
+                    shareBtn.style.fontSize = "12px";
+                    shareBtn.onclick = async () => {
+                        try {
+                            const raw = await file.read();
+                            const sharePackage = {
+                                type: "bookmarkfs-share",
+                                version: 3,
+                                name: name,
+                                meta: m,
+                                serialized: raw
+                            };
+                            const base64Str = btoa(JSON.stringify(sharePackage));
+                            await navigator.clipboard.writeText(base64Str);
+                            alert("Shareable Base64 string copied to clipboard!");
+                        } catch (err) {
+                            alert("Share failed: " + err.message);
+                        }
+                    };
+                    btnContainer.appendChild(shareBtn);
+
+                    const isText = type.startsWith("text/") || ["application/json", "application/xml", "application/javascript"].includes(type) || name.endsWith(".js") || name.endsWith(".ts") || name.endsWith(".json") || name.endsWith(".md") || name.endsWith(".txt") || name.endsWith(".html") || name.endsWith(".css") || name.endsWith(".py") || name.endsWith(".sh") || name.endsWith(".yaml") || name.endsWith(".yml");
+                    
+                    let editorActive = false;
+                    let originalContentAreaHtml = "";
+
+                    const editBtn = document.createElement("button");
+                    editBtn.className = "button";
+                    editBtn.textContent = "✏️ Edit";
+                    editBtn.style.padding = "4px 8px";
+                    editBtn.style.fontSize = "12px";
+                    editBtn.style.display = isText ? "inline-block" : "none";
+
+                    const saveBtn = document.createElement("button");
+                    saveBtn.className = "button";
+                    saveBtn.textContent = "💾 Save";
+                    saveBtn.style.padding = "4px 8px";
+                    saveBtn.style.fontSize = "12px";
+                    saveBtn.style.display = "none";
+                    saveBtn.style.borderColor = "#02ff88";
+                    saveBtn.style.color = "#02ff88";
+
+                    const cancelEditBtn = document.createElement("button");
+                    cancelEditBtn.className = "button";
+                    cancelEditBtn.textContent = "Cancel";
+                    cancelEditBtn.style.padding = "4px 8px";
+                    cancelEditBtn.style.fontSize = "12px";
+                    cancelEditBtn.style.display = "none";
+
+                    editBtn.onclick = () => {
+                        editorActive = true;
+                        editBtn.style.display = "none";
+                        shareBtn.style.display = "none";
+                        saveBtn.style.display = "inline-block";
+                        cancelEditBtn.style.display = "inline-block";
+
+                        originalContentAreaHtml = contentArea.innerHTML;
+                        contentArea.innerHTML = "";
+                        contentArea.style.alignItems = "stretch";
+
+                        let rawText = "";
+                        try {
+                            rawText = td.decode(bytes);
+                        } catch {
+                            rawText = "";
+                        }
+
+                        const labelText = document.createElement("label");
+                        labelText.style.fontSize = "12px";
+                        labelText.style.color = "#a1a1aa";
+                        labelText.style.marginBottom = "4px";
+                        labelText.textContent = "Edit File Content:";
+
+                        const textarea = document.createElement("textarea");
+                        textarea.id = "editor-textarea";
+                        textarea.value = rawText;
+                        textarea.style.flex = "1";
+                        textarea.style.minHeight = "250px";
+                        textarea.style.background = "#09090b";
+                        textarea.style.color = "#f4f4f5";
+                        textarea.style.border = "1px solid #27272a";
+                        textarea.style.borderRadius = "6px";
+                        textarea.style.padding = "12px";
+                        textarea.style.fontFamily = "monospace";
+                        textarea.style.fontSize = "13px";
+                        textarea.style.resize = "vertical";
+
+                        const labelTags = document.createElement("label");
+                        labelTags.style.fontSize = "12px";
+                        labelTags.style.color = "#a1a1aa";
+                        labelTags.style.marginTop = "12px";
+                        labelTags.style.marginBottom = "4px";
+                        labelTags.textContent = "Tags (comma separated):";
+
+                        const tagsInput = document.createElement("input");
+                        tagsInput.id = "editor-tags";
+                        tagsInput.type = "text";
+                        tagsInput.value = Array.isArray(m.tags) ? m.tags.join(", ") : "";
+                        tagsInput.style.background = "#09090b";
+                        tagsInput.style.color = "#f4f4f5";
+                        tagsInput.style.border = "1px solid #27272a";
+                        tagsInput.style.borderRadius = "6px";
+                        tagsInput.style.padding = "8px 12px";
+                        tagsInput.style.fontSize = "13px";
+
+                        contentArea.appendChild(labelText);
+                        contentArea.appendChild(textarea);
+                        contentArea.appendChild(labelTags);
+                        contentArea.appendChild(tagsInput);
+                        textarea.focus();
+                    };
+
+                    cancelEditBtn.onclick = () => {
+                        editorActive = false;
+                        editBtn.style.display = "inline-block";
+                        shareBtn.style.display = "inline-block";
+                        saveBtn.style.display = "none";
+                        cancelEditBtn.style.display = "none";
+                        contentArea.innerHTML = originalContentAreaHtml;
+                        contentArea.style.alignItems = "center";
+                    };
+
+                    saveBtn.onclick = async () => {
+                        const textarea = qs("#editor-textarea");
+                        const tagsInput = qs("#editor-tags");
+                        if (!textarea) return;
+
+                        const newText = textarea.value;
+                        const parsedTags = tagsInput ? tagsInput.value.split(",").map(t => t.trim()).filter(Boolean) : [];
+
+                        const originalBytes = te.encode(newText);
+                        let processed = originalBytes;
+                        
+                        if (m.compressed) {
+                            if (typeof window !== "undefined" && window.fflate && typeof window.fflate.gzipSync === "function") {
+                                processed = window.fflate.gzipSync(originalBytes);
+                            } else {
+                                processed = gzipSync(originalBytes);
+                            }
+                        }
+
+                        let encrypted = m.encrypted;
+                        let encInfo = m.enc;
+                        if (encrypted) {
+                            let pass = cachedSessionPassphrase;
+                            if (!pass) {
+                                pass = await new Promise((resolve) => {
+                                    showEncryptDecryptModal("Enter Passphrase to Encrypt", false, (typedPass) => {
+                                        resolve(typedPass || "");
+                                    });
+                                });
+                                if (!pass) {
+                                    alert("Passphrase required to encrypt file.");
+                                    return;
+                                }
+                                cachedSessionPassphrase = pass;
+                            }
+                            const { ct, salt, iv } = await encryptBytes(processed, pass);
+                            processed = ct;
+                            encInfo = { salt: b64encodeBytes(salt), iv: b64encodeBytes(iv) };
+                        }
+
+                        const tag = m.compressed ? "c" : "r";
+                        const serialized = tag + b64encodeBytes(processed);
+                        
+                        m.sizeOriginal = originalBytes.length;
+                        m.sizeStored = te.encode(serialized).length;
+                        m.ratio = m.sizeStored / Math.max(1, originalBytes.length);
+                        m.dateISO = new Date().toISOString();
+                        m.tags = parsedTags;
+                        if (encrypted) m.enc = encInfo;
+
+                        const pieces = [];
+                        const CHUNK = m.chunkSize || maxBookmarkSize;
+                        for (let i = 0; i < serialized.length; i += CHUNK) {
+                            pieces.push(serialized.substring(i, i + CHUNK));
+                        }
+                        const chunkHashes = [];
+                        for (const part of pieces) {
+                            chunkHashes.push(await sha256HexString(part));
+                        }
+                        m.chunkHashes = chunkHashes;
+                        m.contentHash = await sha256HexBytes(originalBytes);
+
+                        try {
+                            saveBtn.textContent = "Saving...";
+                            saveBtn.disabled = true;
+                            
+                            await file.writeMeta(m);
+                            await file.write(serialized, setProgress);
+
+                            popup.remove();
+                            alert("File saved successfully!");
+                            await loadFilesToTable();
+                        } catch (err) {
+                            alert("Save failed: " + err.message);
+                        } finally {
+                            saveBtn.textContent = "💾 Save";
+                            saveBtn.disabled = false;
+                        }
+                    };
+
+                    btnContainer.appendChild(editBtn);
+                    btnContainer.appendChild(saveBtn);
+                    btnContainer.appendChild(cancelEditBtn);
+
+                    const rightContainer = document.createElement("div");
+                    rightContainer.style.display = "flex";
+                    rightContainer.style.alignItems = "center";
+                    rightContainer.style.gap = "12px";
+                    rightContainer.appendChild(btnContainer);
+                    rightContainer.appendChild(closeBtn);
+
+                    header.appendChild(headerLeft);
+                    header.appendChild(rightContainer);
                     inner.appendChild(header);
 
                     const contentArea = document.createElement("div");
@@ -1761,14 +2808,20 @@ export function handleZip(bytes) {
     async function handleFileList(fileList) {
         let pass = cachedSessionPassphrase;
         if (!pass) {
-            pass = prompt("Optional passphrase (AES-GCM). Leave blank for none:") || "";
-            if (pass && confirm("Cache this passphrase for this session?")) cachedSessionPassphrase = pass;
+            showEncryptDecryptModal("Optional Passphrase (AES-GCM)", true, async (typedPass, shouldCache) => {
+                if (typedPass === null) return;
+                if (typedPass && shouldCache) cachedSessionPassphrase = typedPass;
+                for (const f of fileList) {
+                    await processAndStoreFile(f, typedPass || "");
+                }
+                await loadFilesToTable();
+            });
+        } else {
+            for (const f of fileList) {
+                await processAndStoreFile(f, pass);
+            }
+            await loadFilesToTable();
         }
-
-        for (const f of fileList) {
-            await processAndStoreFile(f, pass || "");
-        }
-        await loadFilesToTable();
     }
 
     async function processAndStoreFile(file, passphrase) {
