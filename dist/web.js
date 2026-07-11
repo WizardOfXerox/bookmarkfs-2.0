@@ -31,14 +31,14 @@
     }
 
     // Navigation history stack
-    let historyStack = ["https://www.wikipedia.org"];
+    let historyStack = ["https://www.google.com"];
     let historyIndex = 0;
 
     // Load initial URL from storage or url parameters
     chrome.storage.local.get(["bookmarkfs_web_last_url"], (res) => {
         const urlParams = new URLSearchParams(window.location.search);
         const loadUrl = urlParams.get("load");
-        const savedUrl = loadUrl || res.bookmarkfs_web_last_url || "https://www.wikipedia.org";
+        const savedUrl = loadUrl || res.bookmarkfs_web_last_url || "https://www.google.com";
         
         historyStack = [savedUrl];
         historyIndex = 0;
