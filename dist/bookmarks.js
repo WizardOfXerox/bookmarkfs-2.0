@@ -1,8 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    const searchForm = document.getElementById('searchForm');
-    const searchInput = document.getElementById('searchInput');
-    const searchEngineLogo = document.getElementById('searchEngineLogo');
     const bookmarkGrid = document.getElementById('bookmarkGrid');
     const mostVisitedGrid = document.getElementById('mostVisitedGrid');
     const recentlyAddedGrid = document.getElementById('recentlyAddedGrid');
@@ -154,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners Setup ---
     function setupEventListeners() {
         // Search functionality
-        searchInput.addEventListener('input', handleSearchInput);
-        searchForm.addEventListener('submit', handleSearch);
         bookmarkSearchBar.addEventListener('input', handleBookmarkSearch);
         
 
@@ -376,57 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Handlers ---
-    function handleSearch(event) {
-        event.preventDefault();
-        const query = searchInput.value.trim();
-        if (query) {
-            try {
-                new URL(query);
-                const url = query.includes('://') ? query : `https://${query}`;
-                chrome.tabs.update({ url });
-            } catch (_) {
-                const engine = searchEngines[settings.defaultSearchEngine];
-                const searchUrl = engine.searchUrl + encodeURIComponent(query);
-                chrome.tabs.update({ url: searchUrl });
-            }
-        }
-    }
-
-    // Consolidated handleSearchInput for web search suggestions
-    function handleSearchInput(event) {
-        const query = event.target.value.trim();
-        if (query.length > 0) {
-            fetch(`https://suggestqueries.google.com/complete/search?client=firefox&q=${query}`)
-                .then(response => response.json())
-                .then(data => {
-                    const suggestions = data[1];
-                    renderSuggestions(suggestions);
-                });
-        } else {
-            document.getElementById('suggestions-container').style.display = 'none';
-        }
-    }
-
-    // Consolidated renderSuggestions for web search suggestions
-    function renderSuggestions(suggestions) {
-        const suggestionsContainer = document.getElementById('suggestions-container');
-        suggestionsContainer.innerHTML = '';
-        if (suggestions.length > 0) {
-            suggestions.forEach(suggestion => {
-                const suggestionItem = document.createElement('div');
-                suggestionItem.classList.add('suggestion-item');
-                suggestionItem.textContent = suggestion;
-                suggestionItem.addEventListener('click', () => {
-                    searchInput.value = suggestion;
-                    handleSearch(new Event('submit'));
-                });
-                suggestionsContainer.appendChild(suggestionItem);
-            });
-            suggestionsContainer.style.display = 'block';
-        } else {
-            suggestionsContainer.style.display = 'none';
-        }
-    }
 
     function handleBookmarkSearch(event) {
         const searchTerm = event.target.value.toLowerCase();
@@ -694,14 +638,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleKeyboardShortcuts(event) {
-        // Ctrl/Cmd + K for search
-        if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-            event.preventDefault();
-            searchInput.focus();
-        }
-        
-        // Ctrl/Cmd + B for bookmark search
-        if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
+        // Ctrl/Cmd + K or B for search bookmarks
+        if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'b')) {
             event.preventDefault();
             bookmarkSearchBar.focus();
         }

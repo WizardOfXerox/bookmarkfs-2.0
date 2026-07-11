@@ -159,20 +159,6 @@
     </header>
 
     <main class="main-container">
-        <!-- Search Section -->
-        <div class="search-section">
-            <div class="search-engine-logo">
-                <img id="searchEngineLogo" src="/icons/google-logo.svg" alt="Search Engine Logo" class="search-logo-image"/>
-            </div>
-            <form id="searchForm" class="search-form">
-                <input type="text" id="searchInput" placeholder="Search or type a URL" autocomplete="off" autofocus>
-                <button type="submit" class="search-button" title="Search">
-                    <i class="fas fa-search"></i>
-                </button>
-            </form>
-            <div id="suggestions-container"></div>
-        </div>
-
         <!-- Quick Access Section -->
         <div class="quick-access-section">
             <div class="quick-access-tabs">
@@ -205,7 +191,7 @@
             <div class="bookmark-controls">
                 <div class="search-filter-container">
                     <div class="search-container">
-                        <input type="text" id="bookmarkSearchBar" placeholder="Search your bookmarks...">
+                        <input type="text" id="bookmarkSearchBar" placeholder="Search your bookmarks..." autofocus>
                     </div>
                     <div class="filter-container">
                         <select id="sortBy">
