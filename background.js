@@ -72,13 +72,28 @@ async function initDeclarativeNetRequest() {
                         resourceTypes: ["sub_frame"],
                         excludedRequestDomains: ["facebook.com", "www.facebook.com", "m.facebook.com"]
                     }
+                },
+                {
+                    id: 3,
+                    priority: 1,
+                    action: {
+                        type: "modifyHeaders",
+                        responseHeaders: [
+                            { header: "access-control-allow-origin", operation: "set", value: "*" },
+                            { header: "access-control-allow-methods", operation: "set", value: "*" },
+                            { header: "access-control-allow-headers", operation: "set", value: "*" }
+                        ]
+                    },
+                    condition: {
+                        resourceTypes: ["xmlhttprequest", "media", "image"]
+                    }
                 }
             ];
             await chrome.declarativeNetRequest.updateDynamicRules({
-                removeRuleIds: [1, 2],
+                removeRuleIds: [1, 2, 3],
                 addRules: rules
             });
-            console.log("Successfully registered declarativeNetRequest CSP and User-Agent rules");
+            console.log("Successfully registered declarativeNetRequest CSP, User-Agent, and CORS rules");
         } catch (err) {
             console.error("Failed to register declarativeNetRequest CSP rules:", err);
         }
