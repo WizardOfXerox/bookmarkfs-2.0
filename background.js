@@ -32,27 +32,46 @@ function initContextMenu() {
 async function initDeclarativeNetRequest() {
     if (chrome.declarativeNetRequest) {
         try {
-            const rule = {
-                id: 1,
-                priority: 1,
-                action: {
-                    type: "modifyHeaders",
-                    responseHeaders: [
-                        { header: "frame-options", operation: "remove" },
-                        { header: "x-frame-options", operation: "remove" },
-                        { header: "content-security-policy", operation: "remove" }
-                    ]
+            const rules = [
+                {
+                    id: 1,
+                    priority: 1,
+                    action: {
+                        type: "modifyHeaders",
+                        responseHeaders: [
+                            { header: "frame-options", operation: "remove" },
+                            { header: "x-frame-options", operation: "remove" },
+                            { header: "content-security-policy", operation: "remove" },
+                            { header: "content-security-policy-report-only", operation: "remove" }
+                        ]
+                    },
+                    condition: {
+                        resourceTypes: ["sub_frame"]
+                    }
                 },
-                condition: {
-                    urlFilter: "*",
-                    resourceTypes: ["sub_frame"]
+                {
+                    id: 2,
+                    priority: 1,
+                    action: {
+                        type: "modifyHeaders",
+                        requestHeaders: [
+                            {
+                                header: "user-agent",
+                                operation: "set",
+                                value: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+                            }
+                        ]
+                    },
+                    condition: {
+                        resourceTypes: ["sub_frame"]
+                    }
                 }
-            };
+            ];
             await chrome.declarativeNetRequest.updateDynamicRules({
-                removeRuleIds: [1],
-                addRules: [rule]
+                removeRuleIds: [1, 2],
+                addRules: rules
             });
-            console.log("Successfully registered declarativeNetRequest CSP rules");
+            console.log("Successfully registered declarativeNetRequest CSP and User-Agent rules");
         } catch (err) {
             console.error("Failed to register declarativeNetRequest CSP rules:", err);
         }
