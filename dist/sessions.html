@@ -356,7 +356,10 @@
         <!-- Right Active Window Snapshots -->
         <div class="workspace-right">
             <h3 class="right-header">💻 Active Window</h3>
-            <button id="snapshot-workspace-btn" class="button" style="width:100%;">💾 Save Workspace Snapshot</button>
+            <button id="snapshot-workspace-btn" class="button" style="width:100%; margin-bottom: 8px;">💾 Save Workspace Snapshot</button>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-secondary); cursor:pointer; margin-bottom:12px;">
+                <input type="checkbox" id="auto-restore-checkbox"> Auto-restore last session on load
+            </label>
             <div id="active-tabs-list" class="active-window-list">
                 <!-- Current window tabs list -->
             </div>

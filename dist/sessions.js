@@ -329,6 +329,25 @@
             } else {
                 renderEmptyWorkspaceDetails();
             }
+
+            // Auto-restore last session on load if configured
+            if (localStorage.getItem("bookmarkfs_sessions_auto_restore") === "true" && !sessionStorage.getItem("bookmarkfs_session_restored")) {
+                sessionStorage.setItem("bookmarkfs_session_restored", "true");
+                if (savedSessions.length > 0) {
+                    const sorted = [...savedSessions].sort((a, b) => {
+                        const dateA = a.meta && a.meta.dateISO ? new Date(a.meta.dateISO) : 0;
+                        const dateB = b.meta && b.meta.dateISO ? new Date(b.meta.dateISO) : 0;
+                        return dateB - dateA;
+                    });
+                    const latestSession = sorted[0];
+                    if (latestSession && latestSession.tabs && latestSession.tabs.length > 0) {
+                        console.log("Auto-restoring latest session workspace:", latestSession.title);
+                        latestSession.tabs.forEach(t => {
+                            if (t.url) chrome.tabs.create({ url: t.url, active: false });
+                        });
+                    }
+                }
+            }
         } catch (err) {
             console.error("Failed to load workspaces list:", err);
         }
@@ -519,6 +538,15 @@
             window.location.href = "web.html?load=" + encodeURIComponent(target.trim());
         }
     });
+
+    const autoRestoreCheckbox = document.getElementById("auto-restore-checkbox");
+    if (autoRestoreCheckbox) {
+        const enabled = localStorage.getItem("bookmarkfs_sessions_auto_restore") === "true";
+        autoRestoreCheckbox.checked = enabled;
+        autoRestoreCheckbox.addEventListener("change", (e) => {
+            localStorage.setItem("bookmarkfs_sessions_auto_restore", e.target.checked);
+        });
+    }
 
     // Initialize UI
     await loadActiveWorkspace();
