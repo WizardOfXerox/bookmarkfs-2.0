@@ -973,6 +973,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Handle link drag-and-drops: switch to web panel and load target URL
+    document.body.addEventListener("dragover", (e) => e.preventDefault());
+    document.body.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const href = e.dataTransfer.getData("text/uri-list");
+        const text = e.dataTransfer.getData("text/plain") || href;
+        const target = href || text;
+        if (target) {
+            window.location.href = "web.html?load=" + encodeURIComponent(target.trim());
+        }
+    });
+
     // --- Initialize Application ---
     initialize();
 });

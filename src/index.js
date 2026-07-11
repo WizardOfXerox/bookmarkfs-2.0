@@ -4030,6 +4030,13 @@ export function handleZip(bytes) {
                     await handleFileList(files);
                     return;
                 }
+                const href = e.dataTransfer.getData("text/uri-list");
+                const text = e.dataTransfer.getData("text/plain") || href;
+                const target = href || text;
+                if (target && (target.startsWith("http") || target.includes(".") || target.includes(" "))) {
+                    window.location.href = "web.html?load=" + encodeURIComponent(target.trim());
+                    return;
+                }
                 const urls = extractDroppedUrls(e.dataTransfer);
                 if (urls.length) await handleDroppedUrls(urls);
             } catch (err) {

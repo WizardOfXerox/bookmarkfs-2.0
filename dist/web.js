@@ -102,6 +102,25 @@
         chrome.tabs.create({ url: iframe.src });
     });
 
+    // Handle drag and drop link drops to open immediately
+    document.body.addEventListener("dragover", (e) => e.preventDefault());
+    document.body.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const href = e.dataTransfer.getData("text/uri-list");
+        const text = e.dataTransfer.getData("text/plain") || href;
+        const target = href || text;
+        if (target) {
+            navigateTo(target);
+        }
+    });
+
+    // Check for load parameter on launch
+    const urlParams = new URLSearchParams(window.location.search);
+    const loadUrl = urlParams.get("load");
+    if (loadUrl) {
+        navigateTo(loadUrl);
+    }
+
     // Initialize nav button states
     updateNavButtons();
 })();
