@@ -21,8 +21,7 @@
         "page": "./dist/index.html"
     },
     "action": {
-        "title": "launch fs",
-        "default_popup": "./dist/index.html"
+        "title": "Launch BookmarkFS"
     },
     "web_accessible_resources": [{
         "resources": ["dist/unrar.wasm"],
