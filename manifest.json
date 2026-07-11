@@ -33,7 +33,8 @@
     },
     "permissions": [
         "bookmarks",
-        "storage"
+        "storage",
+        "contextMenus"
     ],
     "host_permissions": [
         "<all_urls>"
