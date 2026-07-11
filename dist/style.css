@@ -1,219 +1,250 @@
-/*
- *Color Pallets
- *#05ff82
- *#02ff88
- *#B3B3B3
- *#413f41
- *#242424
- *#232323
- *#2e2e31
- *#2F2E30
- *#2f2e2f
- *#050000
- */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-.rwd-table {
-    margin: 1em 0;
-    min-width: 300px;
+:root {
+    --bg-main: #0c0c0e;
+    --bg-card: #16161a;
+    --bg-button: #1e1e24;
+    --accent: #02ff88;
+    --accent-glow: rgba(2, 255, 136, 0.2);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --border: rgba(255, 255, 255, 0.06);
+    --border-accent: rgba(2, 255, 136, 0.15);
+    --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
 }
 
-.rwd-table tr {
-    border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
-}
-
-.rwd-table th {
-    display: none;
-}
-
-.rwd-table td {
-    display: block;
-}
-
-.rwd-table td:first-child {
-    padding-top: 0.5em;
-}
-
-.rwd-table td:last-child {
-    padding-bottom: 0.5em;
-}
-
-
-/* .rwd-table td:before {
-	 content: attr(data-th) ": ";
-	 font-weight: bold;
-	 width: 6.5em;
-	 display: inline-block;
-}
-*/
-
-@media (min-width: 480px) {
-    .rwd-table td:before {
-        display: none;
-    }
-}
-
-.rwd-table th,
-.rwd-table td {
-    text-align: center;
-}
-
-@media (min-width: 480px) {
-    .rwd-table th,
-    .rwd-table td {
-        display: table-cell;
-        padding: 0.25em 0.5em;
-    }
-    .rwd-table th:first-child,
-    .rwd-table td:first-child {
-        padding-left: 0;
-    }
-    .rwd-table th:last-child,
-    .rwd-table td:last-child {
-        padding-right: 0;
-    }
+body.dark-mode {
+    --bg-main: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-button: #ffffff;
+    --accent: #059669;
+    --accent-glow: rgba(5, 150, 105, 0.15);
+    --text-primary: #1f2937;
+    --text-secondary: #4b5563;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-accent: rgba(5, 150, 105, 0.2);
+    --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
 }
 
 body {
-    padding: 0 2em;
-    font-family: Montserrat, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    padding: 24px;
+    margin: 0;
+    min-width: 820px;
+    max-width: 1080px;
+    margin: 0 auto;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    color: #444;
-    background: #2f2e2f;
-    width: auto;
-    height: auto;
-    border-radius: 50px;
 }
 
-body::-webkit-scrollbar {
-    width: 0 !important;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
 }
 
+/* Controls Bar Card */
+#controls-bar {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 16px 24px !important;
+    border-radius: 16px !important;
+    box-shadow: var(--shadow) !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    width: 100% !important;
+    max-width: 980px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+/* Modern inputs */
+#controls-bar input,
+#controls-bar select {
+    background: var(--bg-main) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-primary) !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    outline: none !important;
+    font-family: var(--font-sans) !important;
+    font-size: 13px !important;
+    transition: all 0.3s ease !important;
+}
+
+#controls-bar input:focus,
+#controls-bar select:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px var(--accent-glow) !important;
+}
+
+/* Modern buttons */
 .button {
-    background-color: #2F2E2F!important;
-    box-shadow: inset 0 -7px 0 0 #050000!important;
-    color: #02FF88;
-    border-radius: 50px;
-    padding: 8px 14px;
-    text-align: center;
-    text-decoration: none;
-    font-size: 16px;
-    cursor: pointer;
+    background-color: var(--bg-button) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--accent) !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
 }
-
-
-/*.button:hover:before {
-    content: '';
-    background: linear-gradient(45deg, #00000000, #00000000, #02FF88, #02FF88, #00000000, #00000000, #02FF88, #02FF88);
-    position: absolute;
-    top: -2px;
-    left:-2px;
-    background-size: 400%;
-    z-index: -1;
-    filter: blur(5px);
-    width: calc(100% + 4px);
-    height: calc(100% + 4px);
-    animation: glowing 20s linear infinite;
-    opacity: 0;
-    transition: opacity .3s ease-in-out;
-    border-radius: 50px;
-}
-
-.button:hover:active {
-    color: #02FF88
-}
-
-.button:hover:active:after {
-    background: #232323;
-}
-
-.button:hover:hover:before {
-    opacity: 1;
-}
-
-.button:hover:after {
-    z-index: -1;
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: #232323;
-    left: 0;
-    top: 0;
-    border-radius: 50px;
-}
-
-@keyframes glowing {
-    0% { background-position: 0 0; }
-    50% { background-position: 400% 0; }
-    100% { background-position: 0 0; }
-}
-*/
 
 .button:hover {
-    background-color: rgba(0, 0, 0, 0)!important;
-    box-shadow: inset 0 -0px 0 0 #b3b3b3!important;
+    background-color: var(--accent) !important;
+    color: var(--bg-main) !important;
+    border-color: var(--accent) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--accent-glow) !important;
 }
 
-h1 {
-    font-weight: normal;
-    letter-spacing: -1px;
-    color: #34495e;
+.button:active {
+    transform: translateY(0);
 }
 
+/* File/Folder Table styling */
 .rwd-table {
-    background: #242424;
-    color: #02ff88;
-    border-radius: 0.4em;
-    overflow: hidden;
-    border: solid;
+    width: 100% !important;
+    max-width: 980px !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    box-shadow: var(--shadow) !important;
+    margin: 20px 0 !important;
+}
+
+.rwd-table th {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 16px !important;
+    border-bottom: 1px solid var(--border) !important;
 }
 
 .rwd-table tr {
-    border-color: #46637f;
+    transition: background-color 0.2s ease !important;
+    border: none !important;
 }
 
-.rwd-table th,
+.rwd-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.015) !important;
+}
+
+/* Under light mode override */
+body.dark-mode .rwd-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.01) !important;
+}
+
 .rwd-table td {
-    margin: 0.5em 1em;
+    padding: 14px 16px !important;
+    font-size: 13.5px !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border) !important;
+    vertical-align: middle !important;
 }
 
-@media (min-width: 480px) {
-    .rwd-table th,
-    .rwd-table td {
-        padding: 1em !important;
-    }
+.rwd-table tr:last-child td {
+    border-bottom: none !important;
 }
 
-.rwd-table th,
-.rwd-table td:before {
-    color: #02ff88;
+/* Table columns tweaks */
+.rwd-table td:nth-child(3) {
+    font-weight: 500;
 }
 
-img {
-    background-color: #2f2e2f;
-    border: solid;
-    border-radius: 100px;
+.rwd-table td:nth-child(4) {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* Dynamic Storage Chart Card */
+#storage-chart-container {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+}
+
+/* Bulk Bar Card */
+#bulk-bar {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-accent) !important;
+    box-shadow: 0 4px 20px var(--accent-glow) !important;
+    border-radius: 12px !important;
+    padding: 12px 20px !important;
+}
+
+/* Image Thumbnails inside table */
+.rwd-table td img {
+    border-radius: 8px !important;
+    border: 1px solid var(--border) !important;
+    width: 64px !important;
+    height: 64px !important;
+    object-fit: cover !important;
+    background-color: var(--bg-main) !important;
+    transition: transform 0.2s ease, border-color 0.2s ease !important;
+}
+
+.rwd-table td img:hover {
+    transform: scale(1.05);
+    border-color: var(--accent) !important;
+}
+
+/* Modals */
+#preview-modal > div {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow) !important;
+    border-radius: 20px !important;
+    padding: 0 !important; /* Managed by layout */
+}
+
+#preview-modal header {
+    padding: 18px 24px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+#preview-modal .button {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+}
+
+/* Custom Checkbox */
+input[type="checkbox"].row-select,
+#bulk-select-all {
+    accent-color: var(--accent);
     cursor: pointer;
-    width: 100px;
-    height: 100px;
-    background-image: "./blank-2.png";
-}
-
-#image-input {
-    display: none;
-}
-
-.upload-label {
-    display: inline-block;
-    padding: 10px 20px;
-    background: #4caf50;
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.upload-label:hover {
-    background: #45a049;
+    width: 16px;
+    height: 16px;
 }
