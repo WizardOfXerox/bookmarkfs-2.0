@@ -41,9 +41,8 @@ body {
 /* Default tab layout (options page) */
 body {
     width: 100%;
-    max-width: 1080px;
-    margin: 0 auto;
     padding: 24px;
+    box-sizing: border-box;
 }
 
 /* Override for extension popup window size limit */
@@ -322,7 +321,6 @@ table.rwd-table.grid-mode tbody {
     gap: 12px !important;
     padding: 10px !important;
     width: 100% !important;
-    max-width: 980px !important;
     box-sizing: border-box !important;
 }
 

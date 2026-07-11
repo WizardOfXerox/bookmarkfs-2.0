@@ -221,7 +221,6 @@ header h1 {
 /* Quick Access Section */
 .quick-access-section {
     width: 100%;
-    max-width: 1200px;
     margin-bottom: 24px;
 }
 
@@ -262,7 +261,6 @@ header h1 {
 /* Bookmark Section */
 .bookmark-section {
     width: 100%;
-    max-width: 1200px;
 }
 
 /* Breadcrumbs */
