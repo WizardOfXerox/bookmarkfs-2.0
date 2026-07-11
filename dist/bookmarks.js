@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const searchEngineLogo = document.getElementById('searchEngineLogo');
-    const darkModeToggle = document.getElementById('darkModeToggle');
     const bookmarkGrid = document.getElementById('bookmarkGrid');
     const mostVisitedGrid = document.getElementById('mostVisitedGrid');
     const recentlyAddedGrid = document.getElementById('recentlyAddedGrid');
@@ -158,9 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchForm.addEventListener('submit', handleSearch);
         bookmarkSearchBar.addEventListener('input', handleBookmarkSearch);
         
-        // Dark mode toggle
-        darkModeToggle.addEventListener('click', toggleDarkMode);
-        
+
         // Folder navigation
         primaryFolderTabs.addEventListener('click', handlePrimaryTabClick);
         subFolderTabs.addEventListener('click', handleSubTabClick);

@@ -386,7 +386,6 @@ export function handleZip(bytes) {
         <label><input type="checkbox" data-col="delete"> Delete</label><br>
       </fieldset>
       <br>
-      <label><input type="checkbox" id="setting-dark"> Enable Light Mode</label><br><br>
       <hr>
         <button id="settings-save" class="button" >Save</button>
         <button id="settings-close" class="button">Close</button>
@@ -408,7 +407,7 @@ export function handleZip(bytes) {
                 columns: [...document.querySelectorAll("#settings-popup input[data-col]")]
                     .filter(c => c.checked)
                     .map(c => c.dataset.col),
-                dark: qs("#setting-dark").checked
+                dark: localStorage.getItem("bookmarkfs_theme") === "light"
             };
 
             setSettings(settings);
@@ -500,7 +499,8 @@ export function handleZip(bytes) {
             if (checkbox) checkbox.checked = true;
         });
 
-        qs("#setting-dark").checked = !!s.dark;
+        const settingDark = qs("#setting-dark");
+        if (settingDark) settingDark.checked = !!s.dark;
     }
 
     function showEncryptDecryptModal(title, isUpload, callback) {
