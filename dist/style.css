@@ -10,7 +10,7 @@
     --text-secondary: #a1a1aa;
     --border: rgba(255, 255, 255, 0.06);
     --border-accent: rgba(2, 255, 136, 0.15);
-    --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    --shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5);
     --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 }
@@ -25,18 +25,20 @@ body.dark-mode {
     --text-secondary: #4b5563;
     --border: rgba(0, 0, 0, 0.08);
     --border-accent: rgba(5, 150, 105, 0.2);
-    --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+    --shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.05);
 }
 
 body {
     background-color: var(--bg-main);
     color: var(--text-primary);
     font-family: var(--font-sans);
-    padding: 24px;
+    padding: 12px;
     margin: 0;
-    min-width: 820px;
-    max-width: 1080px;
-    margin: 0 auto;
+    width: 780px;
+    height: 570px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
@@ -61,18 +63,17 @@ body {
 #controls-bar {
     background-color: var(--bg-card);
     border: 1px solid var(--border);
-    padding: 16px 24px !important;
-    border-radius: 16px !important;
+    padding: 10px 16px !important;
+    border-radius: 12px !important;
     box-shadow: var(--shadow) !important;
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     width: 100% !important;
-    max-width: 980px;
     box-sizing: border-box;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 /* Modern inputs */
@@ -81,11 +82,11 @@ body {
     background: var(--bg-main) !important;
     border: 1px solid var(--border) !important;
     color: var(--text-primary) !important;
-    padding: 8px 16px !important;
-    border-radius: 8px !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
     outline: none !important;
     font-family: var(--font-sans) !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
     transition: all 0.3s ease !important;
 }
 
@@ -100,9 +101,9 @@ body {
     background-color: var(--bg-button) !important;
     border: 1px solid var(--border) !important;
     color: var(--accent) !important;
-    border-radius: 8px !important;
-    padding: 8px 16px !important;
-    font-size: 13px !important;
+    border-radius: 6px !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
     font-weight: 500 !important;
     cursor: pointer !important;
     box-shadow: none !important;
@@ -110,7 +111,7 @@ body {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
+    gap: 4px !important;
 }
 
 .button:hover {
@@ -118,7 +119,7 @@ body {
     color: var(--bg-main) !important;
     border-color: var(--accent) !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px var(--accent-glow) !important;
+    box-shadow: 0 4px 10px var(--accent-glow) !important;
 }
 
 .button:active {
@@ -128,25 +129,24 @@ body {
 /* File/Folder Table styling */
 .rwd-table {
     width: 100% !important;
-    max-width: 980px !important;
     border-collapse: separate !important;
     border-spacing: 0 !important;
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 16px !important;
+    border-radius: 12px !important;
     overflow: hidden !important;
     box-shadow: var(--shadow) !important;
-    margin: 20px 0 !important;
+    margin: 12px 0 !important;
 }
 
 .rwd-table th {
     background-color: rgba(255, 255, 255, 0.02) !important;
     color: var(--text-secondary) !important;
     font-weight: 600 !important;
-    font-size: 13px !important;
+    font-size: 11px !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 16px !important;
+    padding: 10px 12px !important;
     border-bottom: 1px solid var(--border) !important;
 }
 
@@ -165,8 +165,8 @@ body.dark-mode .rwd-table tbody tr:hover {
 }
 
 .rwd-table td {
-    padding: 14px 16px !important;
-    font-size: 13.5px !important;
+    padding: 8px 12px !important;
+    font-size: 12.5px !important;
     color: var(--text-primary) !important;
     border-bottom: 1px solid var(--border) !important;
     vertical-align: middle !important;
@@ -183,7 +183,7 @@ body.dark-mode .rwd-table tbody tr:hover {
 
 .rwd-table td:nth-child(4) {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-secondary);
 }
 
@@ -192,25 +192,28 @@ body.dark-mode .rwd-table tbody tr:hover {
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
     box-shadow: var(--shadow) !important;
-    border-radius: 12px !important;
-    padding: 16px !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    margin: 8px auto !important;
+    box-sizing: border-box;
 }
 
 /* Bulk Bar Card */
 #bulk-bar {
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border-accent) !important;
-    box-shadow: 0 4px 20px var(--accent-glow) !important;
-    border-radius: 12px !important;
-    padding: 12px 20px !important;
+    box-shadow: 0 4px 15px var(--accent-glow) !important;
+    border-radius: 10px !important;
+    padding: 8px 14px !important;
+    margin: 8px auto !important;
 }
 
 /* Image Thumbnails inside table */
 .rwd-table td img {
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     border: 1px solid var(--border) !important;
-    width: 64px !important;
-    height: 64px !important;
+    width: 48px !important;
+    height: 48px !important;
     object-fit: cover !important;
     background-color: var(--bg-main) !important;
     transition: transform 0.2s ease, border-color 0.2s ease !important;
@@ -226,18 +229,20 @@ body.dark-mode .rwd-table tbody tr:hover {
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border) !important;
     box-shadow: var(--shadow) !important;
-    border-radius: 20px !important;
-    padding: 0 !important; /* Managed by layout */
+    border-radius: 16px !important;
+    padding: 0 !important;
+    width: 94% !important;
+    max-height: 90vh !important;
 }
 
 #preview-modal header {
-    padding: 18px 24px !important;
+    padding: 12px 18px !important;
     border-bottom: 1px solid var(--border) !important;
 }
 
 #preview-modal .button {
-    font-size: 12px !important;
-    padding: 6px 12px !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
 }
 
 /* Custom Checkbox */
@@ -245,6 +250,6 @@ input[type="checkbox"].row-select,
 #bulk-select-all {
     accent-color: var(--accent);
     cursor: pointer;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
