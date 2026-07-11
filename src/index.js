@@ -3152,13 +3152,134 @@ export function handleZip(bytes) {
         applySettings(); // apply saved settings immediately
     });
 
-    // ---------- minimal CSS injection for dark-mode and table niceness (so file works as-is) ----------
+    // ---------- CSS injection for transitions and light-mode theme ----------
     (function injectCss() {
         const css = `
       .text-preview-row td { background: #171717; color: #ddd; }
-      body.dark-mode { background: #f6f6f6; color: #222; }
-      body.dark-mode .button { color: #222; border-color: #222; background: #e6e6e6; }
-      body.dark-mode table.rwd-table thead th { background: #eaeaea; color: #222; }
+
+      /* Transition logic for premium theme switching */
+      body, 
+      .button, 
+      #controls-bar, 
+      #search-bar, 
+      #folder-input, 
+      #tag-filter, 
+      table.rwd-table, 
+      table.rwd-table th, 
+      table.rwd-table td, 
+      #preview-modal, 
+      #preview-modal > div,
+      #storage-chart-container, 
+      #bulk-bar {
+          transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                      color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                      border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                      box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Premium Light Mode Styles */
+      body.dark-mode {
+          background: #f3f4f6 !important;
+          color: #1f2937 !important;
+      }
+
+      body.dark-mode #controls-bar {
+          background-color: #ffffff !important;
+          box-shadow: inset 0 -7px 0 0 #e5e7eb !important;
+          border: 1px solid #d1d5db;
+      }
+
+      body.dark-mode .button {
+          background-color: #ffffff !important;
+          box-shadow: inset 0 -7px 0 0 #d1d5db !important;
+          color: #059669 !important;
+          border: 1px solid #d1d5db;
+      }
+
+      body.dark-mode .button:hover {
+          background-color: #f9fafb !important;
+          box-shadow: inset 0 0px 0 0 #d1d5db !important;
+      }
+
+      body.dark-mode #search-bar,
+      body.dark-mode #folder-input,
+      body.dark-mode #tag-filter {
+          border-color: #059669 !important;
+          background-color: #ffffff !important;
+          color: #1f2937 !important;
+      }
+
+      body.dark-mode table.rwd-table {
+          background: #ffffff !important;
+          color: #1f2937 !important;
+          border-color: #d1d5db !important;
+      }
+
+      body.dark-mode table.rwd-table tr {
+          border-color: #e5e7eb !important;
+      }
+
+      body.dark-mode table.rwd-table th {
+          background: #f3f4f6 !important;
+          color: #059669 !important;
+      }
+
+      body.dark-mode table.rwd-table td {
+          color: #374151 !important;
+      }
+
+      body.dark-mode table.rwd-table td button {
+          border-color: #d1d5db !important;
+      }
+
+      body.dark-mode #storage-chart-container,
+      body.dark-mode #bulk-bar {
+          background: #ffffff !important;
+          border-color: #d1d5db !important;
+      }
+
+      body.dark-mode #bulk-count {
+          color: #4b5563 !important;
+      }
+
+      /* Modals in light mode */
+      body.dark-mode #preview-modal > div {
+          background: #ffffff !important;
+          border-color: #d1d5db !important;
+          color: #1f2937 !important;
+      }
+
+      body.dark-mode #preview-modal header {
+          border-bottom-color: #e5e7eb !important;
+      }
+
+      body.dark-mode #preview-modal #editor-textarea,
+      body.dark-mode #preview-modal #editor-tags {
+          background: #f9fafb !important;
+          color: #1f2937 !important;
+          border-color: #d1d5db !important;
+      }
+
+      /* Highlighted code inside preview in light mode */
+      body.dark-mode #preview-modal pre {
+          background: #f9fafb !important;
+          color: #232629 !important;
+          border-color: #d1d5db !important;
+      }
+
+      /* ZIP/RAR Tables in light mode modal */
+      body.dark-mode #preview-modal table {
+          color: #1f2937 !important;
+      }
+
+      body.dark-mode #preview-modal tr {
+          border-bottom-color: #e5e7eb !important;
+      }
+
+      body.dark-mode #preview-modal th {
+          border-bottom-color: #d1d5db !important;
+          color: #059669 !important;
+      }
     `;
         const s = document.createElement("style");
         s.appendChild(document.createTextNode(css));
