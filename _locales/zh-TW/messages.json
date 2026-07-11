@@ -792,16 +792,16 @@
     "description": "[aws:2019-09-23 03:06:14] Ok!"
   },
   "_AutodownloadisenabledYoucanchangethisinahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "已啟用自動下載。 您可以在 <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">選項中更改此選項</a>。",
-    "description": "[aws:2019-09-23 19:22:59] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "已啟用自動下載。 您可以在 <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">選項中更改此選項</a>。",
+    "description": "[aws:2019-09-23 19:22:59] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_Cancel": {
     "message": "取消",
     "description": "[aws:2019-09-23 19:23:00] Cancel"
   },
   "_CannotautodownloadyouneedtoreapprovetheDownloadspermissioninahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "無法自動下載，您需要在 <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">選</a>項中重新核准 [下載] 權限。",
-    "description": "[aws:2019-09-23 19:23:01] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "無法自動下載，您需要在 <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">選</a>項中重新核准 [下載] 權限。",
+    "description": "[aws:2019-09-23 19:23:01] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_ChromedoesnotallowaccesstosomeURLsforsecurityreasonsThisincludesthewebstoregalleryotherchromeextensionsandchromeURLsThecurrentpageappearstobearestrictedURL": {
     "message": "基於安全考量，Chrome 不允許訪問某些 URL。 這包括網路商店庫、其他 Chrome 擴充功能和 chrome: // URL。 目前頁面似乎是受限制的 URL。",

@@ -66,8 +66,8 @@
     "description": "[aws:2019-09-23 19:30:28] Auto-download files"
   },
   "_AutodownloadisenabledYoucanchangethisinahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "Le téléchargement automatique est activé. Vous pouvez modifier cela dans les <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>.",
-    "description": "[aws:2019-09-23 19:30:29] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "Le téléchargement automatique est activé. Vous pouvez modifier cela dans les <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>.",
+    "description": "[aws:2019-09-23 19:30:29] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_AutomaticallydownloadyourscreenshotinsteadofopeningitinanewwindowThismeanstheextensioncapturetabwillnotopenYoucanreturnbackherebyrightclickingontheextensionandselectingOptions": {
     "message": "Téléchargez automatiquement votre capture d'écran au lieu de l'ouvrir dans une nouvelle fenêtre.Cela signifie que l'onglet de capture d'extension ne s'ouvrira pas. Vous pouvez revenir ici en cliquant avec le bouton droit sur l'extension et en sélectionnant « Options ».",
@@ -102,8 +102,8 @@
     "description": "[aws:2019-09-23 19:30:36] cancel anytime"
   },
   "_CannotautodownloadyouneedtoreapprovetheDownloadspermissioninahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "Impossible de télécharger automatiquement, vous devez réapprouver l'autorisation Téléchargements dans les <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>.",
-    "description": "[aws:2019-09-23 19:30:37] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "Impossible de télécharger automatiquement, vous devez réapprouver l'autorisation Téléchargements dans les <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>.",
+    "description": "[aws:2019-09-23 19:30:37] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_Cannotdownloadfiles": {
     "message": "Impossible de télécharger les fichiers",

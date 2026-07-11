@@ -675,7 +675,7 @@ async function captureFullPage(tab) {
             await chrome.storage.local.set({ [storageKey]: stitchRes.dataUrl });
 
             // 8. Open the GoFullPage viewer tab to inspect and edit!
-            const captureViewerUrl = chrome.runtime.getURL(`dist/capture.html?id=${insertedId}&url=${encodeURIComponent(tab.url)}`);
+            const captureViewerUrl = chrome.runtime.getURL(`dist/dist/capture.html?id=${insertedId}&url=${encodeURIComponent(tab.url)}`);
             await chrome.tabs.create({ url: captureViewerUrl });
 
             // 9. Show success Toast notification on captured page

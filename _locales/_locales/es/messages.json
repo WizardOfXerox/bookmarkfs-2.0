@@ -816,16 +816,16 @@
     }
   },
   "_AutodownloadisenabledYoucanchangethisinahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "La descarga automática está habilitada. Puede cambiar esto en <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">opciones</a>.",
-    "description": "[aws:2019-09-23 18:50:19] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "La descarga automática está habilitada. Puede cambiar esto en <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">opciones</a>.",
+    "description": "[aws:2019-09-23 18:50:19] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_Cancel": {
     "message": "Cancelar",
     "description": "[aws:2019-09-23 18:50:19] Cancel"
   },
   "_CannotautodownloadyouneedtoreapprovetheDownloadspermissioninahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "No se puede descargar automáticamente, es necesario volver a aprobar el permiso Descargas en <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">las opciones</a>.",
-    "description": "[aws:2019-09-23 18:50:20] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "No se puede descargar automáticamente, es necesario volver a aprobar el permiso Descargas en <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">las opciones</a>.",
+    "description": "[aws:2019-09-23 18:50:20] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_ChromedoesnotallowaccesstosomeURLsforsecurityreasonsThisincludesthewebstoregalleryotherchromeextensionsandchromeURLsThecurrentpageappearstobearestrictedURL": {
     "message": "Chrome no permite el acceso a algunas URL por motivos de seguridad. Esto incluye la galería de la tienda web, otras extensiones de Chrome y las URL de Chrome: //. La página actual parece ser una URL restringida.",

@@ -816,16 +816,16 @@
     }
   },
   "_AutodownloadisenabledYoucanchangethisinahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "自動ダウンロードはイネーブルです。 このオプションは <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">オプションで</a>変更できます。",
-    "description": "[aws:2019-09-23 19:21:48] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "自動ダウンロードはイネーブルです。 このオプションは <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">オプションで</a>変更できます。",
+    "description": "[aws:2019-09-23 19:21:48] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_Cancel": {
     "message": "キャンセルします",
     "description": "[aws:2019-09-23 19:21:49] Cancel"
   },
   "_CannotautodownloadyouneedtoreapprovetheDownloadspermissioninahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "自動ダウンロードできません。 <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">オプション</a>の [ダウンロード] 権限を再承認する必要があります。",
-    "description": "[aws:2019-09-23 19:21:50] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "自動ダウンロードできません。 <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">オプション</a>の [ダウンロード] 権限を再承認する必要があります。",
+    "description": "[aws:2019-09-23 19:21:50] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_ChromedoesnotallowaccesstosomeURLsforsecurityreasonsThisincludesthewebstoregalleryotherchromeextensionsandchromeURLsThecurrentpageappearstobearestrictedURL": {
     "message": "Chrome では、セキュリティ上の理由から、一部の URL へのアクセスが許可されていません。 これには、ウェブストアギャラリー、その他のクロムエクステンション、および chrome: // URL が含まれます。 現在のページは制限された URL のようです。",

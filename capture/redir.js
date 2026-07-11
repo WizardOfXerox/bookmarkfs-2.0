@@ -1,1 +1,1 @@
-window.location = `../capture.html${window.location.search}${window.location.hash}`;
+window.location = `../dist/capture.html${window.location.search}${window.location.hash}`;

@@ -802,16 +802,16 @@
     "description": "[aws:2019-09-22 23:07:45] Options"
   },
   "_AutodownloadisenabledYoucanchangethisinahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "자동 다운로드가 활성화되었습니다. <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">옵션</a>에서 변경할 수 있습니다.",
-    "description": "[aws:2019-09-23 19:22:06] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "자동 다운로드가 활성화되었습니다. <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">옵션</a>에서 변경할 수 있습니다.",
+    "description": "[aws:2019-09-23 19:22:06] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_Cancel": {
     "message": "취소",
     "description": "[aws:2019-09-23 19:22:06] Cancel"
   },
   "_CannotautodownloadyouneedtoreapprovetheDownloadspermissioninahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "자동 다운로드할 수 없습니다. <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">옵션</a>에서 다운로드 권한을 다시 승인해야 합니다.",
-    "description": "[aws:2019-09-23 19:22:07] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "자동 다운로드할 수 없습니다. <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">옵션</a>에서 다운로드 권한을 다시 승인해야 합니다.",
+    "description": "[aws:2019-09-23 19:22:07] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_ChromedoesnotallowaccesstosomeURLsforsecurityreasonsThisincludesthewebstoregalleryotherchromeextensionsandchromeURLsThecurrentpageappearstobearestrictedURL": {
     "message": "Chrome은 보안상의 이유로 일부 URL에 대한 액세스를 허용하지 않습니다. 여기에는 웹 스토어 갤러리, 기타 크롬 확장 프로그램 및 chrome: // URL이 포함됩니다. 현재 페이지는 제한된 URL로 나타납니다.",

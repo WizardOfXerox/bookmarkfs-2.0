@@ -802,16 +802,16 @@
     "description": "[aws:2019-09-23 03:03:20] Options"
   },
   "_AutodownloadisenabledYoucanchangethisinahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "已启用自动下载功能。 您可以在选项中更改此 <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">选项</a>。",
-    "description": "[aws:2019-09-23 19:22:41] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "已启用自动下载功能。 您可以在选项中更改此 <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">选项</a>。",
+    "description": "[aws:2019-09-23 19:22:41] Auto-download is enabled. You can change this in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_Cancel": {
     "message": "取消",
     "description": "[aws:2019-09-23 19:22:42] Cancel"
   },
   "_CannotautodownloadyouneedtoreapprovetheDownloadspermissioninahrefdatahrefoptionshtmltargetblankrelnoopenernoreferreroptionsa": {
-    "message": "无法自动下载，您需要重新批准 <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">选项</a>中的 “下载” 权限。",
-    "description": "[aws:2019-09-23 19:22:42] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
+    "message": "无法自动下载，您需要重新批准 <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">选项</a>中的 “下载” 权限。",
+    "description": "[aws:2019-09-23 19:22:42] Cannot auto-download, you need to reapprove the Downloads permission in <a href=\"#\" data-href=\"/dist/options.html\" target=\"_blank\" rel=\"noopener noreferrer\">options</a>."
   },
   "_ChromedoesnotallowaccesstosomeURLsforsecurityreasonsThisincludesthewebstoregalleryotherchromeextensionsandchromeURLsThecurrentpageappearstobearestrictedURL": {
     "message": "出于安全原因，Chrome 不允许访问某些 URL。 这包括网上商店库、其他铬扩展和铬:// URL。 当前页面显示为受限 URL。",

@@ -1765,7 +1765,7 @@ export function handleZip(bytes) {
                     <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
                     <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
                     <a href="notes.html" class="nav-btn" data-panel="notes">📝 Notes</a>
-                    <a href="/capture.html" class="nav-btn" data-panel="screenshot">📸 Screenshot</a>
+                    <a href="/dist/capture.html" class="nav-btn" data-panel="screenshot">📸 Screenshot</a>
                 </div>
                 <div class="nav-controls">
                     <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
