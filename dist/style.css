@@ -524,3 +524,66 @@ table.rwd-table.grid-mode td.cell-empty {
 .glass-panel:hover {
     border-color: var(--accent) !important;
 }
+
+/* Sidebar/Mobile Responsive Collapse Styles (width <= 550px) */
+@media (max-width: 550px) {
+    body {
+        padding: 8px !important;
+    }
+    
+    /* Make Files layout grid single-column list-view */
+    table.rwd-table.grid-mode tbody {
+        grid-template-columns: 1fr !important;
+        padding: 4px !important;
+    }
+    table.rwd-table.grid-mode tr {
+        width: 100% !important;
+        height: auto !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 8px 12px !important;
+        gap: 12px !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+    }
+    table.rwd-table.grid-mode td {
+        padding: 0 !important;
+        text-align: left !important;
+    }
+    
+    /* Hide category charts in sidebar mode to save vertical height */
+    #categories-container, #storage-chart-container, .storage-analyzer {
+        display: none !important;
+    }
+    
+    /* Center search inputs/control toolbars */
+    #controls, .search-container {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 8px !important;
+        align-items: stretch !important;
+    }
+    #controls button, #controls select {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Responsive Redirection Navbar */
+    #panel-nav-bar {
+        width: 100% !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+        justify-content: space-around !important;
+        gap: 4px !important;
+        margin: 8px 0 !important;
+        padding: 4px !important;
+    }
+    .nav-btn {
+        padding: 6px 10px !important;
+        font-size: 11px !important;
+        border-radius: 6px !important;
+        flex: 1 !important;
+        text-align: center !important;
+    }
+}

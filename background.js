@@ -30,11 +30,21 @@ function initContextMenu() {
 }
 
 // Register listeners to trigger context menu setup
-chrome.runtime.onInstalled.addListener(initContextMenu);
-chrome.runtime.onStartup.addListener(initContextMenu);
+chrome.runtime.onInstalled.addListener(() => {
+    initContextMenu();
+    if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+    }
+});
+chrome.runtime.onStartup.addListener(() => {
+    initContextMenu();
+});
 
 // Also run immediately on worker script execution to ensure it works during active dev reloads
 initContextMenu();
+if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+}
 
 // Listen context menu actions
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {

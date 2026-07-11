@@ -21,11 +21,10 @@
         "page": "./dist/index.html"
     },
     "action": {
-        "title": "BookmarkFS",
-        "default_popup": "./dist/index.html"
+        "title": "BookmarkFS"
     },
     "side_panel": {
-        "default_path": "./dist/sidebar.html"
+        "default_path": "./dist/index.html"
     },
     "web_accessible_resources": [{
         "resources": ["dist/unrar.wasm"],
