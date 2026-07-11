@@ -1068,12 +1068,18 @@ body.light-mode .folder-icon {
     /* Bookmark folder tabs wrap nicely */
     .folder-tabs {
         flex-wrap: wrap !important;
-        gap: 6px !important;
-        padding: 6px !important;
+        gap: 8px 6px !important;
+        padding: 8px !important;
+        justify-content: flex-start !important;
     }
     .folder-tab {
-        padding: 6px 12px !important;
-        font-size: 11px !important;
+        padding: 6px 10px !important;
+        font-size: 11.5px !important;
+        margin-bottom: 2px !important;
+    }
+    .folder-tab.active::after {
+        bottom: 2px !important;
+        width: 16px !important;
     }
     
     /* Bookmarks list/grid row optimization */

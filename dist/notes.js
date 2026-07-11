@@ -2,7 +2,7 @@
     const favicon = document.getElementById("active-favicon");
     const domainSpan = document.getElementById("active-domain");
     const scopeSelector = document.getElementById("notes-scope-selector");
-    const textarea = document.getElementById("notes-textarea");
+    const editor = document.getElementById("notes-editor");
     const statusLabel = document.getElementById("notes-status-label");
     const charCount = document.getElementById("notes-char-count");
     const indexList = document.getElementById("notes-index-list");
@@ -74,18 +74,18 @@
 
         const key = getNoteKey();
         if (!key) {
-            textarea.value = "";
-            textarea.disabled = true;
-            textarea.placeholder = "Notes cannot be recorded for this page.";
+            editor.innerHTML = "";
+            editor.contentEditable = "false";
+            editor.setAttribute("placeholder", "Notes cannot be recorded for this page.");
             updateWordCount();
             return;
         }
 
-        textarea.disabled = false;
-        textarea.placeholder = `Type notes for ${scopeSelector.value === "domain" ? activeTabDomain : "this page URL"}...`;
+        editor.contentEditable = "true";
+        editor.setAttribute("placeholder", `Type notes for ${scopeSelector.value === "domain" ? activeTabDomain : "this page URL"}...`);
 
         chrome.storage.local.get([key], (res) => {
-            textarea.value = res[key] || "";
+            editor.innerHTML = res[key] || "";
             updateWordCount();
             statusLabel.textContent = "Loaded";
         });
@@ -100,14 +100,15 @@
             const key = getNoteKey();
             if (!key) return;
 
-            const text = textarea.value;
-            if (text.trim() === "") {
+            const html = editor.innerHTML;
+            const textContent = editor.innerText.trim();
+            if (textContent === "") {
                 chrome.storage.local.remove([key], () => {
                     statusLabel.textContent = "Saved (Cleared)";
                     loadNotesIndex();
                 });
             } else {
-                chrome.storage.local.set({ [key]: text }, () => {
+                chrome.storage.local.set({ [key]: html }, () => {
                     statusLabel.textContent = "Saved";
                     loadNotesIndex();
                 });
@@ -116,7 +117,7 @@
     }
 
     function updateWordCount() {
-        const count = textarea.value.length;
+        const count = editor.innerText.replace(/\n/g, "").length; // Ignore trailing linebreaks
         charCount.textContent = `${count} character${count === 1 ? "" : "s"}`;
     }
 
@@ -155,7 +156,8 @@
                 
                 const preview = document.createElement("span");
                 preview.className = "note-item-preview";
-                preview.textContent = content.substring(0, 25) + (content.length > 25 ? "..." : "");
+                const plainText = content.replace(/<[^>]+>/g, " ");
+                preview.textContent = plainText.substring(0, 25) + (plainText.length > 25 ? "..." : "");
 
                 info.appendChild(title);
                 info.appendChild(preview);
@@ -174,11 +176,11 @@
                             domainSpan.textContent = "Saved URL";
                         }
                     }
-                    textarea.disabled = false;
-                    textarea.value = content;
+                    editor.contentEditable = "true";
+                    editor.innerHTML = content;
                     updateWordCount();
                     statusLabel.textContent = "Loaded from Index";
-                    textarea.placeholder = `Editing note for ${target}...`;
+                    editor.setAttribute("placeholder", `Editing note for ${target}...`);
                 };
 
                 const deleteBtn = document.createElement("button");
@@ -198,7 +200,7 @@
                         chrome.storage.local.remove([key], () => {
                             loadNotesIndex();
                             if (getNoteKey() === key) {
-                                textarea.value = "";
+                                editor.innerHTML = "";
                                 updateWordCount();
                             }
                         });
@@ -213,7 +215,21 @@
     }
 
     // Event Listeners
-    textarea.addEventListener("input", () => {
+    // Wire up formatting ribbon actions
+    document.querySelectorAll(".ribbon-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            const cmd = btn.getAttribute("data-cmd");
+            if (cmd) {
+                document.execCommand(cmd, false, null);
+                editor.focus();
+                updateWordCount();
+                triggerAutoSave();
+            }
+        });
+    });
+
+    editor.addEventListener("input", () => {
         updateWordCount();
         triggerAutoSave();
     });

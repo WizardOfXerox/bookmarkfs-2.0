@@ -66,24 +66,72 @@
             border-color: var(--accent);
         }
 
-        .editor-textarea {
+        .formatting-ribbon {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 6px 6px 0 0;
+            border-bottom: none;
+            flex-wrap: wrap;
+        }
+
+        .ribbon-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            min-width: 24px;
+            height: 24px;
+        }
+
+        .ribbon-btn:hover {
+            background-color: var(--bg-button);
+            border-color: var(--border);
+            color: var(--accent);
+        }
+
+        .editor-contenteditable {
             width: 100%;
             height: 220px;
             background-color: var(--bg-main);
             border: 1px solid var(--border);
             color: var(--text-primary);
             padding: 12px;
-            border-radius: 8px;
+            border-radius: 0 0 8px 8px;
             font-size: 13.5px;
             line-height: 1.5;
-            resize: vertical;
+            overflow-y: auto;
             outline: none;
             box-sizing: border-box;
             font-family: inherit;
         }
 
-        .editor-textarea:focus {
+        .editor-contenteditable:focus {
             border-color: var(--accent);
+        }
+
+        .editor-contenteditable:empty::before {
+            content: attr(placeholder);
+            color: var(--text-secondary);
+            opacity: 0.7;
+            pointer-events: none;
+            display: block;
+        }
+
+        .editor-contenteditable ul, .editor-contenteditable ol {
+            margin: 0;
+            padding-left: 20px;
         }
 
         .notes-footer-row {
@@ -201,7 +249,7 @@
                 padding: 12px !important;
                 border-radius: 10px !important;
             }
-            .editor-textarea {
+            .editor-contenteditable {
                 height: 180px !important;
             }
             
@@ -251,7 +299,17 @@
                 </div>
             </div>
             
-            <textarea id="notes-textarea" class="editor-textarea" placeholder="Type notes here..."></textarea>
+            <!-- MS Word-style Formatting Ribbon -->
+            <div id="notes-formatting-ribbon" class="formatting-ribbon">
+                <button class="ribbon-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+                <button class="ribbon-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+                <button class="ribbon-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+                <button class="ribbon-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+                <button class="ribbon-btn" data-cmd="insertUnorderedList" title="Bullet List">• List</button>
+                <button class="ribbon-btn" data-cmd="insertOrderedList" title="Numbered List">1. List</button>
+                <button class="ribbon-btn" data-cmd="removeFormat" title="Clear Formatting">🧹</button>
+            </div>
+            <div id="notes-editor" class="editor-contenteditable" contenteditable="true" placeholder="Type notes here..."></div>
             
             <div class="notes-footer-row">
                 <span id="notes-status-label">Saved</span>
