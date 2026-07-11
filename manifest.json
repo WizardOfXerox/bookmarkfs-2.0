@@ -39,7 +39,8 @@
         "storage",
         "contextMenus",
         "sidePanel",
-        "unlimitedStorage"
+        "unlimitedStorage",
+        "tabGroups"
     ],
     "host_permissions": [
         "<all_urls>"

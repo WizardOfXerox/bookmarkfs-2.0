@@ -336,7 +336,7 @@ table.rwd-table.grid-mode tr {
     position: relative !important;
     box-shadow: var(--shadow) !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    height: 180px !important;
+    height: 210px !important;
     box-sizing: border-box !important;
     text-align: center !important;
 }

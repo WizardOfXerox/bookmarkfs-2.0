@@ -1168,6 +1168,7 @@ export function handleZip(bytes) {
                 <option value="google">Google</option>
                 <option value="ddg">DuckDuckGo</option>
                 <option value="bing">Bing</option>
+                <option value="yahoo">Yahoo</option>
             `;
             search.addEventListener("keydown", (e) => {
                 if (e.key === "Enter") {
@@ -1180,6 +1181,8 @@ export function handleZip(bytes) {
                         chrome.tabs.create({ url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}` });
                     } else if (engine === "bing") {
                         chrome.tabs.create({ url: `https://www.bing.com/search?q=${encodeURIComponent(query)}` });
+                    } else if (engine === "yahoo") {
+                        chrome.tabs.create({ url: `https://search.yahoo.com/search?p=${encodeURIComponent(query)}` });
                     }
                 }
             });
@@ -2801,11 +2804,16 @@ export function handleZip(bytes) {
                         });
                         wrapper.appendChild(list);
 
+                        // Actions row container
+                        const actionsRow = document.createElement("div");
+                        actionsRow.style.display = "flex";
+                        actionsRow.style.flexWrap = "wrap";
+                        actionsRow.style.gap = "8px";
+                        actionsRow.style.marginTop = "8px";
+
                         // Restore session button
                         const restoreBtn = document.createElement("button");
                         restoreBtn.className = "button";
-                        restoreBtn.style.alignSelf = "flex-start";
-                        restoreBtn.style.marginTop = "8px";
                         restoreBtn.textContent = "🚀 Restore All Tabs";
                         restoreBtn.onclick = async () => {
                             for (const tab of parsedSession) {
@@ -2813,7 +2821,41 @@ export function handleZip(bytes) {
                             }
                             alert(`Restored ${parsedSession.length} tabs in background!`);
                         };
-                        wrapper.appendChild(restoreBtn);
+                        actionsRow.appendChild(restoreBtn);
+
+                        // Restore in New Window button
+                        const newWinBtn = document.createElement("button");
+                        newWinBtn.className = "button";
+                        newWinBtn.textContent = "🗔 New Window";
+                        newWinBtn.onclick = async () => {
+                            const urls = parsedSession.map(t => t.url).filter(Boolean);
+                            if (urls.length === 0) return;
+                            await chrome.windows.create({ url: urls });
+                            alert(`Restored ${parsedSession.length} tabs in a new window!`);
+                        };
+                        actionsRow.appendChild(newWinBtn);
+
+                        // Restore in Tab Group button
+                        const tabGroupBtn = document.createElement("button");
+                        tabGroupBtn.className = "button";
+                        tabGroupBtn.textContent = "🏷️ Tab Group";
+                        tabGroupBtn.onclick = async () => {
+                            const tabIds = [];
+                            for (const tab of parsedSession) {
+                                if (tab.url) {
+                                    const created = await chrome.tabs.create({ url: tab.url, active: false });
+                                    tabIds.push(created.id);
+                                }
+                            }
+                            if (tabIds.length > 0) {
+                                const groupId = await chrome.tabs.group({ tabIds: tabIds });
+                                await chrome.tabGroups.update(groupId, { title: "Restored Session", color: "green" });
+                            }
+                            alert(`Restored ${parsedSession.length} tabs inside a new Tab Group!`);
+                        };
+                        actionsRow.appendChild(tabGroupBtn);
+
+                        wrapper.appendChild(actionsRow);
 
                         contentArea.appendChild(wrapper);
                         contentArea.style.alignItems = "stretch";
@@ -3432,6 +3474,24 @@ export function handleZip(bytes) {
         await loadFilesToTable();
         applySettings(); // apply saved settings immediately
         runAutoBackup();
+
+        // Global Keyboard Shortcuts (Easy Bookmark Viewer feature)
+        window.addEventListener("keydown", (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+                const s = qs("#search-bar");
+                if (s) {
+                    e.preventDefault();
+                    s.focus();
+                    s.select();
+                }
+            }
+            if (e.key === "Escape") {
+                const modal = qs("#preview-modal") || qs("#settings-popup");
+                if (modal) {
+                    modal.remove();
+                }
+            }
+        });
     });
 
     // ---------- CSS injection for transitions and light-mode theme ----------
