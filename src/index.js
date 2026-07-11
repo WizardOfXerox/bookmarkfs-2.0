@@ -3096,8 +3096,18 @@ export function handleZip(bytes) {
         }, false);
     }
 
+    function detectContext() {
+        const isPopup = chrome.extension && typeof chrome.extension.getViews === "function" && chrome.extension.getViews({ type: "popup" }).includes(window);
+        if (isPopup) {
+            document.body.classList.add("extension-popup");
+        } else {
+            document.body.classList.add("extension-tab");
+        }
+    }
+
     // ---------- Wire up events on load ----------
     window.addEventListener("load", async() => {
+        detectContext();
         ensureUI();
 
         // wire main file input

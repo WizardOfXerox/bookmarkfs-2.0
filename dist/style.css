@@ -32,15 +32,28 @@ body {
     background-color: var(--bg-main);
     color: var(--text-primary);
     font-family: var(--font-sans);
-    padding: 12px;
     margin: 0;
-    width: 780px;
-    height: 570px;
-    box-sizing: border-box;
-    overflow-x: hidden;
-    overflow-y: auto;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    box-sizing: border-box;
+}
+
+/* Default tab layout (options page) */
+body {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* Override for extension popup window size limit */
+body.extension-popup {
+    width: 780px !important;
+    height: 570px !important;
+    padding: 12px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
 }
 
 /* Custom Scrollbar */
