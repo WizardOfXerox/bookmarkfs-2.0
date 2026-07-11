@@ -5,6 +5,7 @@
     const btnBack = document.getElementById("web-back");
     const btnForward = document.getElementById("web-forward");
     const btnReload = document.getElementById("web-reload");
+    const btnHome = document.getElementById("web-home");
     const btnTab = document.getElementById("web-tab");
 
     // Unified light/dark mode sync
@@ -112,6 +113,10 @@
 
     btnReload.addEventListener("click", () => {
         iframe.src = iframe.src;
+    });
+
+    btnHome.addEventListener("click", () => {
+        navigateTo("https://www.google.com");
     });
 
     btnTab.addEventListener("click", () => {
