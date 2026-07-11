@@ -1092,6 +1092,14 @@ export function handleZip(bytes) {
 
         try {
             const children = await chrome.bookmarks.getChildren(currentBookmarkFolderId);
+            const sortType = localStorage.getItem("bookmarkfs_bookmarks_sort") || "default";
+            if (sortType === "name") {
+                children.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+            } else if (sortType === "date") {
+                children.sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0));
+            } else if (sortType === "url") {
+                children.sort((a, b) => (a.url || "").localeCompare(b.url || ""));
+            }
             updateBookmarksPathBar();
 
             children.forEach(node => {
@@ -1211,8 +1219,20 @@ export function handleZip(bytes) {
 
                 tbody.appendChild(tr);
             });
+            applyGridSize();
         } catch (err) {
             console.error("Failed to load bookmarks:", err);
+        }
+    }
+
+    function applyGridSize() {
+        const size = localStorage.getItem("bookmarkfs_grid_size") || "medium";
+        const table1 = qs("#table");
+        const table2 = qs("#bookmarks-table");
+        for (const t of [table1, table2]) {
+            if (!t) continue;
+            t.classList.remove("grid-small", "grid-medium", "grid-large");
+            t.classList.add(`grid-${size}`);
         }
     }
 
@@ -1477,6 +1497,45 @@ export function handleZip(bytes) {
             };
             bmControls.appendChild(bmAddDirBtn);
 
+            const bmSortSelect = document.createElement("select");
+            bmSortSelect.className = "button";
+            bmSortSelect.style.background = "#242424";
+            bmSortSelect.style.color = "inherit";
+            bmSortSelect.style.border = "1px solid #02ff88";
+            bmSortSelect.style.borderRadius = "8px";
+            bmSortSelect.style.padding = "6px 10px";
+            bmSortSelect.innerHTML = `
+                <option value="default">Sort: Default</option>
+                <option value="name">Sort: Name</option>
+                <option value="date">Sort: Date</option>
+                <option value="url">Sort: URL</option>
+            `;
+            bmSortSelect.value = localStorage.getItem("bookmarkfs_bookmarks_sort") || "default";
+            bmSortSelect.onchange = async () => {
+                localStorage.setItem("bookmarkfs_bookmarks_sort", bmSortSelect.value);
+                await loadBookmarksToPanel();
+            };
+            bmControls.appendChild(bmSortSelect);
+
+            const bmSizeSelect = document.createElement("select");
+            bmSizeSelect.className = "button";
+            bmSizeSelect.style.background = "#242424";
+            bmSizeSelect.style.color = "inherit";
+            bmSizeSelect.style.border = "1px solid #02ff88";
+            bmSizeSelect.style.borderRadius = "8px";
+            bmSizeSelect.style.padding = "6px 10px";
+            bmSizeSelect.innerHTML = `
+                <option value="medium">Size: Medium</option>
+                <option value="small">Size: Small</option>
+                <option value="large">Size: Large</option>
+            `;
+            bmSizeSelect.value = localStorage.getItem("bookmarkfs_grid_size") || "medium";
+            bmSizeSelect.onchange = () => {
+                localStorage.setItem("bookmarkfs_grid_size", bmSizeSelect.value);
+                applyGridSize();
+            };
+            bmControls.appendChild(bmSizeSelect);
+
             const bmPathBar = document.createElement("div");
             bmPathBar.id = "bookmarks-path-bar";
             bmPathBar.style.color = "#02ff88";
@@ -1648,6 +1707,44 @@ export function handleZip(bytes) {
                     }
                 }
             });
+
+            // Files Smart Sorting Selector
+            const filesSortSelect = document.createElement("select");
+            filesSortSelect.id = "files-sort-select";
+            filesSortSelect.style.padding = "8px 12px";
+            filesSortSelect.style.borderRadius = "8px";
+            filesSortSelect.style.border = "1px solid #02ff88";
+            filesSortSelect.style.background = "#242424";
+            filesSortSelect.style.color = "inherit";
+            filesSortSelect.innerHTML = `
+                <option value="name">Sort: Name</option>
+                <option value="date">Sort: Date</option>
+                <option value="size">Sort: Size</option>
+            `;
+            filesSortSelect.value = localStorage.getItem("bookmarkfs_files_sort") || "name";
+            filesSortSelect.onchange = async () => {
+                localStorage.setItem("bookmarkfs_files_sort", filesSortSelect.value);
+                await loadFilesToTable();
+            };
+
+            // Files Card Sizing Selector
+            const filesSizeSelect = document.createElement("select");
+            filesSizeSelect.id = "files-size-select";
+            filesSizeSelect.style.padding = "8px 12px";
+            filesSizeSelect.style.borderRadius = "8px";
+            filesSizeSelect.style.border = "1px solid #02ff88";
+            filesSizeSelect.style.background = "#242424";
+            filesSizeSelect.style.color = "inherit";
+            filesSizeSelect.innerHTML = `
+                <option value="medium">Size: Medium</option>
+                <option value="small">Size: Small</option>
+                <option value="large">Size: Large</option>
+            `;
+            filesSizeSelect.value = localStorage.getItem("bookmarkfs_grid_size") || "medium";
+            filesSizeSelect.onchange = () => {
+                localStorage.setItem("bookmarkfs_grid_size", filesSizeSelect.value);
+                applyGridSize();
+            };
 
             // View Mode Toggle (Easy Bookmark Viewer feature)
             const viewToggleBtn = document.createElement("button");
@@ -1867,6 +1964,8 @@ export function handleZip(bytes) {
 
             bar.appendChild(search);
             bar.appendChild(searchEngine);
+            bar.appendChild(filesSortSelect);
+            bar.appendChild(filesSizeSelect);
             bar.appendChild(tagFilter);
             bar.appendChild(folderInput);
             bar.appendChild(pathBar);
@@ -1983,7 +2082,27 @@ export function handleZip(bytes) {
             }
         }
         const folderEntries = [...folders.values()].sort().map((f) => ({ folder: true, name: f }));
-        fileEntries.sort((a, b) => a.displayName.localeCompare(b.displayName));
+        
+        const sortType = localStorage.getItem("bookmarkfs_files_sort") || "name";
+        if (sortType === "name") {
+            fileEntries.sort((a, b) => a.displayName.localeCompare(b.displayName));
+        } else if (sortType === "date") {
+            fileEntries.sort((a, b) => {
+                const metaA = metaMap.get(a.file.handle.id);
+                const metaB = metaMap.get(b.file.handle.id);
+                const dateA = metaA?.dateISO || "";
+                const dateB = metaB?.dateISO || "";
+                return dateB.localeCompare(dateA);
+            });
+        } else if (sortType === "size") {
+            fileEntries.sort((a, b) => {
+                const metaA = metaMap.get(a.file.handle.id);
+                const metaB = metaMap.get(b.file.handle.id);
+                const sizeA = metaA?.size || 0;
+                const sizeB = metaB?.size || 0;
+                return sizeB - sizeA;
+            });
+        }
         return folderEntries.concat(fileEntries);
     }
 
@@ -3534,6 +3653,7 @@ export function handleZip(bytes) {
             tr.appendChild(tdDel);
             tbody.appendChild(tr);
         }
+        applyGridSize();
     }
 
     // ---------- Upload handling ----------
