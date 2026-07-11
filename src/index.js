@@ -3243,11 +3243,9 @@ export function handleZip(bytes) {
             const backupEntries = [];
             for (const f of files) {
                 try {
-                    const raw = await f.read();
                     const meta = await f.readMeta();
                     backupEntries.push({
                         title: f.handle.title,
-                        raw: raw,
                         meta: meta
                     });
                 } catch {}
