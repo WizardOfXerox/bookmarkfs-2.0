@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         darkMode: false
     };
     let draggedBookmark = null;
+    let previousActiveTab = null;
     
     // Search engines configuration
     const searchEngines = {
@@ -379,6 +380,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Restore previous view
             restorePreviousView();
             return;
+        }
+
+        // Save active tab before clearing
+        if (!previousActiveTab) {
+            const activeTab = subFolderTabs.querySelector('.folder-tab.active') || primaryFolderTabs.querySelector('.folder-tab.active');
+            if (activeTab) {
+                previousActiveTab = activeTab;
+            }
         }
 
         // Filter bookmarks
@@ -915,17 +924,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bookmarkSearchBar.value) {
             bookmarkSearchBar.value = '';
         }
+        previousActiveTab = null;
     }
 
     function restorePreviousView() {
-        const activeSubTab = subFolderTabs.querySelector('.folder-tab.active');
-        if (activeSubTab) {
-            activeSubTab.click();
+        if (previousActiveTab) {
+            previousActiveTab.click();
+            previousActiveTab = null;
         } else {
-            const activePrimaryTab = primaryFolderTabs.querySelector('.folder-tab.active');
-            if (activePrimaryTab) {
-                activePrimaryTab.click();
-            }
+            const allTab = primaryFolderTabs.querySelector('[data-id="all"]');
+            if (allTab) allTab.click();
         }
     }
 
