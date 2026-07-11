@@ -1749,7 +1749,12 @@ export function handleZip(bytes) {
             center.appendChild(filesView);
 
             const table = qs("#table");
-            if (table) filesView.appendChild(table);
+            if (table) {
+                const wrapper = document.createElement("div");
+                wrapper.className = "table-responsive-container";
+                wrapper.appendChild(table);
+                filesView.appendChild(wrapper);
+            }
         }
 
         // file input: allow multiple
@@ -1761,7 +1766,8 @@ export function handleZip(bytes) {
             const chartContainer = document.createElement("div");
             chartContainer.id = "storage-chart-container";
             chartContainer.style.display = "none";
-            (qs("#table") ? qs("#table").parentNode : center).insertBefore(chartContainer, qs("#table") || null);
+            const ref = qs(".table-responsive-container") || qs("#table") || null;
+            (ref ? ref.parentNode : center).insertBefore(chartContainer, ref);
         }
 
         // Ensure bulk-bar exists
@@ -1813,7 +1819,8 @@ export function handleZip(bytes) {
             bulkBar.appendChild(bulkDlBtn);
             bulkBar.appendChild(bulkMoveBtn);
             bulkBar.appendChild(bulkDelBtn);
-            (qs("#table") ? qs("#table").parentNode : center).insertBefore(bulkBar, qs("#table") || null);
+            const ref = qs(".table-responsive-container") || qs("#table") || null;
+            (ref ? ref.parentNode : center).insertBefore(bulkBar, ref);
         }
 
         if (!qs("#controls-bar")) {
@@ -2201,8 +2208,8 @@ export function handleZip(bytes) {
             bar.appendChild(nextBtn);
             bar.appendChild(analyticsBar);
             bar.appendChild(prog);
-
-            (qs("#table") ? qs("#table").parentNode : center).insertBefore(bar, qs("#table") || null);
+            const ref = qs(".table-responsive-container") || qs("#table") || null;
+            (ref ? ref.parentNode : center).insertBefore(bar, ref);
         }
 
         // Table head if missing

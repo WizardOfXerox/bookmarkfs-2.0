@@ -139,6 +139,15 @@ body.extension-popup {
 }
 
 /* File/Folder Table styling */
+.table-responsive-container {
+    width: 100%;
+    max-width: 980px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 12px auto;
+    border-radius: 12px;
+}
+
 .rwd-table {
     width: 100% !important;
     border-collapse: separate !important;
@@ -275,8 +284,19 @@ input[type="checkbox"].row-select,
     animation: spin 1s linear infinite;
 }
 
-/* Responsive sidebar viewports (widths < 500px) */
-@media (max-width: 500px) {
+/* Responsive progressive column hiding */
+@media (max-width: 850px) {
+    .rwd-table th:nth-child(5), .rwd-table td:nth-child(5) /* Date */ {
+        display: none !important;
+    }
+}
+@media (max-width: 700px) {
+    .rwd-table th:nth-child(4), .rwd-table td:nth-child(4), /* Size */
+    .rwd-table th:nth-child(5), .rwd-table td:nth-child(5)  /* Date */ {
+        display: none !important;
+    }
+}
+@media (max-width: 580px) {
     .rwd-table th:nth-child(2), .rwd-table td:nth-child(2), /* Preview */
     .rwd-table th:nth-child(4), .rwd-table td:nth-child(4), /* Size */
     .rwd-table th:nth-child(5), .rwd-table td:nth-child(5)  /* Date */ {
