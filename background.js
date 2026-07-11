@@ -338,4 +338,54 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === "complete" || changeInfo.url) {
         triggerAutoSave();
     }
+    if (changeInfo.status === "complete") {
+        updateBadgeForTab(tab);
+    }
+});
+
+// --- Note Action Badge (Ribbon) Manager ---
+async function updateBadgeForTab(tab) {
+    if (!tab || !tab.url || !tab.id) return;
+    
+    if (tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://") || tab.url.startsWith("about:")) {
+        chrome.action.setBadgeText({ text: "", tabId: tab.id });
+        return;
+    }
+
+    try {
+        const parsed = new URL(tab.url);
+        const domain = parsed.hostname;
+        const domainKey = `note_domain_${domain}`;
+        const urlKey = `note_url_${tab.url}`;
+
+        chrome.storage.local.get([domainKey, urlKey], (res) => {
+            const hasDomainNote = !!res[domainKey];
+            const hasUrlNote = !!res[urlKey];
+
+            if (hasDomainNote || hasUrlNote) {
+                chrome.action.setBadgeBackgroundColor({ color: "#059669", tabId: tab.id });
+                chrome.action.setBadgeText({ text: "Note", tabId: tab.id });
+            } else {
+                chrome.action.setBadgeText({ text: "", tabId: tab.id });
+            }
+        });
+    } catch (err) {}
+}
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        updateBadgeForTab(tab);
+    } catch (err) {}
+});
+
+chrome.storage.onChanged.addListener(async (changes, areaName) => {
+    if (areaName === "local") {
+        try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tabs && tabs[0]) {
+                updateBadgeForTab(tabs[0]);
+            }
+        } catch (err) {}
+    }
 });
