@@ -4,7 +4,8 @@
   "description": "Exploits the google chrome bookmark sync service to store files for free",
   "scripts": {
     "build": "webpack --config webpack.config.js",
-    "test": "node --test test/*.test.cjs"
+    "test": "node --test test/*.test.cjs",
+    "postinstall": "node scripts/patch-unrar.js"
   },
   "repository": {
     "type": "git",
