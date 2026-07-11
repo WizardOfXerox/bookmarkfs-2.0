@@ -1961,8 +1961,17 @@ export function handleZip(bytes) {
 
     // ---------- UI Rendering ----------
     async function loadFilesToTable() {
+        const table = qs("#table");
         const tbody = qs("#table tbody");
         if (!tbody) return;
+        const currentMode = localStorage.getItem("bookmarkfs_view_mode") || "list";
+        if (table) {
+            if (currentMode === "grid") {
+                table.classList.add("grid-mode");
+            } else {
+                table.classList.remove("grid-mode");
+            }
+        }
         tbody.innerHTML = "";
 
         updatePathBar();
@@ -2133,6 +2142,19 @@ export function handleZip(bytes) {
                     const bytes = reconstructed.bytes;
                     const type = reconstructed.mime || m.type || getMimeType(name) || "application/octet-stream";
                     let objectUrl = "";
+
+                    let isSession = false;
+                    let parsedSession = null;
+                    if (type === "application/json" || name.endsWith(".json")) {
+                        try {
+                            const txt = td.decode(bytes);
+                            const parsed = JSON.parse(txt);
+                            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].url) {
+                                isSession = true;
+                                parsedSession = parsed;
+                            }
+                        } catch {}
+                    }
 
                     const popup = document.createElement("div");
                     popup.id = "preview-modal";
@@ -2626,6 +2648,78 @@ export function handleZip(bytes) {
                         iframe.style.border = "none";
                         iframe.style.borderRadius = "6px";
                         contentArea.appendChild(iframe);
+                        contentArea.style.alignItems = "stretch";
+                    } else if (isSession) {
+                        const wrapper = document.createElement("div");
+                        wrapper.style.width = "100%";
+                        wrapper.style.display = "flex";
+                        wrapper.style.flexDirection = "column";
+                        wrapper.style.gap = "12px";
+                        wrapper.style.textAlign = "left";
+
+                        const titleSpan = document.createElement("h3");
+                        titleSpan.style.margin = "0 0 6px 0";
+                        titleSpan.style.color = "#02ff88";
+                        titleSpan.style.fontSize = "16px";
+                        titleSpan.textContent = `📋 Browser Session (${parsedSession.length} tabs)`;
+                        wrapper.appendChild(titleSpan);
+
+                        const list = document.createElement("div");
+                        list.style.maxHeight = "45vh";
+                        list.style.overflowY = "auto";
+                        list.style.display = "flex";
+                        list.style.flexDirection = "column";
+                        list.style.gap = "8px";
+                        list.style.padding = "4px";
+
+                        parsedSession.forEach(tab => {
+                            const item = document.createElement("div");
+                            item.style.padding = "10px";
+                            item.style.border = "1px solid #27272a";
+                            item.style.borderRadius = "8px";
+                            item.style.background = "#18181b";
+                            item.style.display = "flex";
+                            item.style.flexDirection = "column";
+                            item.style.gap = "4px";
+                            
+                            const link = document.createElement("a");
+                            link.href = tab.url;
+                            link.target = "_blank";
+                            link.textContent = tab.title || tab.url;
+                            link.style.color = "#02ff88";
+                            link.style.textDecoration = "none";
+                            link.style.fontWeight = "600";
+                            link.style.fontSize = "13px";
+                            link.onmouseover = () => link.style.textDecoration = "underline";
+                            link.onmouseout = () => link.style.textDecoration = "none";
+                            
+                            const urlDiv = document.createElement("div");
+                            urlDiv.textContent = tab.url;
+                            urlDiv.style.fontSize = "11px";
+                            urlDiv.style.color = "#a1a1aa";
+                            urlDiv.style.wordBreak = "break-all";
+
+                            item.appendChild(link);
+                            item.appendChild(urlDiv);
+                            list.appendChild(item);
+                        });
+                        wrapper.appendChild(list);
+
+                        // Restore session button
+                        const restoreBtn = document.createElement("button");
+                        restoreBtn.className = "button";
+                        restoreBtn.style.alignSelf = "flex-start";
+                        restoreBtn.style.marginTop = "8px";
+                        restoreBtn.textContent = "🚀 Restore All Tabs";
+                        restoreBtn.onclick = async () => {
+                            for (const tab of parsedSession) {
+                                if (tab.url) chrome.tabs.create({ url: tab.url, active: false });
+                            }
+                            alert(`Restored ${parsedSession.length} tabs in background!`);
+                        };
+                        wrapper.appendChild(restoreBtn);
+
+                        contentArea.appendChild(wrapper);
                         contentArea.style.alignItems = "stretch";
                     } else if (type === "text/markdown" || name.endsWith(".md")) {
                         const div = document.createElement("div");
