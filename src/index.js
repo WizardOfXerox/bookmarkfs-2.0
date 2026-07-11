@@ -2,12 +2,14 @@ import { unzipSync, zipSync, gzipSync as fflateGzip, gunzipSync as fflateGunzip 
 import { createExtractorFromData } from "node-unrar-js";
 
 async function handleRar(bytes) {
+    const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
     const extractor = await createExtractorFromData({
-        data: bytes,
+        data: arrayBuffer,
         wasmFile: chrome.runtime.getURL("dist/unrar.wasm")
     });
     const list = extractor.getFileList();
-    console.log("RAR files:", list.fileHeaders.map(f => f.name));
+    const headers = Array.from(list.fileHeaders);
+    console.log("RAR files:", headers.map(f => f.name));
 }
 
 export function handleZip(bytes) {
@@ -3400,12 +3402,13 @@ export function handleZip(bytes) {
                     } else if (type === "application/vnd.rar" || type === "application/x-rar-compressed" || name.endsWith(".rar")) {
                         try {
                             contentArea.innerHTML = "<p style='color:#a1a1aa;'>Loading RAR extractor...</p>";
+                            const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
                             const extractor = await createExtractorFromData({
-                                data: bytes.buffer,
+                                data: arrayBuffer,
                                 wasmFile: chrome.runtime.getURL("dist/unrar.wasm")
                             });
                             const list = extractor.getFileList();
-                            const headers = list.fileHeaders;
+                            const headers = Array.from(list.fileHeaders);
                             contentArea.innerHTML = "";
 
                             if (!headers || headers.length === 0) {
@@ -3430,7 +3433,7 @@ export function handleZip(bytes) {
 
                                 const tbody = table.querySelector("tbody");
                                 headers.forEach(header => {
-                                    const isDir = header.flags.directory || header.unpackSize === 0;
+                                    const isDir = header.flags.directory || header.unpSize === 0;
                                     const tr = document.createElement("tr");
                                     tr.style.borderBottom = "1px solid #27272a";
 
@@ -3442,7 +3445,7 @@ export function handleZip(bytes) {
                                     const tdSize = document.createElement("td");
                                     tdSize.style.padding = "8px";
                                     tdSize.style.textAlign = "right";
-                                    tdSize.textContent = isDir ? "-" : niceBytes(header.unpackSize);
+                                    tdSize.textContent = isDir ? "-" : niceBytes(header.unpSize);
 
                                     const tdAction = document.createElement("td");
                                     tdAction.style.padding = "8px";
@@ -3457,7 +3460,8 @@ export function handleZip(bytes) {
                                         dlBtn.onclick = () => {
                                             try {
                                                 const extracted = extractor.extract({ files: [header.name] });
-                                                const matchingFile = extracted.files[0];
+                                                const filesArr = Array.from(extracted.files);
+                                                const matchingFile = filesArr[0];
                                                 if (matchingFile && matchingFile.extraction) {
                                                     const innerMime = getMimeType(header.name);
                                                     const blob = new Blob([matchingFile.extraction], { type: innerMime });
