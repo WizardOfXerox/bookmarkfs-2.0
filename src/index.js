@@ -1064,6 +1064,208 @@ export function handleZip(bytes) {
         pathNode.textContent = `Path: / ${pathStr}`;
     }
 
+    async function loadMostVisitedToPanel() {
+        const table = qs("#bookmarks-table");
+        if (!table) return;
+        table.innerHTML = "";
+
+        const currentMode = localStorage.getItem("bookmarkfs_view_mode") || "list";
+        if (currentMode === "grid") {
+            table.classList.add("grid-mode");
+        } else {
+            table.classList.remove("grid-mode");
+        }
+
+        const thead = document.createElement("thead");
+        thead.innerHTML = `
+            <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>URL</th>
+                <th>Actions</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+
+        try {
+            chrome.topSites.get(sites => {
+                sites.slice(0, 20).forEach(site => {
+                    const tr = document.createElement("tr");
+                    tr.style.borderBottom = "1px solid #27272a";
+
+                    const tdType = document.createElement("td");
+                    tdType.style.textAlign = "center";
+                    const typeIndicator = document.createElement("span");
+                    typeIndicator.textContent = "🔥";
+                    tdType.appendChild(typeIndicator);
+                    tr.appendChild(tdType);
+
+                    const tdPreview = document.createElement("td");
+                    const icon = document.createElement("img");
+                    icon.style.width = "48px";
+                    icon.style.height = "48px";
+                    icon.style.objectFit = "cover";
+                    try {
+                        icon.src = `https://www.google.com/s2/favicons?sz=64&domain=${new URL(site.url).hostname}`;
+                    } catch {
+                        icon.src = placeholderDataUrl("LINK");
+                    }
+                    tdPreview.appendChild(icon);
+                    tr.appendChild(tdPreview);
+
+                    const tdName = document.createElement("td");
+                    const link = document.createElement("a");
+                    link.href = site.url;
+                    link.target = "_blank";
+                    link.textContent = site.title || site.url;
+                    link.style.color = "var(--accent)";
+                    link.style.textDecoration = "none";
+                    link.style.fontWeight = "600";
+                    tdName.appendChild(link);
+                    tr.appendChild(tdName);
+
+                    const tdUrl = document.createElement("td");
+                    tdUrl.textContent = site.url;
+                    tdUrl.style.fontSize = "11px";
+                    tdUrl.style.color = "var(--text-secondary)";
+                    tr.appendChild(tdUrl);
+
+                    const tdEmpty = document.createElement("td");
+                    tdEmpty.textContent = "-";
+                    tdEmpty.className = "cell-empty";
+                    tr.appendChild(tdEmpty);
+
+                    const tdAction = document.createElement("td");
+                    tdAction.textContent = "-";
+                    tr.appendChild(tdAction);
+
+                    for (let i = 0; i < 3; i++) {
+                        const td = document.createElement("td");
+                        td.textContent = "-";
+                        td.className = "cell-empty";
+                        tr.appendChild(td);
+                    }
+
+                    tbody.appendChild(tr);
+                });
+                applyGridSize();
+            });
+        } catch (err) {
+            console.error("Failed to load top sites:", err);
+        }
+    }
+
+    async function loadRecentlyAddedToPanel() {
+        const table = qs("#bookmarks-table");
+        if (!table) return;
+        table.innerHTML = "";
+
+        const currentMode = localStorage.getItem("bookmarkfs_view_mode") || "list";
+        if (currentMode === "grid") {
+            table.classList.add("grid-mode");
+        } else {
+            table.classList.remove("grid-mode");
+        }
+
+        const thead = document.createElement("thead");
+        thead.innerHTML = `
+            <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>URL</th>
+                <th>Actions</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+
+        try {
+            const recent = await chrome.bookmarks.getRecent(20);
+            recent.forEach(node => {
+                if (!node.url) return;
+
+                const tr = document.createElement("tr");
+                tr.style.borderBottom = "1px solid #27272a";
+
+                const tdType = document.createElement("td");
+                tdType.style.textAlign = "center";
+                const typeIndicator = document.createElement("span");
+                typeIndicator.textContent = "🕒";
+                tdType.appendChild(typeIndicator);
+                tr.appendChild(tdType);
+
+                const tdPreview = document.createElement("td");
+                const icon = document.createElement("img");
+                icon.style.width = "48px";
+                icon.style.height = "48px";
+                icon.style.objectFit = "cover";
+                try {
+                    icon.src = `https://www.google.com/s2/favicons?sz=64&domain=${new URL(node.url).hostname}`;
+                } catch {
+                    icon.src = placeholderDataUrl("LINK");
+                }
+                tdPreview.appendChild(icon);
+                tr.appendChild(tdPreview);
+
+                const tdName = document.createElement("td");
+                const link = document.createElement("a");
+                link.href = node.url;
+                link.target = "_blank";
+                link.textContent = node.title || node.url;
+                link.style.color = "var(--accent)";
+                link.style.textDecoration = "none";
+                link.style.fontWeight = "600";
+                tdName.appendChild(link);
+                tr.appendChild(tdName);
+
+                const tdUrl = document.createElement("td");
+                tdUrl.textContent = node.url;
+                tdUrl.style.fontSize = "11px";
+                tdUrl.style.color = "var(--text-secondary)";
+                tr.appendChild(tdUrl);
+
+                const tdEmpty = document.createElement("td");
+                tdEmpty.textContent = "-";
+                tdEmpty.className = "cell-empty";
+                tr.appendChild(tdEmpty);
+
+                const tdAction = document.createElement("td");
+                const btnDel = document.createElement("button");
+                btnDel.className = "button icon-button";
+                btnDel.innerHTML = "🗑️";
+                btnDel.title = "Delete";
+                btnDel.onclick = async () => {
+                    if (!confirm(`Delete recent bookmark "${node.title}"?`)) return;
+                    tr.style.opacity = "0";
+                    tr.style.transform = "translateX(-20px)";
+                    setTimeout(async () => {
+                        await chrome.bookmarks.remove(node.id);
+                        await loadRecentlyAddedToPanel();
+                    }, 300);
+                };
+                tdAction.appendChild(btnDel);
+                tr.appendChild(tdAction);
+
+                for (let i = 0; i < 3; i++) {
+                    const td = document.createElement("td");
+                    td.textContent = "-";
+                    td.className = "cell-empty";
+                    tr.appendChild(td);
+                }
+
+                tbody.appendChild(tr);
+            });
+            applyGridSize();
+        } catch (err) {
+            console.error("Failed to load recent bookmarks:", err);
+        }
+    }
+
     async function loadBookmarksToPanel() {
         const table = qs("#bookmarks-table");
         if (!table) return;
@@ -1544,6 +1746,63 @@ export function handleZip(bytes) {
             bmControls.appendChild(bmPathBar);
 
             bookmarksView.appendChild(bmControls);
+
+            // Quick Access Sub-Tabs (Easy Bookmark Viewer feature)
+            const subNav = document.createElement("div");
+            subNav.id = "bookmarks-sub-nav";
+            subNav.style.display = "flex";
+            subNav.style.gap = "8px";
+            subNav.style.justifyContent = "center";
+            subNav.style.margin = "12px auto";
+            subNav.style.padding = "6px";
+            subNav.style.backgroundColor = "var(--bg-card)";
+            subNav.style.border = "1px solid var(--border)";
+            subNav.style.borderRadius = "50px";
+            subNav.style.width = "fit-content";
+            subNav.style.boxShadow = "var(--shadow)";
+
+            const btnAll = document.createElement("button");
+            btnAll.className = "nav-btn active";
+            btnAll.style.fontSize = "12px";
+            btnAll.style.padding = "6px 14px";
+            btnAll.textContent = "📂 Browse All";
+            
+            const btnFrequent = document.createElement("button");
+            btnFrequent.className = "nav-btn";
+            btnFrequent.style.fontSize = "12px";
+            btnFrequent.style.padding = "6px 14px";
+            btnFrequent.textContent = "🔥 Most Visited";
+            
+            const btnRecent = document.createElement("button");
+            btnRecent.className = "nav-btn";
+            btnRecent.style.fontSize = "12px";
+            btnRecent.style.padding = "6px 14px";
+            btnRecent.textContent = "🕒 Recently Added";
+
+            subNav.appendChild(btnAll);
+            subNav.appendChild(btnFrequent);
+            subNav.appendChild(btnRecent);
+            bookmarksView.appendChild(subNav);
+
+            const selectSubTab = (tab) => {
+                btnAll.classList.toggle("active", tab === "all");
+                btnFrequent.classList.toggle("active", tab === "frequent");
+                btnRecent.classList.toggle("active", tab === "recent");
+                bmControls.style.display = tab === "all" ? "flex" : "none";
+            };
+
+            btnAll.onclick = async () => {
+                selectSubTab("all");
+                await loadBookmarksToPanel();
+            };
+            btnFrequent.onclick = async () => {
+                selectSubTab("frequent");
+                await loadMostVisitedToPanel();
+            };
+            btnRecent.onclick = async () => {
+                selectSubTab("recent");
+                await loadRecentlyAddedToPanel();
+            };
 
             const bmTable = document.createElement("table");
             bmTable.id = "bookmarks-table";

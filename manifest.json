@@ -40,7 +40,8 @@
         "contextMenus",
         "sidePanel",
         "unlimitedStorage",
-        "tabGroups"
+        "tabGroups",
+        "topSites"
     ],
     "host_permissions": [
         "<all_urls>"
