@@ -2,14 +2,30 @@ chrome.action.onClicked.addListener(function () {
     chrome.tabs.create({ url: chrome.runtime.getURL("dist/index.html") });
 });
 
-// Create Context Menu for Image saving on install
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-        id: "save-image-to-bookmarkfs",
-        title: "Save to BookmarkFS",
-        contexts: ["image"]
+// Robust context menu registration function
+function initContextMenu() {
+    chrome.contextMenus.removeAll(() => {
+        chrome.contextMenus.create({
+            id: "save-image-to-bookmarkfs",
+            title: "Save to BookmarkFS",
+            contexts: ["image"]
+        }, () => {
+            if (chrome.runtime.lastError) {
+                // Ignore duplicate errors or similar warnings
+                console.log("Context menu registration context:", chrome.runtime.lastError.message);
+            } else {
+                console.log("Successfully registered Save to BookmarkFS context menu");
+            }
+        });
     });
-});
+}
+
+// Register listeners to trigger context menu setup
+chrome.runtime.onInstalled.addListener(initContextMenu);
+chrome.runtime.onStartup.addListener(initContextMenu);
+
+// Also run immediately on worker script execution to ensure it works during active dev reloads
+initContextMenu();
 
 // Listen context menu actions
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
