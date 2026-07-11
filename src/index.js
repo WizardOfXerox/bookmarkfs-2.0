@@ -2012,6 +2012,48 @@ export function handleZip(bytes) {
             uploadInput.style.display = "none";
             uploadInput.multiple = true;
 
+            // New Folder creator
+            const newFolderBtn = document.createElement("button");
+            newFolderBtn.id = "new-folder-btn";
+            newFolderBtn.className = "button";
+            newFolderBtn.textContent = "📁 New Folder";
+            newFolderBtn.onclick = async () => {
+                const folderName = prompt("Enter folder name:");
+                if (!folderName) return;
+
+                const cleanName = folderName.trim().replace(/[\\\/:*?"<>|]/g, "_");
+                if (!cleanName) return;
+
+                const targetPath = currentPath ? `${currentPath}/${cleanName}/.keep` : `${cleanName}/.keep`;
+
+                const files = await listFiles();
+                const prefix = currentPath ? `${currentPath}/${cleanName}/` : `${cleanName}/`;
+                const exists = files.some(f => f.handle.title.startsWith(prefix));
+                if (exists) {
+                    alert("A folder with this name already exists.");
+                    return;
+                }
+
+                try {
+                    const bytes = new Uint8Array([0]);
+                    const { serialized, metaObj, metaHeader } = await prepareSerializedFromDataURL(
+                        "data:application/x-directory;base64,AA==",
+                        { passphrase: "" }
+                    );
+                    metaObj.name = ".keep";
+                    metaObj.metaHeader = metaHeader;
+                    metaObj.tags = ["directory"];
+
+                    const fobj = await createNewFile(targetPath);
+                    await fobj.writeMeta(metaObj);
+                    await fobj.write(serialized, () => {});
+
+                    await loadFilesToTable();
+                } catch (err) {
+                    alert("Failed to create folder: " + err.message);
+                }
+            };
+
             const prevBtn = document.createElement("button");
             prevBtn.id = "prev-page-btn";
             prevBtn.className = "button";
@@ -2068,6 +2110,7 @@ export function handleZip(bytes) {
             bar.appendChild(upBtn);
             bar.appendChild(uploadLabel);
             bar.appendChild(uploadInput);
+            bar.appendChild(newFolderBtn);
             bar.appendChild(exportBtn);
             bar.appendChild(importLabel);
             bar.appendChild(importInput);
@@ -2169,6 +2212,7 @@ export function handleZip(bytes) {
                 const folder = rest.slice(0, slash);
                 if (!q || folder.toLowerCase().includes(q)) folders.set(folder, folder);
             } else {
+                if (rest === ".keep") continue;
                 if (!q || rest.toLowerCase().includes(q) || full.toLowerCase().includes(q)) {
                     fileEntries.push({ file, displayName: rest, fullName: full });
                 }
