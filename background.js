@@ -175,7 +175,7 @@ async function sha256String(str) {
     return sha256Hex(bytes);
 }
 
-// Auto-save active workspace session tabs (TabXpert Premium)
+// Auto-save active workspace session tabs
 async function storeSessionAutoSave(bytes) {
     const root = await fsRoot();
     const children = await chrome.bookmarks.getChildren(root.id);

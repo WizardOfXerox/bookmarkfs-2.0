@@ -1594,7 +1594,9 @@ export function handleZip(bytes) {
                 }
                 if (tabIds.length > 0) {
                     const gid = await chrome.tabs.group({ tabIds });
-                    await chrome.tabGroups.update(gid, { title: "Restored Session", color: "green" });
+                    if (chrome.tabGroups) {
+                        await chrome.tabGroups.update(gid, { title: "Restored Session", color: "green" });
+                    }
                 }
             };
             btnRow.appendChild(groupBtn);
@@ -1747,7 +1749,7 @@ export function handleZip(bytes) {
 
             bookmarksView.appendChild(bmControls);
 
-            // Quick Access Sub-Tabs (Easy Bookmark Viewer feature)
+            // Quick Access Sub-Tabs
             const subNav = document.createElement("div");
             subNav.id = "bookmarks-sub-nav";
             subNav.style.display = "flex";
@@ -1935,7 +1937,7 @@ export function handleZip(bytes) {
             search.style.background = "transparent";
             search.style.color = "inherit";
 
-            // Web Search Engine Selector (Easy Bookmark Viewer feature)
+            // Web Search Engine Selector
             const searchEngine = document.createElement("select");
             searchEngine.id = "search-engine-select";
             searchEngine.style.padding = "8px 12px";
@@ -2005,7 +2007,7 @@ export function handleZip(bytes) {
                 applyGridSize();
             };
 
-            // View Mode Toggle (Easy Bookmark Viewer feature)
+            // View Mode Toggle
             const viewToggleBtn = document.createElement("button");
             viewToggleBtn.id = "view-toggle-btn";
             viewToggleBtn.className = "button";
@@ -2019,7 +2021,7 @@ export function handleZip(bytes) {
                 await loadFilesToTable();
             };
 
-            // Tab Session Saver (TabXpert feature)
+            // Tab Session Saver
             const saveSessionBtn = document.createElement("button");
             saveSessionBtn.id = "save-session-btn";
             saveSessionBtn.className = "button";
@@ -2049,7 +2051,7 @@ export function handleZip(bytes) {
                     );
                     metaObj.name = filename;
                     metaObj.metaHeader = metaHeader;
-                    metaObj.tags = ["session", "tabxpert"];
+                    metaObj.tags = ["session", "bookmarkfs"];
                     
                     while (await getFileByName(targetName)) targetName = incrementVersionedName(targetName);
                     
@@ -3685,7 +3687,9 @@ export function handleZip(bytes) {
                             }
                             if (tabIds.length > 0) {
                                 const groupId = await chrome.tabs.group({ tabIds: tabIds });
-                                await chrome.tabGroups.update(groupId, { title: "Restored Session", color: "green" });
+                                if (chrome.tabGroups) {
+                                    await chrome.tabGroups.update(groupId, { title: "Restored Session", color: "green" });
+                                }
                             }
                             alert(`Restored ${parsedSession.length} tabs inside a new Tab Group!`);
                         };
@@ -4312,7 +4316,7 @@ export function handleZip(bytes) {
         applySettings(); // apply saved settings immediately
         runAutoBackup();
 
-        // Global Keyboard Shortcuts (Easy Bookmark Viewer feature)
+        // Global Keyboard Shortcuts
         window.addEventListener("keydown", (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
                 const s = qs("#search-bar");
