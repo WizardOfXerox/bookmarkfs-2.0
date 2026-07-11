@@ -8,105 +8,257 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sessions-container {
-            display: flex;
-            flex-direction: column;
+        .sessions-dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
             gap: 20px;
-            max-width: 980px;
+            max-width: 1400px;
             margin: 20px auto;
-            padding: 0 16px;
+            padding: 0 20px;
+            height: calc(100vh - 120px);
             box-sizing: border-box;
-            width: 100%;
         }
-        .active-session-card {
+
+        /* Sidebar Column */
+        .workspace-sidebar {
             background-color: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: var(--shadow);
-            text-align: left;
-            transition: all 0.3s ease;
-        }
-        .active-session-card:hover {
-            border-color: var(--accent);
-        }
-        .active-session-title {
-            color: var(--accent);
-            margin-top: 0;
-            margin-bottom: 14px;
-            font-size: 18px;
-            font-weight: 600;
-        }
-        .tabs-list {
-            max-height: 160px;
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
             overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+        .sidebar-title {
+            color: var(--accent);
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+        .workspace-list {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            margin-bottom: 16px;
-            padding-right: 8px;
         }
-        .tab-item {
-            font-size: 13px;
+        .workspace-item {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+        .workspace-item:hover {
+            background-color: rgba(2, 255, 136, 0.05);
+            border-color: rgba(2, 255, 136, 0.2);
+        }
+        .workspace-item.active {
+            background-color: rgba(2, 255, 136, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .workspace-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+        .tab-badge {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 20px;
+        }
+        .workspace-item.active .tab-badge {
+            background-color: var(--accent);
+            color: #0b0f19;
+            font-weight: 600;
+        }
+
+        /* Middle Selected Workspace View */
+        .workspace-main {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+        .main-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .selected-title {
+            margin: 0;
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .workspace-toolbar {
+            display: flex;
+            gap: 8px;
+        }
+        .toolbar-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .workspace-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 6px;
+        }
+        .tab-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            transition: all 0.2s ease;
+        }
+        .tab-row:hover {
+            border-color: var(--accent);
+            background-color: rgba(2, 255, 136, 0.02);
+            box-shadow: 0 4px 12px rgba(2, 255, 136, 0.05);
+        }
+        .tab-info-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            flex: 1;
+            overflow: hidden;
+        }
+        .tab-favicon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+        .tab-details {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .tab-title-text {
+            font-size: 14px;
+            font-weight: 500;
             color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 4px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            text-decoration: none;
         }
-        .sessions-grid-title {
-            text-align: left;
+        .tab-title-text:hover {
             color: var(--accent);
-            margin-top: 10px;
-            margin-bottom: 14px;
-            font-size: 18px;
-            font-weight: 600;
         }
-        .sessions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
-            width: 100%;
-        }
-        .session-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: var(--shadow);
-            text-align: left;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .session-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--accent);
-            box-shadow: 0 6px 15px var(--accent-glow);
-        }
-        .session-card-header {
-            font-weight: 600;
-            color: var(--accent);
-            font-size: 15px;
+        .tab-url-text {
+            font-size: 11px;
+            color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .session-card-info {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        .session-actions {
+        .tab-actions {
             display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: auto;
+            align-items: center;
+            gap: 8px;
         }
-        .session-actions button {
-            padding: 6px 12px;
+        .btn-tab-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        .btn-tab-close:hover {
+            color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Right Column (Active Window Tabs) */
+        .workspace-right {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+        .right-header {
+            color: var(--accent);
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            text-align: left;
+        }
+        .active-window-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 4px;
+        }
+        .active-tab-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.01);
+            text-align: left;
+            overflow: hidden;
+        }
+        .active-tab-title {
             font-size: 12px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Responsive Layout styling rules */
+        @media (max-width: 900px) {
+            .sessions-dashboard {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .workspace-sidebar, .workspace-main, .workspace-right {
+                height: 400px;
+            }
         }
     </style>
 </head>
@@ -117,18 +269,38 @@
         <a href="sessions.html" class="nav-btn active">🗂️ Sessions</a>
     </div>
 
-    <div class="sessions-container">
-        <div class="active-session-card">
-            <h3 class="active-session-title">💻 Active Workspace window</h3>
-            <div id="active-tabs-list" class="tabs-list">
-                <!-- Open tabs loaded dynamically -->
+    <div class="sessions-dashboard">
+        <!-- Sidebar Workspace List -->
+        <div class="workspace-sidebar">
+            <h3 class="sidebar-title">🗂️ Saved Workspaces</h3>
+            <div id="workspace-list-container" class="workspace-list">
+                <!-- Populated dynamically -->
             </div>
-            <button id="snapshot-workspace-btn" class="button">💾 Save Workspace Session</button>
         </div>
 
-        <h3 class="sessions-grid-title">🗂️ Stored Workspace Sessions Library</h3>
-        <div id="sessions-gallery" class="sessions-grid">
-            <!-- Saved sessions cards populated dynamically -->
+        <!-- Middle Active Selected Workspace Tabs -->
+        <div class="workspace-main">
+            <div class="main-header">
+                <h2 id="selected-workspace-title" class="selected-title">Select a Workspace</h2>
+                <div class="workspace-toolbar">
+                    <button id="btn-restore-all" class="button toolbar-btn">🚀 Restore</button>
+                    <button id="btn-open-win" class="button toolbar-btn">🗔 Win</button>
+                    <button id="btn-open-group" class="button toolbar-btn">🏷️ Group</button>
+                    <button id="btn-delete-session" class="button toolbar-btn" style="background-color:#7f1d1d;">🗑️ Delete</button>
+                </div>
+            </div>
+            <div id="workspace-tabs-container" class="workspace-tabs">
+                <!-- Dynamic tabs row populated here -->
+            </div>
+        </div>
+
+        <!-- Right Active Window Snapshots -->
+        <div class="workspace-right">
+            <h3 class="right-header">💻 Active Window</h3>
+            <button id="snapshot-workspace-btn" class="button" style="width:100%;">💾 Save Workspace Snapshot</button>
+            <div id="active-tabs-list" class="active-window-list">
+                <!-- Current window tabs list -->
+            </div>
         </div>
     </div>
 
