@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners();
         setupDarkMode();
         loadInitialBookmarks();
-        updateSearchEngine();
         applySettings();
     }
 
@@ -119,22 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showRecentlyAdded.checked = settings.showRecentlyAdded;
         animationsEnabled.checked = settings.animationsEnabled;
         
-        updateSearchEngine();
         updateQuickAccessTabs();
-    }
-
-    function updateSearchEngine() {
-        const engine = searchEngines[settings.defaultSearchEngine];
-        if (engine) {
-            searchEngineLogo.src = engine.logo;
-            searchEngineLogo.alt = engine.name + ' Logo';
-            searchEngineLogo.classList.remove('google-logo', 'yahoo-logo');
-            if (engine.name === 'Google') {
-                searchEngineLogo.classList.add('google-logo');
-            } else if (engine.name === 'Yahoo') {
-                searchEngineLogo.classList.add('yahoo-logo');
-            }
-        }
     }
 
     function updateQuickAccessTabs() {

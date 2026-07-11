@@ -130,6 +130,32 @@
         }
     });
 
+    // Track sub-frame navigations inside our browser iframe to update address bar on redirects
+    if (chrome.webNavigation) {
+        chrome.webNavigation.onCommitted.addListener((details) => {
+            if (details.frameId > 0) {
+                chrome.webNavigation.getFrame({
+                    tabId: details.tabId,
+                    processId: details.processId,
+                    frameId: details.parentFrameId
+                }, (parentFrame) => {
+                    if (parentFrame && parentFrame.url && parentFrame.url.includes("web.html")) {
+                        const currentUrl = details.url;
+                        addressBar.value = currentUrl;
+                        chrome.storage.local.set({ bookmarkfs_web_last_url: currentUrl });
+
+                        if (historyStack[historyIndex] !== currentUrl) {
+                            historyStack = historyStack.slice(0, historyIndex + 1);
+                            historyStack.push(currentUrl);
+                            historyIndex = historyStack.length - 1;
+                            updateNavButtons();
+                        }
+                    }
+                });
+            }
+        });
+    }
+
     // Initialize nav button states
     updateNavButtons();
 })();
