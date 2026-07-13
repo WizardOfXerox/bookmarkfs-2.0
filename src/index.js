@@ -100,12 +100,6 @@ export function handleZip(bytes) {
         thumbnailCache.delete(fileId);
     }
 
-    // Recorder State
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let recordTimer = null;
-    let recordSeconds = 0;
-
     // ---------- Utilities ----------
     const te = new TextEncoder();
     const td = new TextDecoder();
@@ -1181,69 +1175,6 @@ export function handleZip(bytes) {
 
         chartContainer.appendChild(bar);
         chartContainer.appendChild(legend);
-    }
-
-    async function toggleAudioRecording(btn) {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-            btn.textContent = "🎙 Record Note";
-            btn.style.borderColor = "";
-            btn.style.color = "";
-            return;
-        }
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            recordedChunks = [];
-            mediaRecorder = new MediaRecorder(stream);
-            
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data && e.data.size > 0) {
-                    recordedChunks.push(e.data);
-                }
-            };
-
-            mediaRecorder.onstop = async () => {
-                clearInterval(recordTimer);
-                stream.getTracks().forEach(t => t.stop());
-
-                const blob = new Blob(recordedChunks, { type: "audio/webm" });
-                const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-                const defaultName = `voice-note-${timestamp}.webm`;
-                
-                const name = prompt("Save recording as:", defaultName);
-                if (!name) return;
-
-                const file = new File([blob], name, { type: "audio/webm", lastModified: Date.now() });
-                
-                let pass = cachedSessionPassphrase;
-                if (!pass) {
-                    showEncryptDecryptModal("Optional Passphrase for Voice Note", true, async (typedPass, shouldCache) => {
-                        if (typedPass === null) return;
-                        if (typedPass && shouldCache) cachedSessionPassphrase = typedPass;
-                        await processAndStoreFile(file, typedPass || "");
-                        await loadFilesToTable();
-                    });
-                } else {
-                    await processAndStoreFile(file, pass);
-                    await loadFilesToTable();
-                }
-            };
-
-            mediaRecorder.start();
-            recordSeconds = 0;
-            btn.textContent = "🔴 Stop (0s)";
-            btn.style.borderColor = "#ef4444";
-            btn.style.color = "#ef4444";
-
-            recordTimer = setInterval(() => {
-                recordSeconds++;
-                btn.textContent = `🔴 Stop (${recordSeconds}s)`;
-            }, 1000);
-
-        } catch (err) {
-            alert("Could not access microphone: " + err.message);
-        }
     }
 
     function incrementVersionedName(name) {
@@ -2349,15 +2280,6 @@ export function handleZip(bytes) {
                 } finally {
                     setProgress(0);
                 }
-            };
-
-            // Voice Recorder
-            const recordBtn = document.createElement("button");
-            recordBtn.id = "record-btn";
-            recordBtn.className = "button";
-            recordBtn.textContent = "🎙 Record Note";
-            recordBtn.onclick = async () => {
-                await toggleAudioRecording(recordBtn);
             };
 
             const uploadLabel = document.createElement("label");

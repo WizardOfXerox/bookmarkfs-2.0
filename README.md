@@ -24,7 +24,6 @@ All credits for the core bookmark exploit concept go to the original creator. Bo
 *   **📁 Virtual Folder Management**: Create directories using the `📁 New Folder` buttons. Right-click folders to rename them or recursively delete their sub-trees.
 *   **🔒 Client-Side AES-GCM Encryption**: Optional AES-GCM (256-bit) encryption using WebCrypto. Integrated with a custom modal containing a **Password Strength Meter** and a cryptographic **Password Generator**.
 *   **📝 In-Browser Text & Markdown Editor**: Toggle edit mode directly inside the preview modal for text-based files, modify content and update tags, and save changes back to bookmarks.
-*   **🎙️ Direct Voice Recorder**: Capture voice notes directly in-browser using the MediaRecorder API and save them as compressed WebM files.
 *   **📦 Bulk Operations (ZIP / Move / Delete)**: Select multiple rows using checkboxes to download them as a compiled ZIP archive, move them in bulk, or delete them.
 *   **📊 Graphical Storage Analyzer**: Color-coded, responsive analytics bar showing folder space distribution by file categories.
 *   **📦 Interactive Archive Previews (ZIP & RAR)**:
