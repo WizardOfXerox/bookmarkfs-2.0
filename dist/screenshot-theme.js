@@ -159,7 +159,7 @@
     }
 
     function loadReactScripts() {
-        // Dynamically insert the GoFullPage module script
+        // Dynamically insert the module script
         const moduleScript = document.createElement("script");
         moduleScript.type = "module";
         moduleScript.src = isCapturePage ? "capture.js" : "editor.js";

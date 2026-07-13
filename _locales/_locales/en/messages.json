@@ -43,8 +43,8 @@
     "message": "All edits are auto-saved",
     "description": "via editor/components/Editor.js"
   },
-  "_AndclickthepinnexttoGoFullPagesoitturnsblue": {
-    "message": "And click the pin next to “GoFullPage” so it turns blue:",
+  "_AndclickthepinnexttoBookmarkFSsoitturnsblue": {
+    "message": "And click the pin next to “BookmarkFS” so it turns blue:",
     "description": "via js/welcome/WelcomePage.js"
   },
   "_Anyissues": {
@@ -153,8 +153,8 @@
     "message": "Color",
     "description": "via editor/utils/shape-properties.ts"
   },
-  "_ConfigureyoursettingsfortheGoFullPageextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
-    "message": "Configure your settings for the GoFullPage extension. Stay tuned for further updates. Beta settings may change in the future.",
+  "_ConfigureyoursettingsfortheBookmarkFSextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
+    "message": "Configure your settings for the BookmarkFS extension. Stay tuned for further updates. Beta settings may change in the future.",
     "description": "via options.html"
   },
   "_Continueediting": {
@@ -237,8 +237,8 @@
     "message": "Done Cropping",
     "description": "via editor/components/Crop.js"
   },
-  "_DontworryyourfavoritefeaturesarestillhereCropURLdatestampandpaddingarenowinthenewFormattingmenuWatchahrefhttpsgofullpagecomdemoseditortargetblankandrelnoopenernoreferrerthedemoatoseemore": {
-    "message": "Don’t worry, your favorite features are still here! Crop, URL, datestamp, and padding are now in the new “Formatting” menu. Watch <a href=\"https://gofullpage.com/demos#editor\" target=\"_blank\" and rel=\"noopener noreferrer\">the demo</a> to see more.",
+  "_DontworryyourfavoritefeaturesarestillhereCropURLdatestampandpaddingarenowinthenewFormattingmenuWatchahrefhttpsbookmarkfscomdemoseditortargetblankandrelnoopenernoreferrerthedemoatoseemore": {
+    "message": "Don’t worry, your favorite features are still here! Crop, URL, datestamp, and padding are now in the new “Formatting” menu. Watch <a href=\"https://bookmarkfs.com/demos#editor\" target=\"_blank\" and rel=\"noopener noreferrer\">the demo</a> to see more.",
     "description": "via editor/components/HeaderUpdatedModal.js"
   },
   "_Download": {
@@ -859,8 +859,8 @@
     "message": "Text",
     "description": "via editor/components/HelpModalData.ts, editor/components/Shape.js"
   },
-  "_ThankyouforsupportingGoFullPage": {
-    "message": "Thank you for supporting GoFullPage",
+  "_ThankyouforsupportingBookmarkFS": {
+    "message": "Thank you for supporting BookmarkFS",
     "description": "via editor/components/WelcomeModal.js"
   },
   "_Thebestandsafestwaytocaptureascreenshotofanentirewebpage": {
@@ -1031,20 +1031,20 @@
     "message": "Watch Demo",
     "description": "via editor/components/Tour.js"
   },
-  "_WelcometoGoFullPage": {
-    "message": "Welcome to GoFullPage",
+  "_WelcometoBookmarkFS": {
+    "message": "Welcome to BookmarkFS",
     "description": "via js/welcome/WelcomePage.js"
   },
-  "_WelcometotheGoFullPageEditor": {
-    "message": "Welcome to the GoFullPage Editor!",
+  "_WelcometotheBookmarkFSEditor": {
+    "message": "Welcome to the BookmarkFS Editor!",
     "description": "via editor/components/Tour.js"
   },
-  "_WelcometotheGoFullPageextension": {
-    "message": "Welcome to the GoFullPage extension.",
+  "_WelcometotheBookmarkFSextension": {
+    "message": "Welcome to the BookmarkFS extension.",
     "description": "via popup.html"
   },
-  "_WelcometotheofficialGoFullPageEditor": {
-    "message": "Welcome to the official GoFullPage Editor!",
+  "_WelcometotheofficialBookmarkFSEditor": {
+    "message": "Welcome to the official BookmarkFS Editor!",
     "description": "via editor/components/WelcomeModal.js"
   },
   "_Wereexcitedtohaveyouaboard": {
@@ -1128,7 +1128,7 @@
     "description": "via capture.html, options.html"
   },
   "goPremiumHeader": {
-    "message": "Take your screenshots to the next level with GoFullPage Premium",
+    "message": "Take your screenshots to the next level with BookmarkFS Premium",
     "description": "via editor/components/LoginModal.js"
   },
   "goPremiumLink": {

@@ -674,7 +674,7 @@ table.rwd-table.grid-mode td.cell-empty {
     }
 }
 
-/* --- GoFullPage Screenshot Palette Overrides --- */
+/* --- Screenshot Palette Overrides --- */
 html {
     background-color: var(--bg-main) !important;
 }
@@ -890,7 +890,7 @@ body.screenshot-viewer .history .checkbox-button {
     margin-left: 5px !important;
 }
 
-/* GoFullPage Editor Theme Adjustments */
+/* Editor Theme Adjustments */
 body.screenshot-editor .editor {
     background: radial-gradient(var(--bg-card) 0%, var(--bg-card) 30%, var(--bg-main) 100%) !important;
     padding-top: 60px !important;
@@ -1049,7 +1049,7 @@ body.screenshot-editor .modal.helpmodal .hm-body .hm-line span:last-child {
     font-family: var(--font-mono) !important;
 }
 
-/* GoFullPage Options Theme Adjustments */
+/* Options Theme Adjustments */
 body.options .big-card {
     background-color: var(--bg-card) !important;
     border: 1px solid var(--border) !important;

@@ -534,7 +534,7 @@ async function restoreLatestSessionOnStartup() {
     }
 }
 
-// --- GoFullPage-Style Full Page Screenshot Capture Integration ---
+// --- Full Page Screenshot Capture Integration ---
 async function captureFullPage(tab) {
     if (!tab || !tab.id) return;
 
@@ -654,7 +654,7 @@ async function captureFullPage(tab) {
             await storeRawBytesInBookmarks(filename, bytes, "image/png");
             console.log("Full-page screenshot successfully saved as file:", filename);
 
-            // 7. Save capture object to GoFullPage's Dexie database "Test4"
+            // 7. Save capture object to Dexie database "Test4"
             const imageFilename = "capture_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + ".png";
             const captureObj = {
                 domain: domain,
@@ -675,7 +675,7 @@ async function captureFullPage(tab) {
             const storageKey = "temp_capture_file_" + imageFilename;
             await chrome.storage.local.set({ [storageKey]: stitchRes.dataUrl });
 
-            // 8. Open the GoFullPage viewer tab to inspect and edit!
+            // 8. Open the viewer tab to inspect and edit!
             const captureViewerUrl = chrome.runtime.getURL(`dist/capture.html?id=${insertedId}&url=${encodeURIComponent(tab.url)}`);
             await chrome.tabs.create({ url: captureViewerUrl });
 
