@@ -1168,6 +1168,8 @@ body.light-mode .folder-icon {
     padding: 0 !important;
     margin-bottom: 0 !important;
     justify-content: flex-start !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
 }
 
 .folder-controls-wrapper .bookmark-controls {
@@ -1190,6 +1192,8 @@ body.light-mode .folder-icon {
     .folder-controls-wrapper .folder-tabs {
         width: 100% !important;
         justify-content: center !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
     }
     .folder-controls-wrapper .bookmark-controls {
         flex-direction: column !important;
