@@ -389,7 +389,7 @@ async function updateBadgeForTab(tab) {
     if (!tab || !tab.url || !tab.id) return;
     
     if (tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://") || tab.url.startsWith("about:")) {
-        chrome.action.setBadgeText({ text: "", tabId: tab.id });
+        chrome.action.setBadgeText({ text: "", tabId: tab.id }).catch(() => {});
         return;
     }
 
@@ -400,14 +400,15 @@ async function updateBadgeForTab(tab) {
         const urlKey = `note_url_${tab.url}`;
 
         chrome.storage.local.get([domainKey, urlKey], (res) => {
+            if (chrome.runtime.lastError) return;
             const hasDomainNote = !!res[domainKey];
             const hasUrlNote = !!res[urlKey];
 
             if (hasDomainNote || hasUrlNote) {
-                chrome.action.setBadgeBackgroundColor({ color: "#059669", tabId: tab.id });
-                chrome.action.setBadgeText({ text: "Note", tabId: tab.id });
+                chrome.action.setBadgeBackgroundColor({ color: "#059669", tabId: tab.id }).catch(() => {});
+                chrome.action.setBadgeText({ text: "Note", tabId: tab.id }).catch(() => {});
             } else {
-                chrome.action.setBadgeText({ text: "", tabId: tab.id });
+                chrome.action.setBadgeText({ text: "", tabId: tab.id }).catch(() => {});
             }
         });
     } catch (err) {}
