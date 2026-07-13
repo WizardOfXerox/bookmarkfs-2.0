@@ -267,6 +267,18 @@
                     </div>
 
                     <div id="ua-custom-wrapper" class="form-row" style="display: none;">
+                        <span class="form-label">Select Preset:</span>
+                        <select id="ua-preset-select" class="form-select" style="margin-bottom: 8px;">
+                            <option value="custom">-- Custom User-Agent --</option>
+                            <option value="chrome-win">Chrome on Windows</option>
+                            <option value="safari-mac">Safari on MacOS</option>
+                            <option value="firefox-linux">Firefox on Linux</option>
+                            <option value="safari-ios">Safari on iPhone (iOS)</option>
+                            <option value="chrome-android">Chrome on Android</option>
+                            <option value="googlebot-desktop">Googlebot (Desktop)</option>
+                            <option value="googlebot-mobile">Googlebot (Mobile)</option>
+                            <option value="bingbot">Bingbot</option>
+                        </select>
                         <span class="form-label">Custom User-Agent String:</span>
                         <textarea id="ua-custom" placeholder="e.g. Mozilla/5.0 (Linux; Android 10) ..." class="form-textarea" style="height: 64px; font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
                     </div>

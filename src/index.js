@@ -506,6 +506,18 @@ export function handleZip(bytes) {
             </div>
 
             <div id="ua-custom-container" style="display: none; flex-direction: column; gap: 4px; margin-bottom: 6px;">
+              <span style="font-weight: 500;">Select Preset:</span>
+              <select id="setting-ua-preset-select" style="padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; cursor: pointer; margin-bottom: 4px;">
+                <option value="custom">-- Custom User-Agent --</option>
+                <option value="chrome-win">Chrome on Windows</option>
+                <option value="safari-mac">Safari on MacOS</option>
+                <option value="firefox-linux">Firefox on Linux</option>
+                <option value="safari-ios">Safari on iPhone (iOS)</option>
+                <option value="chrome-android">Chrome on Android</option>
+                <option value="googlebot-desktop">Googlebot (Desktop)</option>
+                <option value="googlebot-mobile">Googlebot (Mobile)</option>
+                <option value="bingbot">Bingbot</option>
+              </select>
               <span>Custom User-Agent String:</span>
               <textarea id="setting-ua-custom" placeholder="e.g. Mozilla/5.0 (Linux; Android 10) ..." style="width: 100%; height: 50px; padding: 6px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; resize: none; box-sizing: border-box; font-size: 11px; font-family: monospace;"></textarea>
             </div>
@@ -561,6 +573,24 @@ export function handleZip(bytes) {
         // Bind dynamic UA section events
         qs("#setting-ua-enabled").addEventListener("change", updateUaUiVisibility);
         qs("#setting-ua-trigger").addEventListener("change", updateUaUiVisibility);
+
+        const UA_PRESETS = {
+            "chrome-win": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "safari-mac": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15",
+            "firefox-linux": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0",
+            "safari-ios": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1",
+            "chrome-android": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
+            "googlebot-desktop": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "googlebot-mobile": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"
+        };
+
+        qs("#setting-ua-preset-select").addEventListener("change", (e) => {
+            const val = e.target.value;
+            if (val !== "custom" && UA_PRESETS[val]) {
+                qs("#setting-ua-custom").value = UA_PRESETS[val];
+            }
+        });
 
         // Close logic
         qs("#settings-close").onclick = () => popup.style.display = "none";
@@ -771,6 +801,28 @@ export function handleZip(bytes) {
         qs("#setting-ua-trigger").value = ua.rotationTrigger || "never";
         qs("#setting-ua-interval").value = ua.rotationInterval || 10;
         qs("#setting-ua-custom").value = ua.customUa || "";
+
+        // Match customUa to presets
+        const UA_PRESETS = {
+            "chrome-win": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "safari-mac": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15",
+            "firefox-linux": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0",
+            "safari-ios": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1",
+            "chrome-android": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
+            "googlebot-desktop": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "googlebot-mobile": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"
+        };
+        const customVal = ua.customUa || "";
+        let matchedPreset = "custom";
+        for (const [key, val] of Object.entries(UA_PRESETS)) {
+            if (customVal === val) {
+                matchedPreset = key;
+                break;
+            }
+        }
+        qs("#setting-ua-preset-select").value = matchedPreset;
+
         qs("#setting-ua-exceptions").value = (ua.exceptions || []).join("\n");
 
         // Allowed OS checkboxes

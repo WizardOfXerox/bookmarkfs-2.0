@@ -32,6 +32,17 @@ function updateUaUiVisibility() {
     }
 }
 
+const UA_PRESETS = {
+    "chrome-win": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "safari-mac": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15",
+    "firefox-linux": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0",
+    "safari-ios": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1",
+    "chrome-android": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
+    "googlebot-desktop": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "googlebot-mobile": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"
+};
+
 // Load configurations from storage
 async function loadConfig() {
     const res = await chrome.storage.local.get(["bookmarkfs_ua_settings", "bookmarkfs_ua_current"]);
@@ -74,6 +85,17 @@ async function loadConfig() {
     document.querySelectorAll("input[data-ua-browser]").forEach(cb => {
         cb.checked = browserList.includes(cb.dataset.uaBrowser);
     });
+
+    // Match customUa to presets
+    const customVal = settings.customUa || "";
+    let matchedPreset = "custom";
+    for (const [key, val] of Object.entries(UA_PRESETS)) {
+        if (customVal === val) {
+            matchedPreset = key;
+            break;
+        }
+    }
+    qs("#ua-preset-select").value = matchedPreset;
 
     updateUaUiVisibility();
 }
@@ -120,4 +142,11 @@ document.addEventListener("DOMContentLoaded", () => {
     qs("#ua-trigger").addEventListener("change", updateUaUiVisibility);
     qs("#ua-save-btn").addEventListener("click", saveConfig);
     qs("#ua-rotate-btn").addEventListener("click", rotateUserAgent);
+
+    qs("#ua-preset-select").addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (val !== "custom" && UA_PRESETS[val]) {
+            qs("#ua-custom").value = UA_PRESETS[val];
+        }
+    });
 });
