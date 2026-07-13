@@ -406,6 +406,10 @@ document.addEventListener('DOMContentLoaded', () => {
             updateBreadcrumbs([{ title: 'All Bookmarks', id: 'all' }]);
         } else {
             chrome.bookmarks.getSubTree(folderId, (result) => {
+                if (chrome.runtime.lastError || !result || result.length === 0) {
+                    console.warn("Bookmark folder not found:", folderId, chrome.runtime.lastError);
+                    return;
+                }
                 const folderNode = result[0];
                 currentFolder = folderNode;
                 const subFolders = folderNode.children.filter(node => node.children);
@@ -434,6 +438,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const folderId = clickedTab.dataset.id;
         
         chrome.bookmarks.getSubTree(folderId, (result) => {
+            if (chrome.runtime.lastError || !result || result.length === 0) {
+                console.warn("Bookmark folder not found:", folderId, chrome.runtime.lastError);
+                return;
+            }
             const folderNode = result[0];
             renderBookmarks(flattenBookmarks(result), bookmarkGrid);
             
@@ -458,6 +466,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Navigate to specific folder
             chrome.bookmarks.getSubTree(folderId, (result) => {
+                if (chrome.runtime.lastError || !result) {
+                    console.warn("Bookmark folder not found:", folderId, chrome.runtime.lastError);
+                    return;
+                }
                 renderBookmarks(flattenBookmarks(result), bookmarkGrid);
             });
         }
@@ -843,6 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Utility Functions ---
     function flattenBookmarks(nodes) {
         let bookmarks = [];
+        if (!nodes || typeof nodes[Symbol.iterator] !== 'function') return bookmarks;
         for (const node of nodes) {
             if (node.children) {
                 bookmarks = bookmarks.concat(flattenBookmarks(node.children));
