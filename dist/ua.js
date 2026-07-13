@@ -127,6 +127,18 @@ async function saveConfig() {
     });
 }
 
+// Unified light/dark mode sync
+function syncTheme() {
+    const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
+    const isLight = theme === "light";
+    document.body.classList.toggle("light-mode", isLight);
+    
+    const toggleBtn = document.getElementById("global-theme-toggle");
+    if (toggleBtn) {
+        toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+    }
+}
+
 // Rotate User-Agent manually
 function rotateUserAgent() {
     chrome.runtime.sendMessage({ action: "update-ua-settings" }, async (response) => {
@@ -136,6 +148,17 @@ function rotateUserAgent() {
 
 // Wire events
 document.addEventListener("DOMContentLoaded", () => {
+    syncTheme();
+    const toggleBtn = document.getElementById("global-theme-toggle");
+    if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+            const currentTheme = localStorage.getItem("bookmarkfs_theme") || "dark";
+            const nextTheme = currentTheme === "dark" ? "light" : "dark";
+            localStorage.setItem("bookmarkfs_theme", nextTheme);
+            syncTheme();
+        });
+    }
+
     loadConfig();
 
     qs("#ua-enabled").addEventListener("change", updateUaUiVisibility);
