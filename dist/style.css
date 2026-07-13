@@ -319,9 +319,15 @@ input[type="checkbox"].row-select,
     
     #controls-bar input, 
     #controls-bar select, 
-    .button {
+    #controls-bar .button,
+    #bulk-bar .button {
         width: 100% !important;
         box-sizing: border-box !important;
+    }
+
+    .rwd-table td, 
+    .rwd-table th {
+        padding: 6px 6px !important;
     }
     
     #storage-chart-container, 
