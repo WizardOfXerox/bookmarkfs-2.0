@@ -76,16 +76,19 @@ export function handleZip(bytes) {
     }
 
     let cachedMetas = null;
+    const thumbnailCache = new Map();
 
     function addFileToCache(fileObj, metaObj) {
         if (!cachedMetas) return;
         cachedMetas = cachedMetas.filter(m => m.file.handle.id !== fileObj.handle.id && m.file.handle.title !== fileObj.handle.title);
         cachedMetas.push({ file: fileObj, meta: metaObj });
+        thumbnailCache.delete(fileObj.handle.id);
     }
 
     function removeFileFromCache(fileId) {
         if (!cachedMetas) return;
         cachedMetas = cachedMetas.filter(m => m.file.handle.id !== fileId);
+        thumbnailCache.delete(fileId);
     }
 
     function renameFileInCache(fileId, newTitle) {
@@ -94,6 +97,7 @@ export function handleZip(bytes) {
         if (entry) {
             entry.file.handle.title = newTitle;
         }
+        thumbnailCache.delete(fileId);
     }
 
     // Recorder State
@@ -3104,51 +3108,57 @@ export function handleZip(bytes) {
             img.alt = name;
             tdPreview.appendChild(img);
 
-            try {
-                const raw = await file.read();
-                if (!raw || raw.length < 2) {
-                    img.src = placeholderDataUrl("FILE");
-                } else {
-                    const localMeta = await file.readMeta();
-                    let bytes;
-                    let mime = "";
-                    try {
-                        const reconstructed = await reconstructBytesFromSerialized(raw, localMeta || meta);
-                        bytes = reconstructed.bytes;
-                        mime = reconstructed.mime;
-                    } catch {
-                        const tag = raw[0];
-                        const payload = raw.slice(1);
-                        bytes = b64decodeToBytes(payload);
-                        if (tag === "c") bytes = gunzipSync(bytes);
-                        mime = (localMeta && localMeta.type) || (meta && meta.type) || "";
-                    }
-                    if (!mime || mime === "application/octet-stream") {
-                        mime = getMimeType(name);
-                        if (!mime || mime === "application/octet-stream") mime = sniffMimeFromBytes(bytes) || "application/octet-stream";
-                    }
-                    if (mime.startsWith("image/")) {
-                        img.src = dataURLFromParts(`data:${mime};base64`, bytes);
-                    } else if (mime.startsWith("text/") || mime === "application/json" || mime === "application/xml") {
-                        let previewText = "";
-                        try {
-                            previewText = td.decode(bytes);
-                        } catch {
-                            previewText = "";
-                        }
-                        img.src = textPreviewDataUrl(previewText);
-                    } else if (mime.startsWith("video/")) {
-                        img.src = placeholderDataUrl("VIDEO", "#3b2a49");
-                    } else if (mime.startsWith("audio/")) {
-                        img.src = placeholderDataUrl("AUDIO", "#214a3a");
+            const cachedThumb = thumbnailCache.get(file.handle.id);
+            if (cachedThumb) {
+                img.src = cachedThumb;
+            } else {
+                try {
+                    const raw = await file.read();
+                    if (!raw || raw.length < 2) {
+                        img.src = placeholderDataUrl("FILE");
                     } else {
-                        const ext = (name.split(".").pop() || "").toUpperCase().slice(0, 8);
-                        const label = ext || (mime.split("/")[1] || "FILE").toUpperCase().slice(0, 8);
-                        img.src = placeholderDataUrl(label);
+                        const localMeta = await file.readMeta();
+                        let bytes;
+                        let mime = "";
+                        try {
+                            const reconstructed = await reconstructBytesFromSerialized(raw, localMeta || meta);
+                            bytes = reconstructed.bytes;
+                            mime = reconstructed.mime;
+                        } catch {
+                            const tag = raw[0];
+                            const payload = raw.slice(1);
+                            bytes = b64decodeToBytes(payload);
+                            if (tag === "c") bytes = gunzipSync(bytes);
+                            mime = (localMeta && localMeta.type) || (meta && meta.type) || "";
+                        }
+                        if (!mime || mime === "application/octet-stream") {
+                            mime = getMimeType(name);
+                            if (!mime || mime === "application/octet-stream") mime = sniffMimeFromBytes(bytes) || "application/octet-stream";
+                        }
+                        if (mime.startsWith("image/")) {
+                            img.src = dataURLFromParts(`data:${mime};base64`, bytes);
+                        } else if (mime.startsWith("text/") || mime === "application/json" || mime === "application/xml") {
+                            let previewText = "";
+                            try {
+                                previewText = td.decode(bytes);
+                            } catch {
+                                previewText = "";
+                            }
+                            img.src = textPreviewDataUrl(previewText);
+                        } else if (mime.startsWith("video/")) {
+                            img.src = placeholderDataUrl("VIDEO", "#3b2a49");
+                        } else if (mime.startsWith("audio/")) {
+                            img.src = placeholderDataUrl("AUDIO", "#214a3a");
+                        } else {
+                            const ext = (name.split(".").pop() || "").toUpperCase().slice(0, 8);
+                            const label = ext || (mime.split("/")[1] || "FILE").toUpperCase().slice(0, 8);
+                            img.src = placeholderDataUrl(label);
+                        }
                     }
+                } catch {
+                    img.src = placeholderDataUrl("FILE");
                 }
-            } catch {
-                img.src = placeholderDataUrl("FILE");
+                thumbnailCache.set(file.handle.id, img.src);
             }
 
             img.onclick = async() => {
