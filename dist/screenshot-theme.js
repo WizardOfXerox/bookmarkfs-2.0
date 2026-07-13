@@ -43,14 +43,15 @@
         console.error("Failed to set side panel options:", e);
     }
 
-    // Only perform the FileSystem writing flow if we are on capture.html
+    // Only perform the FileSystem writing flow if we are on capture.html or editor.html
     const isCapturePage = window.location.pathname.endsWith("capture.html");
-    if (isCapturePage) {
+    const isEditorPage = window.location.pathname.endsWith("editor.html");
+    if (isCapturePage || isEditorPage) {
         const urlParams = new URLSearchParams(window.location.search);
         const idStr = urlParams.get("id");
         const id = idStr ? parseInt(idStr, 10) : null;
 
-        if (!id || isNaN(id)) {
+        if (isCapturePage && (!id || isNaN(id))) {
             document.body.classList.add("history-mode");
         }
 
@@ -90,7 +91,7 @@
                 loadReactScripts();
             });
         } else {
-            // General history viewer (no specific ID), load React app immediately
+            // General viewer (no specific ID), load React app immediately
             loadReactScripts();
         }
     }
@@ -161,7 +162,7 @@
         // Dynamically insert the GoFullPage module script
         const moduleScript = document.createElement("script");
         moduleScript.type = "module";
-        moduleScript.src = "capture.js";
+        moduleScript.src = isCapturePage ? "capture.js" : "editor.js";
         document.body.appendChild(moduleScript);
     }
 })();

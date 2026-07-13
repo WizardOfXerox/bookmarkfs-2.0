@@ -3355,8 +3355,10 @@ export function handleZip(bytes) {
                             const storageKey = "temp_capture_file_" + imageFilename;
                             await chrome.storage.local.set({ [storageKey]: dataUrl });
 
-                            // Redirect to GoFullPage editor
-                            window.location.href = `/dist/editor.html?id=${id}`;
+                            // Open in a new tab instead of the sidebar
+                            chrome.tabs.create({ url: `/dist/editor.html?id=${id}` });
+                            editBtn.textContent = "✏️ Edit";
+                            editBtn.disabled = false;
                         } catch (err) {
                             alert("Failed to open image editor: " + err.message);
                             editBtn.textContent = "✏️ Edit";
