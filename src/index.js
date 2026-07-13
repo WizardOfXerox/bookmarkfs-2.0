@@ -3294,8 +3294,9 @@ export function handleZip(bytes) {
                     btnContainer.appendChild(openBtn);
 
                     const ext = (name.split(".").pop() || "").toLowerCase();
-                    const isMedia = type.startsWith("image/") || type.startsWith("video/") || type.startsWith("audio/") ||
-                                    ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "mp4", "webm", "ogg", "mov", "avi", "mp3", "wav", "flac", "aac", "m4a"].includes(ext);
+                    const isImage = type.startsWith("image/") || ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"].includes(ext);
+                    const isMedia = isImage || type.startsWith("video/") || type.startsWith("audio/") ||
+                                    ["mp4", "webm", "ogg", "mov", "avi", "mp3", "wav", "flac", "aac", "m4a"].includes(ext);
                     const isText = (type.startsWith("text/") || ["application/json", "application/xml", "application/javascript"].includes(type) ||
                                     ["js", "ts", "json", "md", "txt", "html", "css", "py", "sh", "yaml", "yml"].includes(ext)) && !isMedia;
                     
@@ -3307,7 +3308,61 @@ export function handleZip(bytes) {
                     editBtn.textContent = "✏️ Edit";
                     editBtn.style.padding = "4px 8px";
                     editBtn.style.fontSize = "12px";
-                    editBtn.style.display = isText ? "inline-block" : "none";
+                    editBtn.style.display = (isText || isImage) ? "inline-block" : "none";
+
+                    async function openInImageEditor(imgName, imgBytes, imgMime) {
+                        try {
+                            editBtn.textContent = "Loading Editor...";
+                            editBtn.disabled = true;
+
+                            const imageFilename = "capture_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + ".png";
+                            const captureObj = {
+                                domain: "bookmarkfs",
+                                time: new Date().toISOString(),
+                                format: "png",
+                                images: [ imageFilename ],
+                                sizes: [ imgBytes.length ],
+                                scaleMultiplier: 1,
+                                url: window.location.href,
+                                title: imgName
+                            };
+
+                            // Save capture metadata to Dexie db "Test4"
+                            const id = await new Promise((resolve, reject) => {
+                                const request = indexedDB.open("Test4");
+                                request.onupgradeneeded = (e) => {
+                                    const db = e.target.result;
+                                    if (!db.objectStoreNames.contains("captures")) {
+                                        db.createObjectStore("captures", { keyPath: "id", autoIncrement: true });
+                                    }
+                                };
+                                request.onsuccess = (e) => {
+                                    const db = e.target.result;
+                                    const transaction = db.transaction(["captures"], "readwrite");
+                                    const store = transaction.objectStore("captures");
+                                    const addReq = store.add(captureObj);
+                                    addReq.onsuccess = (ev) => resolve(ev.target.result);
+                                    addReq.onerror = (ev) => reject(ev.target.error || new Error("Failed to add capture"));
+                                };
+                                request.onerror = (e) => reject(e.target.error || new Error("Failed to open IndexedDB"));
+                            });
+
+                            // Convert bytes to base64 DataURL
+                            const base64 = b64encodeBytes(imgBytes);
+                            const dataUrl = `data:${imgMime};base64,${base64}`;
+
+                            // Cache in chrome.storage.local
+                            const storageKey = "temp_capture_file_" + imageFilename;
+                            await chrome.storage.local.set({ [storageKey]: dataUrl });
+
+                            // Redirect to GoFullPage editor
+                            window.location.href = `/dist/editor.html?id=${id}`;
+                        } catch (err) {
+                            alert("Failed to open image editor: " + err.message);
+                            editBtn.textContent = "✏️ Edit";
+                            editBtn.disabled = false;
+                        }
+                    }
 
                     const saveBtn = document.createElement("button");
                     saveBtn.className = "button";
@@ -3326,6 +3381,10 @@ export function handleZip(bytes) {
                     cancelEditBtn.style.display = "none";
 
                     editBtn.onclick = () => {
+                        if (isImage) {
+                            openInImageEditor(name, bytes, type || getMimeType(name) || "image/png");
+                            return;
+                        }
                         editorActive = true;
                         editBtn.style.display = "none";
                         shareBtn.style.display = "none";
