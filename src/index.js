@@ -2864,20 +2864,9 @@ export function handleZip(bytes) {
     async function findFileByHash(contentHash) {
         if (!contentHash) return null;
         const root = await fsRoot();
-        const subtree = await chrome.bookmarks.getSubTree(root.id);
-        const rootNode = subtree[0];
-        const childrenMap = new Map();
-        function cacheNode(node) {
-            if (node.children) {
-                childrenMap.set(node.id, node.children);
-                node.children.forEach(cacheNode);
-            }
-        }
-        cacheNode(rootNode);
-
-        const rootChildren = childrenMap.get(rootNode.id) || [];
+        const rootChildren = await chrome.bookmarks.getChildren(root.id);
         const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
-            .map(c => FileObj(c, childrenMap.get(c.id)));
+            .map(c => FileObj(c));
 
         for (const f of files) {
             const meta = await f.readMeta();
@@ -3190,20 +3179,9 @@ export function handleZip(bytes) {
 
         if (bypassCache || !cachedMetas) {
             const root = await fsRoot();
-            const subtree = await chrome.bookmarks.getSubTree(root.id);
-            const rootNode = subtree[0];
-            const childrenMap = new Map();
-            function cacheNode(node) {
-                if (node.children) {
-                    childrenMap.set(node.id, node.children);
-                    node.children.forEach(cacheNode);
-                }
-            }
-            cacheNode(rootNode);
-
-            const rootChildren = childrenMap.get(rootNode.id) || [];
+            const rootChildren = await chrome.bookmarks.getChildren(root.id);
             const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
-                .map(c => FileObj(c, childrenMap.get(c.id)));
+                .map(c => FileObj(c));
 
             cachedMetas = await Promise.all(files.map(async f => {
                 try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
