@@ -3276,7 +3276,27 @@ export function handleZip(bytes) {
                     };
                     btnContainer.appendChild(shareBtn);
 
-                    const isText = type.startsWith("text/") || ["application/json", "application/xml", "application/javascript"].includes(type) || name.endsWith(".js") || name.endsWith(".ts") || name.endsWith(".json") || name.endsWith(".md") || name.endsWith(".txt") || name.endsWith(".html") || name.endsWith(".css") || name.endsWith(".py") || name.endsWith(".sh") || name.endsWith(".yaml") || name.endsWith(".yml");
+                    const openBtn = document.createElement("button");
+                    openBtn.className = "button";
+                    openBtn.textContent = "↗️ Open";
+                    openBtn.style.padding = "4px 8px";
+                    openBtn.style.fontSize = "12px";
+                    openBtn.onclick = () => {
+                        if (objectUrl) {
+                            window.open(objectUrl, "_blank");
+                        } else {
+                            const blob = new Blob([bytes], { type });
+                            const tempUrl = URL.createObjectURL(blob);
+                            window.open(tempUrl, "_blank");
+                        }
+                    };
+                    btnContainer.appendChild(openBtn);
+
+                    const ext = (name.split(".").pop() || "").toLowerCase();
+                    const isMedia = type.startsWith("image/") || type.startsWith("video/") || type.startsWith("audio/") ||
+                                    ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "mp4", "webm", "ogg", "mov", "avi", "mp3", "wav", "flac", "aac", "m4a"].includes(ext);
+                    const isText = (type.startsWith("text/") || ["application/json", "application/xml", "application/javascript"].includes(type) ||
+                                    ["js", "ts", "json", "md", "txt", "html", "css", "py", "sh", "yaml", "yml"].includes(ext)) && !isMedia;
                     
                     let editorActive = false;
                     let originalContentAreaHtml = "";
@@ -3474,7 +3494,7 @@ export function handleZip(bytes) {
 
                     const contentArea = document.createElement("div");
                     contentArea.style.padding = "20px";
-                    contentArea.style.overflowY = "auto";
+                    contentArea.style.overflow = "auto";
                     contentArea.style.flex = "1";
                     contentArea.style.display = "flex";
                     contentArea.style.flexDirection = "column";
@@ -3834,6 +3854,25 @@ export function handleZip(bytes) {
                         imgEl.style.maxHeight = "70vh";
                         imgEl.style.borderRadius = "6px";
                         imgEl.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5)";
+                        imgEl.style.cursor = "zoom-in";
+                        imgEl.style.transition = "max-width 0.2s, max-height 0.2s";
+
+                        let isZoomed = false;
+                        imgEl.onclick = () => {
+                            if (!isZoomed) {
+                                imgEl.style.maxWidth = "none";
+                                imgEl.style.maxHeight = "none";
+                                imgEl.style.cursor = "zoom-out";
+                                contentArea.style.alignItems = "flex-start";
+                                isZoomed = true;
+                            } else {
+                                imgEl.style.maxWidth = "100%";
+                                imgEl.style.maxHeight = "70vh";
+                                imgEl.style.cursor = "zoom-in";
+                                contentArea.style.alignItems = "center";
+                                isZoomed = false;
+                            }
+                        };
                         contentArea.appendChild(imgEl);
                     } else if (type.startsWith("video/")) {
                         const videoEl = document.createElement("video");
