@@ -185,38 +185,40 @@
                 </span>
             </div>
 
-            <!-- Search and Filter Controls -->
-            <div class="bookmark-controls">
-                <div class="search-filter-container">
-                    <div class="search-container">
-                        <input type="text" id="bookmarkSearchBar" placeholder="Search your bookmarks..." autofocus>
+            <!-- Combined Folder Navigation and Search Controls -->
+            <div class="folder-controls-wrapper">
+                <div id="primaryFolderTabs" class="folder-tabs"></div>
+                <div class="bookmark-controls">
+                    <div class="search-filter-container">
+                        <div class="search-container">
+                            <input type="text" id="bookmarkSearchBar" placeholder="Search your bookmarks..." autofocus>
+                        </div>
+                        <div class="filter-container">
+                            <select id="sortBy">
+                                <option value="name">Sort by Name</option>
+                                <option value="date">Sort by Date</option>
+                                <option value="url">Sort by URL</option>
+                            </select>
+                            <select id="filterBy">
+                                <option value="all">All Bookmarks</option>
+                                <option value="today">Added Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="filter-container">
-                        <select id="sortBy">
-                            <option value="name">Sort by Name</option>
-                            <option value="date">Sort by Date</option>
-                            <option value="url">Sort by URL</option>
-                        </select>
-                        <select id="filterBy">
-                            <option value="all">All Bookmarks</option>
-                            <option value="today">Added Today</option>
-                            <option value="week">This Week</option>
-                            <option value="month">This Month</option>
-                        </select>
+                    <div class="view-controls">
+                        <button id="gridViewBtn" class="view-btn active" title="Grid View">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button id="listViewBtn" class="view-btn" title="List View">
+                            <i class="fas fa-list"></i>
+                        </button>
                     </div>
-                </div>
-                <div class="view-controls">
-                    <button id="gridViewBtn" class="view-btn active" title="Grid View">
-                        <i class="fas fa-th"></i>
-                    </button>
-                    <button id="listViewBtn" class="view-btn" title="List View">
-                        <i class="fas fa-list"></i>
-                    </button>
                 </div>
             </div>
 
-            <!-- Folder Navigation -->
-            <div id="primaryFolderTabs" class="folder-tabs"></div>
+            <!-- Sub Folder Navigation -->
             <div id="subFolderTabs" class="folder-tabs sub-tabs"></div>
             
             <!-- Content Area -->
