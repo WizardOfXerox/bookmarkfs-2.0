@@ -18,25 +18,53 @@ All credits for the core bookmark exploit concept go to the original creator. Bo
 
 ## 🚀 Key Features in BookmarkFS 2.0
 
-*   **📸 Full-Page Screenshot, Viewer & Local Editor**: Capture full scrollable pages directly from your sidebar. Edit, crop, draw, add shapes (rectangles, arrows, blurs, text), and annotate screenshots. Download them as PNGs or PDFs using custom options—**100% locally with zero logins or signup walls**.
-
-*   **⚡ Chrome Freeze Prevention (Schema 3)**: Relocates raw data chunk bookmark nodes into a centralized hidden `__chunks__` folder. The user-facing directories only contain metadata node bookmarks, preventing Chrome from freezing or crashing when rendering bookmark folders.
-*   **⚡ Subtree-Caching Optimization (100x Faster)**: Prefetches the entire virtual files structure in a single `chrome.bookmarks.getSubTree` request, eliminating redundant nested IPC database calls to load file lists instantly.
-*   **📁 Virtual Folder Management**: Create empty directories using the `📁 New Folder` buttons. Right-click folders in Bookmarks to rename them or recursively delete their sub-trees.
-*   **🔗 Instant Portable Sharing**: Share files directly from the table rows. The `🔗` button compiles, compresses, and encodes your file into a portable Base64 block copied directly to your clipboard.
-*   **🔒 Client-Side Encryption Modal**: Optional AES-GCM (256-bit) encryption using WebCrypto PBKDF2. Replaces basic browser prompts with a premium custom modal containing a real-time **Password Strength Meter** and a cryptographic **Password Generator**.
-*   **📝 In-Browser Text & Markdown Editor**: Toggle edit mode directly inside the preview modal for text-based files, modify content and update tags, and save changes back to the bookmarks bar.
+### 1. 📁 Files Manager Panel (Encrypted Filesystem)
+*   **⚡ Chrome Freeze Prevention (Schema 3)**: Relocates raw data chunk bookmark nodes into a centralized hidden `__chunks__` folder, preventing Chrome from freezing or crashing when rendering bookmark folders.
+*   **⚡ Subtree-Caching Optimization (100x Faster)**: Prefetches the entire virtual files structure in a single `chrome.bookmarks.getSubTree` request, loading file lists instantly.
+*   **📁 Virtual Folder Management**: Create directories using the `📁 New Folder` buttons. Right-click folders to rename them or recursively delete their sub-trees.
+*   **🔒 Client-Side AES-GCM Encryption**: Optional AES-GCM (256-bit) encryption using WebCrypto. Integrated with a custom modal containing a **Password Strength Meter** and a cryptographic **Password Generator**.
+*   **📝 In-Browser Text & Markdown Editor**: Toggle edit mode directly inside the preview modal for text-based files, modify content and update tags, and save changes back to bookmarks.
 *   **🎙️ Direct Voice Recorder**: Capture voice notes directly in-browser using the MediaRecorder API and save them as compressed WebM files.
 *   **📦 Bulk Operations (ZIP / Move / Delete)**: Select multiple rows using checkboxes to download them as a compiled ZIP archive, move them in bulk, or delete them.
-*   **📊 Graphical Storage Analyzer**: Color-coded, responsive analytics bar showing folder space distribution by file categories (Images, Audio, Video, Docs, Archives, Code, Other).
-*   **🗜️ Automatic Compression**: In-memory Gzip compression via `fflate` reduces bookmark footprint and speeds up sync times.
+*   **📊 Graphical Storage Analyzer**: Color-coded, responsive analytics bar showing folder space distribution by file categories.
 *   **📦 Interactive Archive Previews (ZIP & RAR)**:
-    *   **ZIP files**: Inspect ZIP archives in-memory. Browse names and sizes, and download individual files out of the ZIP directly!
-    *   **RAR files**: Extract and preview RAR archives in-memory using WebAssembly (`node-unrar-js`), complete with single-file extraction.
+    *   **ZIP files**: Inspect ZIP archives in-memory, browsing names and sizes, and download individual files directly.
+    *   **RAR files**: Extract and preview RAR archives in-memory using WebAssembly (`node-unrar-js`), sandboxed in a separate CSP-immune iframe environment.
 *   **📄 Integrated PDF Viewer**: Native PDF reading inside a premium preview iframe.
-*   **🏷️ Tags Filtering**: Assign tags to files and filter them dynamically from the tag search dropdown.
-*   **⚙️ Persistent & Instant Settings**: Customize maximum bookmark chunk bounds, change pagination size limits, and toggle table columns (including Preview, Share, and Delete). Changes are preserved across re-renders and apply instantly to your dashboard.
-*   **🌐 Navigation URL Bar Sync**: Tracks sub-frame navigations inside the side-panel browser iframe using `chrome.webNavigation` to sync address bars and back/forward history stacks dynamically. Mapped a controls Home (`🏠`) button for instant redirections.
+*   **🔗 Instant Portable Sharing**: Share files directly from the table rows. The `🔗` button compiles, compresses, and encodes your file into a portable Base64 block copied directly to your clipboard.
+*   **⚙️ Persistent & Instant Settings**: Customize maximum bookmark chunk bounds, change pagination size limits, and toggle table columns.
+
+### 2. 🔖 standard Bookmarks Manager Panel
+*   **📂 Breadcrumb Browsing**: Navigate your standard Chrome bookmarks tree using a clean breadcrumb structure.
+*   **🔥 Most Visited & Recently Added**: Access grids of your 20 most visited sites and recently added bookmarks with a single click.
+*   **Folder CRUD**: Create new folders and right-click standard folders to rename or recursively delete them.
+
+### 3. 🗂️ Workspace Tab Session Manager
+*   **💾 Active Workspace Saver**: Save all active browser tabs in the current window as a session file, tagged and optionally password-locked.
+*   **🚀 Session Restore UI**: Displays session URLs in a card layout with a single-click restore option (restores tabs, window structures, and tabGroups).
+*   **💻 Auto-Restore on Boot**: Automatically auto-saves workspace states and optionally restores your last open session on Chrome startup.
+
+### 4. 🌐 Sandboxed Web Browser Panel
+*   **🛡️ CSP & CORS Bypassing**: Dynamically strips `frame-options`, `x-frame-options`, and `content-security-policy` response headers from iframe (sub-frame) requests to embed any page.
+*   **🌐 URL Bar Sync**: Tracks sub-frame navigations in the iframe using `chrome.webNavigation` to sync the address bar and back/forward history stacks in real-time.
+*   **🏠 Navigation Shortcuts**: Integrated controls for Back, Forward, Reload, Open in New Tab, and a Home (`🏠`) button.
+
+### 5. 📝 Rich-Text Page Notes Panel
+*   **📝 Tab-Scoped & General Notes**: Switch note scopes between "General Notes", "Domain Notes", and specific "Page URL Notes".
+*   **📝 Formatting Ribbon**: MS Word-style rich text ribbon supporting Bold, Italic, Underline, Strikethrough, lists, and clear formatting.
+*   **📎 Attachments Manager**: Upload any file (images, PDFs, documents) as note attachments, stored in local storage and download-ready in one click.
+*   **📤 Note Backups**: Export individual notes or download a full JSON backup of all notes and attachments.
+
+### 6. 📸 Screenshot Capture & Edit Suite
+*   **📸 Full-Page Captures**: Capture entire scrollable pages directly from the sidebar.
+*   **✏️ Vector Annotation Editor**: Draw, crop, blur, write text, and add vector shapes (arrows, rectangles) on captured images.
+*   **📸 In-Place Preview Modal**: Clicking screenshot thumbnails opens a modal overlay (`#preview-modal`) with Open, Edit, and Delete actions, keeping the user in the sidebar instead of opening new tabs.
+*   **🏷️ Toolbar Badge Alerts**: Real-time toolbar badge notifications overlay a green `Note` indicator if notes exist for your active tab.
+
+### 7. 🕵️ Network User-Agent Swapper
+*   **🕵️ UA Switcher & Overrides**: Intercepts requests to modify UA headers.
+*   **🔄 Dynamic Rotation**: Rotate through mobile UAs to force sites to serve mobile-responsive versions inside the sidebar view.
+*   **Facebook Desktop Bypass**: Excludes Facebook domains to prevent iframe redirect script loops.
 
 ---
 
