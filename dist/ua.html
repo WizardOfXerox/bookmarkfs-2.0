@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookmarkFS - User-Agent Switcher</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .ua-dashboard {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .ua-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .ua-header-section {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .ua-title {
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-box {
+            background: rgba(2, 255, 136, 0.05);
+            border: 1px solid rgba(2, 255, 136, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .status-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .status-value {
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--accent);
+            background: var(--bg-main);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .ua-btn {
+            background-color: var(--bg-button);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .ua-btn:hover {
+            background-color: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .ua-btn-primary {
+            background-color: var(--accent);
+            color: #0b0f19;
+            border-color: var(--accent);
+        }
+
+        .ua-btn-primary:hover {
+            background-color: #00d970;
+            box-shadow: 0 0 12px rgba(2, 255, 136, 0.4);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .form-input, .form-select, .form-textarea {
+            padding: 10px 12px;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 8px;
+            outline: none;
+            font-family: inherit;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: var(--bg-main);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            user-select: none;
+        }
+
+        .checkbox-label input {
+            cursor: pointer;
+        }
+
+        /* Responsive adaptations for narrow width */
+        @media (max-width: 750px) {
+            #panel-nav-bar {
+                width: 100% !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                border-radius: 0 !important;
+                margin: 0 0 8px 0 !important;
+                padding: 8px !important;
+                gap: 8px !important;
+            }
+            .nav-links {
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+                width: 100% !important;
+                gap: 6px !important;
+            }
+            .nav-controls {
+                justify-content: center !important;
+                width: 100% !important;
+            }
+            .nav-btn {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 4px !important;
+                padding: 6px 10px !important;
+                font-size: 11px !important;
+                border-radius: 6px !important;
+                flex: 1 1 auto !important;
+                text-align: center !important;
+                text-decoration: none !important;
+                white-space: nowrap !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script src="/screenshot-theme.js"></script>
+    <div id="panel-nav-bar">
+        <div class="nav-links">
+            <a href="index.html" class="nav-btn">📁 Files</a>
+            <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
+            <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
+            <a href="web.html" class="nav-btn">🌐 Web</a>
+            <a href="notes.html" class="nav-btn">📝 Notes</a>
+            <a href="/dist/capture.html" class="nav-btn">📸 Screenshot</a>
+            <a href="ua.html" class="nav-btn active" data-panel="ua">🕵️ UA</a>
+        </div>
+        <div class="nav-controls">
+            <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+        </div>
+    </div>
+
+    <div class="ua-dashboard">
+        <div class="ua-card">
+            <div class="ua-header-section">
+                <h1 class="ua-title">🕵️ User-Agent Switcher</h1>
+                <div style="display: flex; gap: 8px;">
+                    <button id="ua-rotate-btn" class="ua-btn">🔄 Rotate Now</button>
+                    <button id="ua-save-btn" class="ua-btn ua-btn-primary">💾 Save Settings</button>
+                </div>
+            </div>
+
+            <div class="status-box">
+                <div class="status-title">Current Active User-Agent</div>
+                <div id="ua-current-active" class="status-value">Loading active User-Agent...</div>
+            </div>
+
+            <div class="form-grid">
+                <label class="checkbox-label" style="font-size: 15px; font-weight: 500; margin-bottom: 4px;">
+                    <input type="checkbox" id="ua-enabled">
+                    <span>Enable User-Agent Spoofing</span>
+                </label>
+
+                <div id="ua-fields-wrapper" style="display: none; flex-direction: column; gap: 16px;">
+                    <div class="form-row">
+                        <span class="form-label">Apply to:</span>
+                        <select id="ua-apply-to" class="form-select">
+                            <option value="iframe">Iframe Browser Only</option>
+                            <option value="global">Whole Browser (All Tabs)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <span class="form-label">Rotation Trigger:</span>
+                        <select id="ua-trigger" class="form-select">
+                            <option value="never">Never (Locked Preset)</option>
+                            <option value="request">Every Page Load / Request</option>
+                            <option value="periodic">Periodic Interval</option>
+                            <option value="startup">Extension / Browser Startup</option>
+                        </select>
+                    </div>
+
+                    <div id="ua-interval-wrapper" class="form-row" style="display: none;">
+                        <span class="form-label">Interval (minutes):</span>
+                        <input type="number" id="ua-interval" min="1" max="1440" class="form-input">
+                    </div>
+
+                    <div id="ua-custom-wrapper" class="form-row" style="display: none;">
+                        <span class="form-label">Custom User-Agent String:</span>
+                        <textarea id="ua-custom" placeholder="e.g. Mozilla/5.0 (Linux; Android 10) ..." class="form-textarea" style="height: 64px; font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
+                    </div>
+
+                    <div id="ua-filters-wrapper" style="display: none; flex-direction: column; gap: 12px;">
+                        <div class="form-row">
+                            <span class="form-label">Allowed Operating Systems:</span>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label"><input type="checkbox" data-ua-os="windows"> Windows</label>
+                                <label class="checkbox-label"><input type="checkbox" data-ua-os="macos"> MacOS</label>
+                                <label class="checkbox-label"><input type="checkbox" data-ua-os="linux"> Linux</label>
+                                <label class="checkbox-label"><input type="checkbox" data-ua-os="android"> Android</label>
+                                <label class="checkbox-label"><input type="checkbox" data-ua-os="ios"> iOS</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <span class="form-label">Allowed Browsers:</span>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label"><input type="checkbox" data-ua-browser="chrome"> Chrome</label>
+                                <label class="checkbox-label"><input type="checkbox" data-ua-browser="firefox"> Firefox</label>
+                                <label class="checkbox-label"><input type="checkbox" data-ua-browser="safari"> Safari</label>
+                                <label class="checkbox-label"><input type="checkbox" data-ua-browser="edge"> Edge</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <span class="form-label">Exclude Domains (one per line):</span>
+                        <textarea id="ua-exceptions" placeholder="e.g.&#10;google.com&#10;facebook.com" class="form-textarea" style="height: 80px; font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="ua.js"></script>
+</body>
+</html>
