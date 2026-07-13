@@ -118,9 +118,15 @@ export function handleZip(bytes) {
     }
 
     function b64decodeToBytes(b64) {
-        // quick sanity: base64 must be multiple of 4 chars, only legal chars
+        if (!b64) return new Uint8Array(0);
+        // quick sanity: base64 must be multiple of 4 chars
+        if (b64.length % 4 !== 0) {
+            return new TextEncoder().encode(b64);
+        }
+        // Avoid running regex on very large strings (causes regex engine failure/slowdown)
+        const prefix = b64.length > 1000 ? b64.slice(0, 1000) : b64;
         const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
-        if (!base64Pattern.test(b64) || b64.length % 4 !== 0) {
+        if (!base64Pattern.test(prefix)) {
             // Not valid base64 → treat as raw UTF-8 string
             return new TextEncoder().encode(b64);
         }
@@ -2920,12 +2926,7 @@ export function handleZip(bytes) {
 
         const tag = compressed ? "c" : "r";
         const serialized = tag + b64encodeBytes(processed);
-        const pieces = splitBySize(serialized, maxBookmarkSize);
-        const chunkHashes = [];
-        for (const part of pieces) {
-            chunkHashes.push(await sha256HexString(part));
-        }
-
+        
         const metaObj = {
             schemaVersion: APP_SCHEMA_VERSION,
             name: "",
@@ -2938,7 +2939,7 @@ export function handleZip(bytes) {
             encrypted,
             enc: encInfo,
             chunkSize: maxBookmarkSize,
-            chunkHashes,
+            chunkHashes: [],
             contentHash: await sha256HexBytes(originalBytes)
         };
 
@@ -2947,7 +2948,8 @@ export function handleZip(bytes) {
 
     async function verifySerializedIntegrity(serialized, metaObj) {
         const meta = migrateMeta(metaObj);
-        if (!meta || !Array.isArray(meta.chunkHashes) || !meta.chunkHashes.length) return;
+        if (!meta) return;
+        if (!Array.isArray(meta.chunkHashes) || !meta.chunkHashes.length) return;
         const size = Number(meta.chunkSize || maxBookmarkSize);
         const pieces = splitBySize(serialized, size);
         if (pieces.length !== meta.chunkHashes.length) throw new Error("Integrity check failed: chunk count mismatch");
@@ -3705,17 +3707,8 @@ export function handleZip(bytes) {
                         m.dateISO = new Date().toISOString();
                         m.tags = parsedTags;
                         if (encrypted) m.enc = encInfo;
+                        m.chunkHashes = [];
 
-                        const pieces = [];
-                        const CHUNK = m.chunkSize || maxBookmarkSize;
-                        for (let i = 0; i < serialized.length; i += CHUNK) {
-                            pieces.push(serialized.substring(i, i + CHUNK));
-                        }
-                        const chunkHashes = [];
-                        for (const part of pieces) {
-                            chunkHashes.push(await sha256HexString(part));
-                        }
-                        m.chunkHashes = chunkHashes;
                         m.contentHash = await sha256HexBytes(originalBytes);
 
                         try {
