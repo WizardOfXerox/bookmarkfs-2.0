@@ -1,3 +1,7 @@
+if (chrome.sidePanel && chrome.sidePanel.setOptions) {
+    chrome.sidePanel.setOptions({ path: "dist/ua.html" }).catch(() => {});
+}
+
 const qs = (sel) => document.querySelector(sel);
 
 // Handle UI visibility based on checkboxes and selects
