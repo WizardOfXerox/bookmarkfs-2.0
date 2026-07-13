@@ -623,8 +623,10 @@ table.rwd-table.grid-mode td.cell-empty {
         height: auto !important;
         box-sizing: border-box !important;
     }
-    
-    /* Responsive Redirection Navbar */
+}
+
+/* Responsive Redirection Navbar (width <= 900px) */
+@media (max-width: 900px) {
     #panel-nav-bar {
         width: 100% !important;
         flex-direction: column !important;
