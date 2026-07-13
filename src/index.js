@@ -2589,7 +2589,7 @@ export function handleZip(bytes) {
                         try {
                             return migrateMeta(JSON.parse(str));
                         } catch (err) {
-                            console.warn("readMeta: unknown meta encoding", err);
+                            console.log("readMeta: unknown meta encoding (skipped legacy or corrupted node):", err.message);
                             return null;
                         }
                     }
@@ -3195,6 +3195,7 @@ export function handleZip(bytes) {
                     inner.style.borderRadius = "12px";
                     inner.style.display = "flex";
                     inner.style.flexDirection = "column";
+                    inner.style.position = "relative";
                     inner.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)";
                     inner.onclick = (ev) => ev.stopPropagation();
 
@@ -3854,26 +3855,174 @@ export function handleZip(bytes) {
                         imgEl.style.maxHeight = "70vh";
                         imgEl.style.borderRadius = "6px";
                         imgEl.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5)";
-                        imgEl.style.cursor = "zoom-in";
-                        imgEl.style.transition = "max-width 0.2s, max-height 0.2s";
+                        imgEl.style.transition = "width 0.15s ease-out, height 0.15s ease-out";
+                        imgEl.draggable = false;
+                        imgEl.addEventListener("mousedown", (e) => e.preventDefault());
 
-                        let isZoomed = false;
-                        imgEl.onclick = () => {
-                            if (!isZoomed) {
-                                imgEl.style.maxWidth = "none";
-                                imgEl.style.maxHeight = "none";
-                                imgEl.style.cursor = "zoom-out";
-                                contentArea.style.alignItems = "flex-start";
-                                isZoomed = true;
-                            } else {
+                        let zoomLevel = 1.0;
+                        let isFit = true;
+
+                        // Create Zoom Control Overlay Toolbar
+                        const zoomToolbar = document.createElement("div");
+                        zoomToolbar.style.position = "absolute";
+                        zoomToolbar.style.bottom = "20px";
+                        zoomToolbar.style.left = "50%";
+                        zoomToolbar.style.transform = "translateX(-50%)";
+                        zoomToolbar.style.display = "flex";
+                        zoomToolbar.style.alignItems = "center";
+                        zoomToolbar.style.gap = "8px";
+                        zoomToolbar.style.background = "rgba(24, 24, 27, 0.85)";
+                        zoomToolbar.style.backdropFilter = "blur(12px)";
+                        zoomToolbar.style.border = "1px solid #3f3f46";
+                        zoomToolbar.style.borderRadius = "9999px";
+                        zoomToolbar.style.padding = "6px 12px";
+                        zoomToolbar.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.5)";
+                        zoomToolbar.style.zIndex = "10000";
+
+                        const minusBtn = document.createElement("button");
+                        minusBtn.textContent = "➖";
+                        minusBtn.title = "Zoom Out";
+                        minusBtn.onclick = () => {
+                            isFit = false;
+                            zoomLevel = Math.max(0.1, zoomLevel - 0.25);
+                            updateZoom();
+                        };
+
+                        const zoomPercent = document.createElement("span");
+                        zoomPercent.style.color = "#f4f4f5";
+                        zoomPercent.style.fontSize = "12px";
+                        zoomPercent.style.fontWeight = "600";
+                        zoomPercent.style.minWidth = "50px";
+                        zoomPercent.style.textAlign = "center";
+                        zoomPercent.style.userSelect = "none";
+
+                        const plusBtn = document.createElement("button");
+                        plusBtn.textContent = "➕";
+                        plusBtn.title = "Zoom In";
+                        plusBtn.onclick = () => {
+                            isFit = false;
+                            zoomLevel = Math.min(4.0, zoomLevel + 0.25);
+                            updateZoom();
+                        };
+
+                        const resetBtn = document.createElement("button");
+                        resetBtn.textContent = "🔄";
+                        resetBtn.title = "Fit to Screen";
+                        resetBtn.onclick = () => {
+                            isFit = true;
+                            zoomLevel = 1.0;
+                            updateZoom();
+                        };
+
+                        [minusBtn, plusBtn, resetBtn].forEach(btn => {
+                            btn.style.background = "none";
+                            btn.style.border = "none";
+                            btn.style.color = "#a1a1aa";
+                            btn.style.cursor = "pointer";
+                            btn.style.padding = "2px 6px";
+                            btn.style.borderRadius = "4px";
+                            btn.style.transition = "background-color 0.2s";
+                            btn.onmouseover = () => btn.style.background = "rgba(255, 255, 255, 0.1)";
+                            btn.onmouseout = () => btn.style.background = "none";
+                        });
+
+                        zoomToolbar.appendChild(minusBtn);
+                        zoomToolbar.appendChild(zoomPercent);
+                        zoomToolbar.appendChild(plusBtn);
+                        zoomToolbar.appendChild(resetBtn);
+                        inner.appendChild(zoomToolbar);
+
+                        function updateZoom() {
+                            if (isFit) {
                                 imgEl.style.maxWidth = "100%";
                                 imgEl.style.maxHeight = "70vh";
+                                imgEl.style.width = "auto";
+                                imgEl.style.height = "auto";
                                 imgEl.style.cursor = "zoom-in";
+                                zoomPercent.textContent = "Fit";
                                 contentArea.style.alignItems = "center";
-                                isZoomed = false;
+                                contentArea.style.justifyContent = "center";
+                            } else {
+                                imgEl.style.maxWidth = "none";
+                                imgEl.style.maxHeight = "none";
+                                imgEl.style.width = (imgEl.naturalWidth * zoomLevel) + "px";
+                                imgEl.style.height = "auto";
+                                imgEl.style.cursor = "zoom-out";
+                                zoomPercent.textContent = Math.round(zoomLevel * 100) + "%";
+                                contentArea.style.alignItems = "flex-start";
+                                contentArea.style.justifyContent = "flex-start";
                             }
+                        }
+
+                        // Toggle fit vs original size on click
+                        imgEl.onclick = () => {
+                            if (isFit) {
+                                isFit = false;
+                                zoomLevel = 1.0;
+                            } else {
+                                isFit = true;
+                            }
+                            updateZoom();
                         };
+
+                        // Ctrl + Wheel Zoom
+                        contentArea.addEventListener("wheel", (e) => {
+                            if (e.ctrlKey) {
+                                e.preventDefault();
+                                isFit = false;
+                                if (e.deltaY < 0) {
+                                    zoomLevel = Math.min(4.0, zoomLevel + 0.15);
+                                } else {
+                                    zoomLevel = Math.max(0.1, zoomLevel - 0.15);
+                                }
+                                updateZoom();
+                            }
+                        }, { passive: false });
+
+                        // Drag-to-Pan (Grab to Scroll)
+                        let isDragging = false;
+                        let startX, startY, scrollLeft, scrollTop;
+
+                        contentArea.style.cursor = "grab";
+                        contentArea.addEventListener("mousedown", (e) => {
+                            if (contentArea.scrollWidth > contentArea.clientWidth || contentArea.scrollHeight > contentArea.clientHeight) {
+                                isDragging = true;
+                                contentArea.style.cursor = "grabbing";
+                                startX = e.pageX - contentArea.offsetLeft;
+                                startY = e.pageY - contentArea.offsetTop;
+                                scrollLeft = contentArea.scrollLeft;
+                                scrollTop = contentArea.scrollTop;
+                            }
+                        });
+
+                        contentArea.addEventListener("mouseleave", () => {
+                            isDragging = false;
+                            contentArea.style.cursor = "grab";
+                        });
+
+                        contentArea.addEventListener("mouseup", () => {
+                            isDragging = false;
+                            contentArea.style.cursor = "grab";
+                        });
+
+                        contentArea.addEventListener("mousemove", (e) => {
+                            if (!isDragging) return;
+                            e.preventDefault();
+                            const x = e.pageX - contentArea.offsetLeft;
+                            const y = e.pageY - contentArea.offsetTop;
+                            const walkX = (x - startX) * 1.5;
+                            const walkY = (y - startY) * 1.5;
+                            contentArea.scrollLeft = scrollLeft - walkX;
+                            contentArea.scrollTop = scrollTop - walkY;
+                        });
+
+                        imgEl.onload = () => {
+                            if (!isFit) updateZoom();
+                        };
+
+                        updateZoom();
                         contentArea.appendChild(imgEl);
+
                     } else if (type.startsWith("video/")) {
                         const videoEl = document.createElement("video");
                         objectUrl = URL.createObjectURL(new Blob([bytes], { type }));
