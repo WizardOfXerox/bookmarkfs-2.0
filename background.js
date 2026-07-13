@@ -946,3 +946,226 @@ function contentScriptCaptureMain() {
         chrome.runtime.sendMessage({ action: "capture-ready" });
     } catch (e) {}
 }
+
+// --- User-Agent Switcher Feature ---
+
+const UA_DATABASE = [
+    // Windows
+    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", os: "windows", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0", os: "windows", browser: "edge" },
+    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0", os: "windows", browser: "firefox" },
+    // MacOS
+    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", os: "macos", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15", os: "macos", browser: "safari" },
+    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) Gecko/20100101 Firefox/123.0", os: "macos", browser: "firefox" },
+    // Linux
+    { ua: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", os: "linux", browser: "chrome" },
+    { ua: "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0", os: "linux", browser: "firefox" },
+    // Android
+    { ua: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36", os: "android", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Linux; Android 13; Samsung Galaxy S23) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36", os: "android", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0", os: "android", browser: "firefox" },
+    // iOS
+    { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1", os: "ios", browser: "safari" },
+    { ua: "Mozilla/5.0 (iPad; CPU OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1", os: "ios", browser: "safari" },
+    { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) FxiOS/121.0 Mobile/15E148 Safari/537.36", os: "ios", browser: "firefox" }
+];
+
+function getNewUserAgent(settings) {
+    if (settings.mode === "custom" && settings.customUa) {
+        return settings.customUa;
+    }
+    const filtered = UA_DATABASE.filter(item => {
+        const osOk = settings.allowedOS && settings.allowedOS.includes(item.os);
+        const browserOk = settings.allowedBrowsers && settings.allowedBrowsers.includes(item.browser);
+        return osOk && browserOk;
+    });
+    if (filtered.length === 0) {
+        // Fallback to a default if user unchecked everything
+        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+    }
+    const randIdx = Math.floor(Math.random() * filtered.length);
+    return filtered[randIdx].ua;
+}
+
+async function updateDeclarativeNetRequestRules() {
+    if (!chrome.declarativeNetRequest) return;
+    
+    // Load settings from storage
+    const storageData = await chrome.storage.local.get(["bookmarkfs_ua_settings", "bookmarkfs_ua_current"]);
+    const settings = storageData.bookmarkfs_ua_settings || { enabled: false, applyTo: "iframe", exceptions: [] };
+    
+    // Default fallback UA matches current rule 2 mobile UA
+    const defaultMobileUa = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
+    let currentUa = storageData.bookmarkfs_ua_current;
+    
+    if (!currentUa) {
+        currentUa = getNewUserAgent(settings);
+        await chrome.storage.local.set({ bookmarkfs_ua_current: currentUa });
+    }
+
+    try {
+        const rules = [
+            // Rule 1: CSP removal
+            {
+                id: 1,
+                priority: 1,
+                action: {
+                    type: "modifyHeaders",
+                    responseHeaders: [
+                        { header: "frame-options", operation: "remove" },
+                        { header: "x-frame-options", operation: "remove" },
+                        { header: "content-security-policy", operation: "remove" },
+                        { header: "content-security-policy-report-only", operation: "remove" }
+                    ]
+                },
+                condition: {
+                    resourceTypes: ["sub_frame"]
+                }
+            },
+            // Rule 3: CORS
+            {
+                id: 3,
+                priority: 1,
+                action: {
+                    type: "modifyHeaders",
+                    responseHeaders: [
+                        { header: "access-control-allow-origin", operation: "set", value: "*" },
+                        { header: "access-control-allow-methods", operation: "set", value: "*" },
+                        { header: "access-control-allow-headers", operation: "set", value: "*" }
+                    ]
+                },
+                condition: {
+                    resourceTypes: ["xmlhttprequest", "media", "image"]
+                }
+            }
+        ];
+
+        // Rule 2: User-Agent Modify Rule (if enabled or using default iframe mobile UA)
+        const activeUa = settings.enabled ? currentUa : defaultMobileUa;
+        const uaRule = {
+            id: 2,
+            priority: 2,
+            action: {
+                type: "modifyHeaders",
+                requestHeaders: [
+                    {
+                        header: "user-agent",
+                        operation: "set",
+                        value: activeUa
+                    }
+                ]
+            },
+            condition: {
+                resourceTypes: (settings.enabled && settings.applyTo === "global") 
+                    ? ["main_frame", "sub_frame", "stylesheet", "script", "image", "font", "object", "xmlhttprequest", "ping", "csp_report", "media", "websocket", "other"]
+                    : ["sub_frame"]
+            }
+        };
+
+        const exceptions = settings.exceptions || [];
+        if (settings.enabled && exceptions.length > 0) {
+            uaRule.condition.excludedRequestDomains = exceptions.map(d => d.trim()).filter(Boolean);
+        } else if (!settings.enabled || settings.applyTo === "iframe") {
+            // Default exceptions for the iframe to keep FB working
+            uaRule.condition.excludedRequestDomains = ["facebook.com", "www.facebook.com", "m.facebook.com"];
+        }
+
+        rules.push(uaRule);
+
+        await chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: [1, 2, 3],
+            addRules: rules
+        });
+        console.log("Registered declarativeNetRequest rules. Current User-Agent:", activeUa);
+    } catch (err) {
+        console.error("Failed to update declarativeNetRequest rules:", err);
+    }
+}
+
+async function setupUaAlarms() {
+    if (!chrome.alarms) return;
+    await chrome.alarms.clear("rotate-user-agent");
+    const res = await chrome.storage.local.get(["bookmarkfs_ua_settings"]);
+    const settings = res.bookmarkfs_ua_settings;
+    if (settings && settings.enabled && settings.mode === "random" && settings.rotationTrigger === "periodic") {
+        const mins = parseFloat(settings.rotationInterval) || 10;
+        chrome.alarms.create("rotate-user-agent", { periodInMinutes: mins });
+        console.log("Registered rotate-user-agent alarm for every", mins, "minutes.");
+    }
+}
+
+// Alarm listener
+if (chrome.alarms) {
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+        if (alarm.name === "rotate-user-agent") {
+            const res = await chrome.storage.local.get(["bookmarkfs_ua_settings"]);
+            const settings = res.bookmarkfs_ua_settings;
+            if (settings && settings.enabled && settings.mode === "random" && settings.rotationTrigger === "periodic") {
+                const newUa = getNewUserAgent(settings);
+                await chrome.storage.local.set({ bookmarkfs_ua_current: newUa });
+                await updateDeclarativeNetRequestRules();
+                console.log("Rotated User-Agent (Periodic):", newUa);
+            }
+        }
+    });
+}
+
+// Listen to navigation requests for "on-request" rotation
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+    // Only trigger for main_frame navigations to prevent thrashing on subresource loads
+    if (details.frameId === 0) {
+        const res = await chrome.storage.local.get(["bookmarkfs_ua_settings"]);
+        const settings = res.bookmarkfs_ua_settings;
+        if (settings && settings.enabled && settings.mode === "random" && settings.rotationTrigger === "request") {
+            // Exclude background/extension pages
+            if (details.url.startsWith("chrome-extension://")) return;
+            const newUa = getNewUserAgent(settings);
+            await chrome.storage.local.set({ bookmarkfs_ua_current: newUa });
+            await updateDeclarativeNetRequestRules();
+            console.log("Rotated User-Agent (Every Request):", newUa);
+        }
+    }
+});
+
+// Runtime messages from settings popup
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    if (message.action === "update-ua-settings") {
+        const res = await chrome.storage.local.get(["bookmarkfs_ua_settings"]);
+        const settings = res.bookmarkfs_ua_settings || { enabled: false };
+        
+        // Pick initial/constant UA
+        const newUa = getNewUserAgent(settings);
+        await chrome.storage.local.set({ bookmarkfs_ua_current: newUa });
+
+        await updateDeclarativeNetRequestRules();
+        await setupUaAlarms();
+        if (sendResponse) sendResponse({ success: true });
+    }
+});
+
+// Re-initialize User-Agent settings on startup/install
+chrome.runtime.onInstalled.addListener(async () => {
+    const res = await chrome.storage.local.get(["bookmarkfs_ua_settings"]);
+    if (res.bookmarkfs_ua_settings && res.bookmarkfs_ua_settings.enabled) {
+        if (res.bookmarkfs_ua_settings.rotationTrigger === "startup") {
+            const newUa = getNewUserAgent(res.bookmarkfs_ua_settings);
+            await chrome.storage.local.set({ bookmarkfs_ua_current: newUa });
+        }
+        await updateDeclarativeNetRequestRules();
+        await setupUaAlarms();
+    }
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+    const res = await chrome.storage.local.get(["bookmarkfs_ua_settings"]);
+    if (res.bookmarkfs_ua_settings && res.bookmarkfs_ua_settings.enabled) {
+        if (res.bookmarkfs_ua_settings.rotationTrigger === "startup") {
+            const newUa = getNewUserAgent(res.bookmarkfs_ua_settings);
+            await chrome.storage.local.set({ bookmarkfs_ua_current: newUa });
+        }
+        await updateDeclarativeNetRequestRules();
+        await setupUaAlarms();
+    }
+});
+

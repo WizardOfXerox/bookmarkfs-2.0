@@ -441,7 +441,10 @@ export function handleZip(bytes) {
         box.style.boxShadow = "var(--shadow)";
         box.style.padding = "20px";
         box.style.borderRadius = "12px";
-        box.style.minWidth = "320px";
+        box.style.width = "min(500px, 92%)";
+        box.style.maxHeight = "90vh";
+        box.style.overflowY = "auto";
+        box.style.boxSizing = "border-box";
 
         box.innerHTML = `
       <h2 style="margin-top: 0; display: flex; align-items: center; gap: 8px; color: var(--accent);">⚙ Settings</h2>
@@ -469,6 +472,69 @@ export function handleZip(bytes) {
           <label style="grid-column: span 2;"><input type="checkbox" data-col="delete"> Delete</label>
         </div>
       </fieldset>
+
+      <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🕵️ User-Agent Switcher</legend>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" id="setting-ua-enabled">
+            <span>Enable User-Agent Spoofing</span>
+          </label>
+          
+          <div id="ua-main-container" style="display: none; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span>Apply to:</span>
+              <select id="setting-ua-apply-to" style="padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; cursor: pointer;">
+                <option value="iframe">Iframe Browser Only</option>
+                <option value="global">Whole Browser (All Tabs)</option>
+              </select>
+            </label>
+
+            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span>Rotation Trigger:</span>
+              <select id="setting-ua-trigger" style="padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; cursor: pointer;">
+                <option value="never">Never (Locked Preset)</option>
+                <option value="request">Every Page Load / Request</option>
+                <option value="periodic">Periodic Interval</option>
+                <option value="startup">Extension / Browser Startup</option>
+              </select>
+            </label>
+
+            <div id="ua-interval-container" style="display: none; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span>Interval (minutes):</span>
+              <input type="number" id="setting-ua-interval" min="1" max="1440" style="width: 80px; padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none;">
+            </div>
+
+            <div id="ua-custom-container" style="display: none; flex-direction: column; gap: 4px; margin-bottom: 6px;">
+              <span>Custom User-Agent String:</span>
+              <textarea id="setting-ua-custom" placeholder="e.g. Mozilla/5.0 (Linux; Android 10) ..." style="width: 100%; height: 50px; padding: 6px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; resize: none; box-sizing: border-box; font-size: 11px; font-family: monospace;"></textarea>
+            </div>
+
+            <div id="ua-filters-container" style="display: none; flex-direction: column; gap: 6px; margin-bottom: 6px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px;">
+              <div style="font-weight: 500; font-size: 12px; margin-bottom: 2px;">Allowed OS:</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-os="windows"> Windows</label>
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-os="macos"> MacOS</label>
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-os="linux"> Linux</label>
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-os="android"> Android</label>
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-os="ios"> iOS</label>
+              </div>
+              <div style="font-weight: 500; font-size: 12px; margin-top: 4px; margin-bottom: 2px;">Allowed Browsers:</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-browser="chrome"> Chrome</label>
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-browser="firefox"> Firefox</label>
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-browser="safari"> Safari</label>
+                <label style="cursor: pointer;"><input type="checkbox" data-ua-browser="edge"> Edge</label>
+              </div>
+            </div>
+
+            <div id="ua-exceptions-container" style="display: flex; flex-direction: column; gap: 4px;">
+              <span>Exclude Domains (one per line):</span>
+              <textarea id="setting-ua-exceptions" placeholder="e.g.&#10;google.com&#10;facebook.com" style="width: 100%; height: 50px; padding: 6px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; resize: none; box-sizing: border-box; font-size: 11px; font-family: monospace;"></textarea>
+            </div>
+          </div>
+        </div>
+      </fieldset>
       
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;">
         <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">Data Backup & Migration</legend>
@@ -491,6 +557,10 @@ export function handleZip(bytes) {
 
         popup.appendChild(box);
         document.body.appendChild(popup);
+
+        // Bind dynamic UA section events
+        qs("#setting-ua-enabled").addEventListener("change", updateUaUiVisibility);
+        qs("#setting-ua-trigger").addEventListener("change", updateUaUiVisibility);
 
         // Close logic
         qs("#settings-close").onclick = () => popup.style.display = "none";
@@ -531,6 +601,30 @@ export function handleZip(bytes) {
             };
 
             setSettings(settings);
+
+            // Save User-Agent settings
+            const uaSettings = {
+                enabled: qs("#setting-ua-enabled").checked,
+                applyTo: qs("#setting-ua-apply-to").value,
+                rotationTrigger: qs("#setting-ua-trigger").value,
+                rotationInterval: parseInt(qs("#setting-ua-interval").value, 10) || 10,
+                customUa: qs("#setting-ua-custom").value.trim(),
+                allowedOS: [...document.querySelectorAll("#settings-popup input[data-ua-os]")]
+                    .filter(c => c.checked)
+                    .map(c => c.dataset.uaOS),
+                allowedBrowsers: [...document.querySelectorAll("#settings-popup input[data-ua-browser]")]
+                    .filter(c => c.checked)
+                    .map(c => c.dataset.uaBrowser),
+                exceptions: qs("#setting-ua-exceptions").value.split("\n").map(d => d.trim()).filter(Boolean)
+            };
+
+            await chrome.storage.local.set({ bookmarkfs_ua_settings: uaSettings });
+
+            // Notify background to re-apply declarativeNetRequest rules and alarms
+            try {
+                chrome.runtime.sendMessage({ action: "update-ua-settings" });
+            } catch (e) {}
+
             qs("#settings-popup").style.display = "none";
 
             applySettings();
@@ -612,7 +706,38 @@ export function handleZip(bytes) {
         });
     }
 
-    function loadSettingsIntoPopup() {
+    function updateUaUiVisibility() {
+        const enabled = qs("#setting-ua-enabled").checked;
+        const mainContainer = qs("#ua-main-container");
+        if (!mainContainer) return;
+
+        if (!enabled) {
+            mainContainer.style.display = "none";
+            return;
+        }
+        mainContainer.style.display = "block";
+
+        const trigger = qs("#setting-ua-trigger").value;
+        const intervalContainer = qs("#ua-interval-container");
+        const customContainer = qs("#ua-custom-container");
+        const filtersContainer = qs("#ua-filters-container");
+
+        if (trigger === "never") {
+            intervalContainer.style.display = "none";
+            customContainer.style.display = "block";
+            filtersContainer.style.display = "none";
+        } else if (trigger === "periodic") {
+            intervalContainer.style.display = "flex";
+            customContainer.style.display = "none";
+            filtersContainer.style.display = "block";
+        } else { // startup or request
+            intervalContainer.style.display = "none";
+            customContainer.style.display = "none";
+            filtersContainer.style.display = "block";
+        }
+    }
+
+    async function loadSettingsIntoPopup() {
         const s = getSettings();
 
         qs("#setting-maxsize").value = s.maxSize || 9092;
@@ -628,8 +753,39 @@ export function handleZip(bytes) {
             if (checkbox) checkbox.checked = true;
         });
 
-        const settingDark = qs("#setting-dark");
-        if (settingDark) settingDark.checked = !!s.dark;
+        // Load User-Agent settings
+        const res = await chrome.storage.local.get(["bookmarkfs_ua_settings"]);
+        const ua = res.bookmarkfs_ua_settings || {
+            enabled: false,
+            applyTo: "iframe",
+            rotationTrigger: "never",
+            rotationInterval: 10,
+            customUa: "",
+            allowedOS: ["windows", "macos", "linux", "android", "ios"],
+            allowedBrowsers: ["chrome", "firefox", "safari", "edge"],
+            exceptions: ["facebook.com", "www.facebook.com", "m.facebook.com"]
+        };
+
+        qs("#setting-ua-enabled").checked = !!ua.enabled;
+        qs("#setting-ua-apply-to").value = ua.applyTo || "iframe";
+        qs("#setting-ua-trigger").value = ua.rotationTrigger || "never";
+        qs("#setting-ua-interval").value = ua.rotationInterval || 10;
+        qs("#setting-ua-custom").value = ua.customUa || "";
+        qs("#setting-ua-exceptions").value = (ua.exceptions || []).join("\n");
+
+        // Allowed OS checkboxes
+        const osChecked = ua.allowedOS || [];
+        document.querySelectorAll("#settings-popup input[data-ua-os]").forEach(c => {
+            c.checked = osChecked.includes(c.dataset.uaOs);
+        });
+
+        // Allowed Browsers checkboxes
+        const browserChecked = ua.allowedBrowsers || [];
+        document.querySelectorAll("#settings-popup input[data-ua-browser]").forEach(c => {
+            c.checked = browserChecked.includes(c.dataset.uaBrowser);
+        });
+
+        updateUaUiVisibility();
     }
 
     function showEncryptDecryptModal(title, isUpload, callback) {
