@@ -41,6 +41,19 @@ body {
 /* Default tab layout (options page) */
 body {
     width: 100%;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* Content Container Padding */
+center,
+.main-container,
+.sessions-dashboard,
+.web-browser-container,
+.notes-container,
+.ua-dashboard,
+#content {
     padding: 24px;
     box-sizing: border-box;
 }

@@ -1984,7 +1984,7 @@ export function handleZip(bytes) {
                     <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
                 </div>
             `;
-            center.insertBefore(nav, center.firstChild);
+            document.body.insertBefore(nav, document.body.firstChild);
 
             const syncTheme = () => {
                 const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
