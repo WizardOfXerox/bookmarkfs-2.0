@@ -994,6 +994,7 @@ async function updateDeclarativeNetRequestRules() {
                     ]
                 },
                 condition: {
+                    initiatorDomains: [chrome.runtime.id],
                     resourceTypes: ["xmlhttprequest", "media", "image"]
                 }
             });
