@@ -44,64 +44,10 @@ function initContextMenu() {
 async function initDeclarativeNetRequest() {
     if (chrome.declarativeNetRequest) {
         try {
-            const rules = [
-                {
-                    id: 1,
-                    priority: 1,
-                    action: {
-                        type: "modifyHeaders",
-                        responseHeaders: [
-                            { header: "frame-options", operation: "remove" },
-                            { header: "x-frame-options", operation: "remove" },
-                            { header: "content-security-policy", operation: "remove" },
-                            { header: "content-security-policy-report-only", operation: "remove" }
-                        ]
-                    },
-                    condition: {
-                        resourceTypes: ["sub_frame"]
-                    }
-                },
-                {
-                    id: 2,
-                    priority: 1,
-                    action: {
-                        type: "modifyHeaders",
-                        requestHeaders: [
-                            {
-                                header: "user-agent",
-                                operation: "set",
-                                value: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
-                            }
-                        ]
-                    },
-                    condition: {
-                        resourceTypes: ["sub_frame"],
-                        excludedRequestDomains: ["facebook.com", "www.facebook.com", "m.facebook.com"]
-                    }
-                },
-                {
-                    id: 3,
-                    priority: 1,
-                    action: {
-                        type: "modifyHeaders",
-                        responseHeaders: [
-                            { header: "access-control-allow-origin", operation: "set", value: "*" },
-                            { header: "access-control-allow-methods", operation: "set", value: "*" },
-                            { header: "access-control-allow-headers", operation: "set", value: "*" }
-                        ]
-                    },
-                    condition: {
-                        resourceTypes: ["xmlhttprequest", "media", "image"]
-                    }
-                }
-            ];
-            await chrome.declarativeNetRequest.updateDynamicRules({
-                removeRuleIds: [1, 2, 3],
-                addRules: rules
-            });
-            console.log("Successfully registered declarativeNetRequest CSP, User-Agent, and CORS rules");
+            await updateDeclarativeNetRequestRules();
+            console.log("Successfully initialized declarativeNetRequest rules");
         } catch (err) {
-            console.error("Failed to register declarativeNetRequest CSP rules:", err);
+            console.error("Failed to initialize declarativeNetRequest rules:", err);
         }
     }
 }
@@ -994,7 +940,13 @@ async function updateDeclarativeNetRequestRules() {
     
     // Load settings from storage
     const storageData = await chrome.storage.local.get(["bookmarkfs_ua_settings", "bookmarkfs_ua_current"]);
-    const settings = storageData.bookmarkfs_ua_settings || { enabled: false, applyTo: "iframe", exceptions: [] };
+    const settings = storageData.bookmarkfs_ua_settings || { 
+        enabled: false, 
+        applyTo: "iframe", 
+        exceptions: [],
+        cspBypass: true,
+        corsBypass: true
+    };
     
     // Default fallback UA matches current rule 2 mobile UA
     const defaultMobileUa = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
@@ -1006,9 +958,11 @@ async function updateDeclarativeNetRequestRules() {
     }
 
     try {
-        const rules = [
-            // Rule 1: CSP removal
-            {
+        const rules = [];
+
+        // Rule 1: CSP removal
+        if (settings.cspBypass !== false) {
+            rules.push({
                 id: 1,
                 priority: 1,
                 action: {
@@ -1023,9 +977,12 @@ async function updateDeclarativeNetRequestRules() {
                 condition: {
                     resourceTypes: ["sub_frame"]
                 }
-            },
-            // Rule 3: CORS
-            {
+            });
+        }
+
+        // Rule 3: CORS
+        if (settings.corsBypass !== false) {
+            rules.push({
                 id: 3,
                 priority: 1,
                 action: {
@@ -1039,8 +996,8 @@ async function updateDeclarativeNetRequestRules() {
                 condition: {
                     resourceTypes: ["xmlhttprequest", "media", "image"]
                 }
-            }
-        ];
+            });
+        }
 
         // Rule 2: User-Agent Modify Rule (if enabled or using default iframe mobile UA)
         const activeUa = settings.enabled ? currentUa : defaultMobileUa;

@@ -547,6 +547,20 @@ export function handleZip(bytes) {
           </div>
         </div>
       </fieldset>
+
+      <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🌐 Network / Security Bypass</legend>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" id="setting-csp-bypass">
+            <span>Bypass CSP & X-Frame-Options (allows framing websites)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" id="setting-cors-bypass">
+            <span>Bypass CORS Restrictions (allows cross-origin requests)</span>
+          </label>
+        </div>
+      </fieldset>
       
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;">
         <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">Data Backup & Migration</legend>
@@ -645,7 +659,9 @@ export function handleZip(bytes) {
                 allowedBrowsers: [...document.querySelectorAll("#settings-popup input[data-ua-browser]")]
                     .filter(c => c.checked)
                     .map(c => c.dataset.uaBrowser),
-                exceptions: qs("#setting-ua-exceptions").value.split("\n").map(d => d.trim()).filter(Boolean)
+                exceptions: qs("#setting-ua-exceptions").value.split("\n").map(d => d.trim()).filter(Boolean),
+                cspBypass: qs("#setting-csp-bypass").checked,
+                corsBypass: qs("#setting-cors-bypass").checked
             };
 
             await chrome.storage.local.set({ bookmarkfs_ua_settings: uaSettings });
@@ -793,7 +809,9 @@ export function handleZip(bytes) {
             customUa: "",
             allowedOS: ["windows", "macos", "linux", "android", "ios"],
             allowedBrowsers: ["chrome", "firefox", "safari", "edge"],
-            exceptions: ["facebook.com", "www.facebook.com", "m.facebook.com"]
+            exceptions: ["facebook.com", "www.facebook.com", "m.facebook.com"],
+            cspBypass: true,
+            corsBypass: true
         };
 
         qs("#setting-ua-enabled").checked = !!ua.enabled;
@@ -801,6 +819,8 @@ export function handleZip(bytes) {
         qs("#setting-ua-trigger").value = ua.rotationTrigger || "never";
         qs("#setting-ua-interval").value = ua.rotationInterval || 10;
         qs("#setting-ua-custom").value = ua.customUa || "";
+        qs("#setting-csp-bypass").checked = ua.cspBypass !== false;
+        qs("#setting-cors-bypass").checked = ua.corsBypass !== false;
 
         // Match customUa to presets
         const UA_PRESETS = {
