@@ -31,6 +31,7 @@ export function handleZip(bytes) {
     let currentPage = 1;
     let pageSize = 25;
     let cachedSessionPassphrase = "";
+    let hasPrompted2FAKey = false;
 
     // ---------- Sandbox Communication ----------
     let sandboxRequestId = 0;
@@ -1618,32 +1619,48 @@ export function handleZip(bytes) {
         const bytes = te.encode(text);
         
         let pass = cachedSessionPassphrase;
-        if (!pass) {
+        if (!pass && !hasPrompted2FAKey) {
             pass = await new Promise((resolve) => {
                 showEncryptDecryptModal("Set Master Passphrase for 2FA Storage", true, (typedPass) => {
-                    resolve(typedPass || "");
+                    resolve(typedPass); // Return raw string ("" if blank, null if cancelled)
                 });
             });
-            if (!pass) throw new Error("Passphrase required");
+            if (pass === null) throw new Error("Cancelled by user");
+            hasPrompted2FAKey = true;
             cachedSessionPassphrase = pass;
         }
 
-        const { ct, salt, iv } = await encryptBytes(bytes, pass);
-        const serialized = "r" + b64encodeBytes(ct);
-        const meta = {
-            name: ".2fa.json",
-            sizeOriginal: bytes.length,
-            sizeStored: serialized.length,
-            ratio: 1,
-            dateISO: new Date().toISOString(),
-            tags: ["system", "secure"],
-            schemaVersion: 3,
-            encrypted: true,
-            enc: {
-                salt: b64encodeBytes(salt),
-                iv: b64encodeBytes(iv)
-            }
-        };
+        let meta, serialized;
+        if (pass) {
+            const { ct, salt, iv } = await encryptBytes(bytes, pass);
+            serialized = "r" + b64encodeBytes(ct);
+            meta = {
+                name: ".2fa.json",
+                sizeOriginal: bytes.length,
+                sizeStored: serialized.length,
+                ratio: 1,
+                dateISO: new Date().toISOString(),
+                tags: ["system", "secure"],
+                schemaVersion: 3,
+                encrypted: true,
+                enc: {
+                    salt: b64encodeBytes(salt),
+                    iv: b64encodeBytes(iv)
+                }
+            };
+        } else {
+            serialized = "r" + b64encodeBytes(bytes);
+            meta = {
+                name: ".2fa.json",
+                sizeOriginal: bytes.length,
+                sizeStored: serialized.length,
+                ratio: 1,
+                dateISO: new Date().toISOString(),
+                tags: ["system"],
+                schemaVersion: 3,
+                encrypted: false
+            };
+        }
         await file.writeMeta(meta);
         await file.write(serialized);
     }
