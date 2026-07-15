@@ -77,6 +77,7 @@ export function handleZip(bytes) {
 
     let cachedMetas = null;
     const thumbnailCache = new Map();
+    const fileTextContentCache = new Map();
 
     function addFileToCache(fileObj, metaObj) {
         if (!cachedMetas) return;
@@ -561,6 +562,42 @@ export function handleZip(bytes) {
           </label>
         </div>
       </fieldset>
+
+      <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🎨 Appearance & Themes</legend>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Theme Preset:</span>
+            <select id="setting-theme-preset" style="padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; cursor: pointer;">
+              <option value="default_dark">Default Dark</option>
+              <option value="dracula">Dracula</option>
+              <option value="nord">Nord</option>
+              <option value="cyberpunk">Cyberpunk</option>
+              <option value="solarized">Solarized</option>
+              <option value="monokai">Monokai</option>
+            </select>
+          </label>
+          <label style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Custom Accent Color:</span>
+            <input type="color" id="setting-custom-accent" style="border: none; padding: 0; width: 40px; height: 24px; cursor: pointer; background: transparent;">
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🧹 Storage Cleanup & Diagnostics</legend>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button id="btn-storage-scan" class="button" style="width: 100%;">🔍 Scan Storage Health</button>
+          <div id="storage-scan-results" style="display: none; font-size: 12px; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; flex-direction: column; gap: 6px;">
+            <div id="scan-dup-info">Duplicates found: -</div>
+            <button id="btn-purge-dups" class="button" style="display: none; padding: 4px 8px; font-size: 11px; background-color: #991b1b !important; color: #fecaca !important; border-color: #991b1b !important;">Purge Duplicates</button>
+            <div id="scan-orphans-info">Orphaned chunks: -</div>
+            <button id="btn-purge-orphans" class="button" style="display: none; padding: 4px 8px; font-size: 11px; background-color: #991b1b !important; color: #fecaca !important; border-color: #991b1b !important;">Purge Orphans</button>
+            <div style="font-weight: 500; margin-top: 4px;">Top 5 Largest Files:</div>
+            <ol id="scan-largest-list" style="margin: 0; padding-left: 20px;"></ol>
+          </div>
+        </div>
+      </fieldset>
       
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;">
         <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">Data Backup & Migration</legend>
@@ -608,6 +645,91 @@ export function handleZip(bytes) {
 
         // Close logic
         qs("#settings-close").onclick = () => popup.style.display = "none";
+
+        // Appearance bindings
+        qs("#setting-theme-preset").addEventListener("change", (e) => {
+            applyThemePreset(e.target.value);
+        });
+        qs("#setting-custom-accent").addEventListener("input", (e) => {
+            applyCustomAccent(e.target.value);
+        });
+
+        // Scan bindings
+        let scanResultsData = null;
+        qs("#btn-storage-scan").onclick = async () => {
+            const scanBtn = qs("#btn-storage-scan");
+            scanBtn.textContent = "Scanning...";
+            scanBtn.disabled = true;
+            try {
+                scanResultsData = await runStorageCleanup();
+                qs("#scan-dup-info").textContent = `Duplicates found: ${scanResultsData.duplicates.length} group(s)`;
+                qs("#btn-purge-dups").style.display = scanResultsData.duplicates.length > 0 ? "inline-block" : "none";
+                
+                qs("#scan-orphans-info").textContent = `Orphaned chunk directories: ${scanResultsData.orphanedChunks.length}`;
+                qs("#btn-purge-orphans").style.display = scanResultsData.orphanedChunks.length > 0 ? "inline-block" : "none";
+
+                const largestList = qs("#scan-largest-list");
+                largestList.innerHTML = "";
+                scanResultsData.largest.forEach(item => {
+                    const li = document.createElement("li");
+                    li.textContent = `${item.file.handle.title} (${niceBytes(item.meta.sizeOriginal)})`;
+                    largestList.appendChild(li);
+                });
+
+                qs("#storage-scan-results").style.display = "flex";
+            } catch (err) {
+                alert("Scan failed: " + err.message);
+            } finally {
+                scanBtn.textContent = "🔍 Scan Storage Health";
+                scanBtn.disabled = false;
+            }
+        };
+
+        // Purge duplicates
+        qs("#btn-purge-dups").onclick = async () => {
+            if (!scanResultsData || scanResultsData.duplicates.length === 0) return;
+            if (!confirm("Are you sure you want to delete all duplicate files (keeping one version of each)?")) return;
+            try {
+                let deletedCount = 0;
+                for (const group of scanResultsData.duplicates) {
+                    // Keep the first file, delete the rest
+                    for (let i = 1; i < group.length; i++) {
+                        const duplicateFile = group[i].file;
+                        await duplicateFile.delete();
+                        removeFileFromCache(duplicateFile.handle.id);
+                        deletedCount++;
+                    }
+                }
+                alert(`Purged ${deletedCount} duplicate file(s) successfully!`);
+                await loadFilesToTable();
+                qs("#btn-storage-scan").click(); // Re-scan
+            } catch (err) {
+                alert("Purge duplicates failed: " + err.message);
+            }
+        };
+
+        // Purge orphans
+        qs("#btn-purge-orphans").onclick = async () => {
+            if (!scanResultsData || scanResultsData.orphanedChunks.length === 0) return;
+            if (!confirm(`Are you sure you want to delete all ${scanResultsData.orphanedChunks.length} orphaned chunk directories?`)) return;
+            try {
+                let deletedCount = 0;
+                for (const chunkFolder of scanResultsData.orphanedChunks) {
+                    try {
+                        const children = await chrome.bookmarks.getChildren(chunkFolder.id);
+                        for (const child of children) {
+                            await chrome.bookmarks.remove(child.id);
+                        }
+                        await chrome.bookmarks.remove(chunkFolder.id);
+                        deletedCount++;
+                    } catch (e) {}
+                }
+                alert(`Purged ${deletedCount} orphaned chunk directory/directories successfully!`);
+                qs("#btn-storage-scan").click(); // Re-scan
+            } catch (err) {
+                alert("Purge orphans failed: " + err.message);
+            }
+        };
 
         // Share Import logic
         qs("#settings-share-import").onclick = async () => {
@@ -858,6 +980,13 @@ export function handleZip(bytes) {
         });
 
         updateUaUiVisibility();
+
+        const savedPreset = localStorage.getItem("bookmarkfs_theme_preset") || "default_dark";
+        qs("#setting-theme-preset").value = savedPreset;
+        const savedAccent = localStorage.getItem("bookmarkfs_custom_accent") || "#10b981";
+        qs("#setting-custom-accent").value = savedAccent;
+
+        qs("#storage-scan-results").style.display = "none";
     }
 
     function showEncryptDecryptModal(title, isUpload, callback) {
@@ -1205,6 +1334,506 @@ export function handleZip(bytes) {
         const m = base.match(/^(.*) \((\d+)\)$/);
         if (!m) return `${base} (2)${ext}`;
         return `${m[1]} (${Number(m[2]) + 1})${ext}`;
+    }
+
+    // ========== Virtual Folder Locks (Encrypted Directories) Helpers ==========
+    const cachedFolderPassphrases = new Map();
+
+    async function getFolderLocks() {
+        const file = await getFileByName(".locks.json");
+        if (!file) return {};
+        try {
+            const raw = await file.read();
+            const localMeta = await file.readMeta();
+            const reconstructed = await reconstructBytesFromSerialized(raw, localMeta);
+            const txt = td.decode(reconstructed.bytes);
+            return JSON.parse(txt);
+        } catch (e) {
+            console.warn("Failed to read folder locks:", e);
+            try {
+                const raw = await file.read();
+                const tag = raw[0];
+                const payload = raw.slice(1);
+                let bytes = b64decodeToBytes(payload);
+                if (tag === "c") bytes = gunzipSync(bytes);
+                return JSON.parse(td.decode(bytes));
+            } catch {
+                return {};
+            }
+        }
+    }
+
+    async function saveFolderLocks(locks) {
+        let file = await getFileByName(".locks.json");
+        if (!file) {
+            file = await createNewFile(".locks.json");
+        }
+        const text = JSON.stringify(locks);
+        const bytes = te.encode(text);
+        const serialized = "r" + b64encodeBytes(bytes);
+        const meta = {
+            name: ".locks.json",
+            sizeOriginal: bytes.length,
+            sizeStored: serialized.length,
+            ratio: 1,
+            dateISO: new Date().toISOString(),
+            tags: ["system"],
+            schemaVersion: 3
+        };
+        await file.writeMeta(meta);
+        await file.write(serialized);
+    }
+
+    async function lockFolder(folderPath, password) {
+        const locks = await getFolderLocks();
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        
+        const km = await crypto.subtle.importKey("raw", te.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+        const key = await crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+            km, { name: "AES-GCM", length: 256 },
+            false, ["encrypt"]
+        );
+        const validation = te.encode("folder_unlocked_verification");
+        const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, validation));
+
+        locks[folderPath] = {
+            saltB64: b64encodeBytes(salt),
+            ivB64: b64encodeBytes(iv),
+            validationCipher: b64encodeBytes(ct)
+        };
+        await saveFolderLocks(locks);
+        cachedFolderPassphrases.set(folderPath, password);
+    }
+
+    async function unlockFolder(folderPath, password) {
+        const locks = await getFolderLocks();
+        const info = locks[folderPath];
+        if (!info) return true;
+        try {
+            const salt = b64decodeToBytes(info.saltB64);
+            const iv = b64decodeToBytes(info.ivB64);
+            const cipher = b64decodeToBytes(info.validationCipher);
+            
+            const km = await crypto.subtle.importKey("raw", te.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+            const key = await crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+                km, { name: "AES-GCM", length: 256 },
+                false, ["decrypt"]
+            );
+            const pt = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher));
+            const decoded = td.decode(pt);
+            if (decoded === "folder_unlocked_verification") {
+                cachedFolderPassphrases.set(folderPath, password);
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    // ========== TOTP 2FA Authenticator Helpers ==========
+    function base32Decode(input) {
+        const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        const cleaned = input.replace(/[\s=-]+/g, "").toUpperCase();
+        let bits = "";
+        for (const c of cleaned) {
+            const val = CHARS.indexOf(c);
+            if (val < 0) continue;
+            bits += val.toString(2).padStart(5, "0");
+        }
+        const bytes = new Uint8Array(Math.floor(bits.length / 8));
+        for (let i = 0; i < bytes.length; i++) {
+            bytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+        }
+        return bytes;
+    }
+
+    async function generateTOTP(secret, period = 30, digits = 6) {
+        const key = base32Decode(secret);
+        const epoch = Math.floor(Date.now() / 1000);
+        const counter = Math.floor(epoch / period);
+        const counterBytes = new Uint8Array(8);
+        let tmp = counter;
+        for (let i = 7; i >= 0; i--) {
+            counterBytes[i] = tmp & 0xff;
+            tmp = Math.floor(tmp / 256);
+        }
+        const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+        const sig = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, counterBytes));
+        const offset = sig[sig.length - 1] & 0x0f;
+        const binary = ((sig[offset] & 0x7f) << 24) | ((sig[offset + 1] & 0xff) << 16) | ((sig[offset + 2] & 0xff) << 8) | (sig[offset + 3] & 0xff);
+        const otp = binary % Math.pow(10, digits);
+        const remaining = period - (epoch % period);
+        return { code: otp.toString().padStart(digits, "0"), remaining, period };
+    }
+
+    // ========== Fuzzy Search Scoring ==========
+    function fuzzyScore(query, text) {
+        if (!query || !text) return 0;
+        const q = query.toLowerCase();
+        const t = text.toLowerCase();
+        if (t.includes(q)) return 100;
+        let score = 0, qi = 0;
+        for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+            if (t[ti] === q[qi]) { score += 10; qi++; }
+        }
+        return qi === q.length ? score : 0;
+    }
+
+    // ========== Recursive Folder Download ==========
+    async function downloadFolderAsZip(folderName) {
+        const allFiles = await listFiles();
+        const fullFolderPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+        const prefix = fullFolderPath + "/";
+        const matches = allFiles.filter(f => f.handle.title.startsWith(prefix));
+        if (matches.length === 0) { alert("Folder is empty."); return; }
+
+        const zipData = {};
+        const statusEl = qs("#bulk-count") || qs("#analytics-bar");
+        const origText = statusEl ? statusEl.textContent : "";
+
+        try {
+            for (let i = 0; i < matches.length; i++) {
+                const f = matches[i];
+                const relativePath = f.handle.title.slice(fullFolderPath.length + 1);
+                if (statusEl) statusEl.textContent = `Packaging (${i+1}/${matches.length}): ${relativePath}`;
+                const raw = await f.read();
+                const meta = await f.readMeta();
+                const reconstructed = await reconstructBytesFromSerialized(raw, meta);
+                zipData[relativePath] = reconstructed.bytes;
+            }
+            if (statusEl) statusEl.textContent = "Compressing ZIP...";
+            const zipped = zipSync(zipData);
+            const blob = new Blob([zipped], { type: "application/zip" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${folderName}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert("Folder download failed: " + err.message);
+        } finally {
+            if (statusEl) statusEl.textContent = origText;
+        }
+    }
+
+    // ========== Storage Cleanup Scanner ==========
+    async function runStorageCleanup() {
+        const allFiles = await listFiles();
+        const metas = await Promise.all(allFiles.map(async f => {
+            try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
+        }));
+
+        // Find duplicates by contentHash
+        const hashMap = new Map();
+        for (const m of metas) {
+            if (m.meta && m.meta.contentHash) {
+                if (!hashMap.has(m.meta.contentHash)) hashMap.set(m.meta.contentHash, []);
+                hashMap.get(m.meta.contentHash).push(m);
+            }
+        }
+        const duplicates = [...hashMap.values()].filter(group => group.length > 1);
+
+        // Find orphaned chunks
+        const root = await fsRoot();
+        const rootChildren = await chrome.bookmarks.getChildren(root.id);
+        const chunksRoot = rootChildren.find(c => !c.url && c.title === "__chunks__");
+        let orphanedChunks = [];
+        if (chunksRoot) {
+            const chunkFolders = await chrome.bookmarks.getChildren(chunksRoot.id);
+            const fileIds = new Set(allFiles.map(f => f.handle.id));
+            orphanedChunks = chunkFolders.filter(cf => !fileIds.has(cf.title));
+        }
+
+        // Largest files
+        const largest = metas.filter(m => m.meta && m.meta.sizeOriginal)
+            .sort((a, b) => (b.meta.sizeOriginal || 0) - (a.meta.sizeOriginal || 0))
+            .slice(0, 10);
+
+        return { duplicates, orphanedChunks, largest, totalFiles: allFiles.length };
+    }
+
+    // ========== Theme Presets ==========
+    const THEME_PRESETS = {
+        default_dark: { "--bg-main": "#0d1117", "--bg-card": "#161b22", "--border": "#30363d", "--accent": "#10b981", "--text-primary": "#e6edf3", "--text-secondary": "#8b949e", "--shadow": "0 8px 24px rgba(0,0,0,.3)", name: "Default Dark" },
+        dracula: { "--bg-main": "#282a36", "--bg-card": "#44475a", "--border": "#6272a4", "--accent": "#bd93f9", "--text-primary": "#f8f8f2", "--text-secondary": "#6272a4", "--shadow": "0 8px 24px rgba(0,0,0,.4)", name: "Dracula" },
+        nord: { "--bg-main": "#2e3440", "--bg-card": "#3b4252", "--border": "#4c566a", "--accent": "#88c0d0", "--text-primary": "#eceff4", "--text-secondary": "#d8dee9", "--shadow": "0 8px 24px rgba(0,0,0,.3)", name: "Nord" },
+        cyberpunk: { "--bg-main": "#0a0a0f", "--bg-card": "#1a1a2e", "--border": "#e94560", "--accent": "#e94560", "--text-primary": "#eaeaea", "--text-secondary": "#a1a1aa", "--shadow": "0 8px 24px rgba(233,69,96,.15)", name: "Cyberpunk" },
+        solarized: { "--bg-main": "#002b36", "--bg-card": "#073642", "--border": "#586e75", "--accent": "#b58900", "--text-primary": "#fdf6e3", "--text-secondary": "#93a1a1", "--shadow": "0 8px 24px rgba(0,0,0,.3)", name: "Solarized" },
+        monokai: { "--bg-main": "#272822", "--bg-card": "#3e3d32", "--border": "#75715e", "--accent": "#a6e22e", "--text-primary": "#f8f8f2", "--text-secondary": "#75715e", "--shadow": "0 8px 24px rgba(0,0,0,.3)", name: "Monokai" }
+    };
+
+    function applyThemePreset(presetKey) {
+        const preset = THEME_PRESETS[presetKey];
+        if (!preset) return;
+        const root = document.documentElement;
+        for (const [prop, val] of Object.entries(preset)) {
+            if (prop.startsWith("--")) root.style.setProperty(prop, val);
+        }
+        localStorage.setItem("bookmarkfs_theme_preset", presetKey);
+    }
+
+    function applyCustomAccent(color) {
+        if (!color) return;
+        document.documentElement.style.setProperty("--accent", color);
+        localStorage.setItem("bookmarkfs_custom_accent", color);
+    }
+
+    // Restore saved theme on load
+    (function restoreSavedTheme() {
+        const savedPreset = localStorage.getItem("bookmarkfs_theme_preset");
+        if (savedPreset && THEME_PRESETS[savedPreset]) applyThemePreset(savedPreset);
+        const savedAccent = localStorage.getItem("bookmarkfs_custom_accent");
+        if (savedAccent) applyCustomAccent(savedAccent);
+    })();
+
+    // ========== Sync-Encrypted 2FA Authenticator Primitives ==========
+    async function load2FAProfiles() {
+        const file = await getFileByName(".2fa.json");
+        if (!file) return [];
+        try {
+            const raw = await file.read();
+            const localMeta = await file.readMeta();
+            const reconstructed = await reconstructBytesFromSerialized(raw, localMeta);
+            const txt = td.decode(reconstructed.bytes);
+            return JSON.parse(txt);
+        } catch (e) {
+            console.warn("Failed to load 2FA profiles:", e);
+            return [];
+        }
+    }
+
+    async function save2FAProfiles(profiles) {
+        let file = await getFileByName(".2fa.json");
+        if (!file) {
+            file = await createNewFile(".2fa.json");
+        }
+        
+        const text = JSON.stringify(profiles);
+        const bytes = te.encode(text);
+        
+        let pass = cachedSessionPassphrase;
+        if (!pass) {
+            pass = await new Promise((resolve) => {
+                showEncryptDecryptModal("Set Master Passphrase for 2FA Storage", true, (typedPass) => {
+                    resolve(typedPass || "");
+                });
+            });
+            if (!pass) throw new Error("Passphrase required");
+            cachedSessionPassphrase = pass;
+        }
+
+        const { ct, salt, iv } = await encryptBytes(bytes, pass);
+        const serialized = "r" + b64encodeBytes(ct);
+        const meta = {
+            name: ".2fa.json",
+            sizeOriginal: bytes.length,
+            sizeStored: serialized.length,
+            ratio: 1,
+            dateISO: new Date().toISOString(),
+            tags: ["system", "secure"],
+            schemaVersion: 3,
+            encrypted: true,
+            enc: {
+                salt: b64encodeBytes(salt),
+                iv: b64encodeBytes(iv)
+            }
+        };
+        await file.writeMeta(meta);
+        await file.write(serialized);
+    }
+
+    let twofaInterval = null;
+
+    function stop2FATimer() {
+        if (twofaInterval) {
+            clearInterval(twofaInterval);
+            twofaInterval = null;
+        }
+    }
+
+    async function show2FAPanel() {
+        let panel = qs("#twofa-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "twofa-panel";
+            panel.style.width = "100%";
+            panel.style.maxWidth = "980px";
+            panel.style.margin = "20px auto";
+            panel.style.boxSizing = "border-box";
+            panel.style.padding = "20px";
+            panel.style.background = "var(--bg-card)";
+            panel.style.border = "1px solid var(--border)";
+            panel.style.borderRadius = "16px";
+            panel.style.boxShadow = "var(--shadow)";
+            
+            panel.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:20px;">
+                    <h2 style="margin:0; color:var(--accent); display:flex; align-items:center; gap:8px;">🔐 2FA Authenticator</h2>
+                    <button id="btn-add-2fa" class="button" style="padding:6px 16px;">+ Add Profile</button>
+                </div>
+                <div id="twofa-profile-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+            `;
+            center.appendChild(panel);
+
+            qs("#btn-add-2fa").onclick = async () => {
+                const label = prompt("Enter profile label (e.g. Google: user@gmail.com):");
+                if (!label) return;
+                const secret = prompt("Enter Base32 Secret Key (without spaces):");
+                if (!secret) return;
+                
+                try {
+                    await generateTOTP(secret.trim());
+                    const profiles = await load2FAProfiles();
+                    profiles.push({ label: label.trim(), secret: secret.replace(/\s+/g, "").toUpperCase() });
+                    await save2FAProfiles(profiles);
+                    await render2FAProfilesList();
+                } catch (err) {
+                    alert("Invalid Base32 secret key: " + err.message);
+                }
+            };
+        }
+
+        panel.style.display = "block";
+        await render2FAProfilesList();
+        
+        stop2FATimer();
+        twofaInterval = setInterval(async () => {
+            await updateTOTPCodes();
+        }, 1000);
+    }
+
+    async function render2FAProfilesList() {
+        const listContainer = qs("#twofa-profile-list");
+        if (!listContainer) return;
+        listContainer.innerHTML = "";
+
+        const profiles = await load2FAProfiles();
+        if (profiles.length === 0) {
+            listContainer.innerHTML = `<div style="text-align:center; color:var(--text-secondary); padding:40px 0;">No 2FA profiles found. Click "+ Add Profile" to get started!</div>`;
+            return;
+        }
+
+        for (let i = 0; i < profiles.length; i++) {
+            const profile = profiles[i];
+            const row = document.createElement("div");
+            row.style.display = "flex";
+            row.style.justifyContent = "space-between";
+            row.style.alignItems = "center";
+            row.style.padding = "16px";
+            row.style.background = "var(--bg-main)";
+            row.style.border = "1px solid var(--border)";
+            row.style.borderRadius = "10px";
+            row.style.gap = "16px";
+            row.style.flexWrap = "wrap";
+
+            const info = document.createElement("div");
+            info.style.display = "flex";
+            info.style.flexDirection = "column";
+            info.style.gap = "4px";
+
+            const labelEl = document.createElement("div");
+            labelEl.textContent = profile.label;
+            labelEl.style.fontWeight = "600";
+            labelEl.style.color = "var(--text-primary)";
+
+            const secretMask = document.createElement("div");
+            secretMask.textContent = "••••••••••••••••";
+            secretMask.style.fontSize = "11px";
+            secretMask.style.color = "var(--text-secondary)";
+            
+            info.appendChild(labelEl);
+            info.appendChild(secretMask);
+
+            const otpArea = document.createElement("div");
+            otpArea.style.display = "flex";
+            otpArea.style.alignItems = "center";
+            otpArea.style.gap = "12px";
+
+            const codeEl = document.createElement("div");
+            codeEl.className = "totp-code-display";
+            codeEl.dataset.secret = profile.secret;
+            codeEl.style.fontFamily = "monospace";
+            codeEl.style.fontSize = "26px";
+            codeEl.style.fontWeight = "bold";
+            codeEl.style.letterSpacing = "2px";
+            codeEl.style.color = "var(--accent)";
+            codeEl.textContent = "------";
+
+            const timerEl = document.createElement("div");
+            timerEl.className = "totp-timer-display";
+            timerEl.style.fontSize = "12px";
+            timerEl.style.color = "var(--text-secondary)";
+            timerEl.style.width = "30px";
+            timerEl.textContent = "--";
+
+            const copyBtn = document.createElement("button");
+            copyBtn.className = "button";
+            copyBtn.textContent = "📋 Copy";
+            copyBtn.style.padding = "4px 10px";
+            copyBtn.style.fontSize = "12px";
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(codeEl.textContent.replace(/\s+/g, ""));
+                copyBtn.textContent = "✓ Copied";
+                setTimeout(() => { copyBtn.textContent = "📋 Copy"; }, 1500);
+            };
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "button";
+            delBtn.textContent = "🗑 Delete";
+            delBtn.style.padding = "4px 10px";
+            delBtn.style.fontSize = "12px";
+            delBtn.style.borderColor = "#ef4444";
+            delBtn.style.color = "#ef4444";
+            delBtn.onclick = async () => {
+                if (!confirm(`Are you sure you want to delete profile "${profile.label}"?`)) return;
+                const current = await load2FAProfiles();
+                const next = current.filter((p, idx) => idx !== i);
+                try {
+                    await save2FAProfiles(next);
+                    await render2FAProfilesList();
+                } catch(e) {
+                    alert("Delete failed: " + e.message);
+                }
+            };
+
+            otpArea.appendChild(codeEl);
+            otpArea.appendChild(timerEl);
+            otpArea.appendChild(copyBtn);
+            otpArea.appendChild(delBtn);
+
+            row.appendChild(info);
+            row.appendChild(otpArea);
+            listContainer.appendChild(row);
+        }
+
+        await updateTOTPCodes();
+    }
+
+    async function updateTOTPCodes() {
+        const codes = document.querySelectorAll(".totp-code-display");
+        for (const codeEl of codes) {
+            const secret = codeEl.dataset.secret;
+            const timerEl = codeEl.nextElementSibling;
+            try {
+                const totp = await generateTOTP(secret);
+                const fmtCode = totp.code.slice(0, 3) + " " + totp.code.slice(3);
+                codeEl.textContent = fmtCode;
+                timerEl.textContent = `${totp.remaining}s`;
+                if (totp.remaining < 6) {
+                    timerEl.style.color = "#ef4444";
+                } else {
+                    timerEl.style.color = "var(--text-secondary)";
+                }
+            } catch (e) {
+                codeEl.textContent = "ERROR";
+            }
+        }
     }
 
     async function handleBulkDownload() {
@@ -1930,6 +2559,7 @@ export function handleZip(bytes) {
             nav.innerHTML = `
                 <div class="nav-links">
                     <a href="index.html" class="nav-btn active" data-panel="files">📁 Files</a>
+                    <a href="#" class="nav-btn" id="nav-2fa-btn" data-panel="twofa">🔐 2FA</a>
                     <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
                     <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
                     <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
@@ -1942,6 +2572,51 @@ export function handleZip(bytes) {
                 </div>
             `;
             document.body.insertBefore(nav, document.body.firstChild);
+
+            // Bind panel switching
+            const navLinks = nav.querySelectorAll(".nav-btn");
+            navLinks.forEach(link => {
+                link.onclick = (e) => {
+                    const panel = link.dataset.panel;
+                    if (panel === "twofa") {
+                        e.preventDefault();
+                        navLinks.forEach(l => l.classList.remove("active"));
+                        link.classList.add("active");
+                        
+                        // Hide Files view containers
+                        const filesView = qs("#files-panel-view");
+                        if (filesView) filesView.style.display = "none";
+                        const controlsBar = qs("#controls-bar");
+                        if (controlsBar) controlsBar.style.display = "none";
+                        const storageChart = qs("#storage-chart-container");
+                        if (storageChart) storageChart.style.display = "none";
+                        const bulkBar = qs("#bulk-bar");
+                        if (bulkBar) bulkBar.style.display = "none";
+                        
+                        // Show 2FA panel
+                        show2FAPanel();
+                    } else if (panel === "files") {
+                        e.preventDefault();
+                        navLinks.forEach(l => l.classList.remove("active"));
+                        link.classList.add("active");
+                        
+                        // Hide 2FA panel
+                        const twofaPanel = qs("#twofa-panel");
+                        if (twofaPanel) twofaPanel.style.display = "none";
+                        stop2FATimer();
+                        
+                        // Show Files view containers
+                        const filesView = qs("#files-panel-view");
+                        if (filesView) filesView.style.display = "block";
+                        const controlsBar = qs("#controls-bar");
+                        if (controlsBar) controlsBar.style.display = "flex";
+                        const storageChart = qs("#storage-chart-container");
+                        if (storageChart) storageChart.style.display = "block";
+                        
+                        loadFilesToTable(false);
+                    }
+                };
+            });
 
             const syncTheme = () => {
                 const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
@@ -2497,12 +3172,87 @@ export function handleZip(bytes) {
     function updatePathBar() {
         const node = qs("#path-bar");
         if (!node) return;
-        node.textContent = currentPath ? `Path: /${currentPath}` : "Path: /";
+        node.innerHTML = "";
+        
+        const rootLink = document.createElement("span");
+        rootLink.textContent = "Root (/)";
+        rootLink.style.cursor = "pointer";
+        rootLink.style.padding = "2px 6px";
+        rootLink.style.borderRadius = "4px";
+        rootLink.onclick = async () => {
+            currentPath = "";
+            currentPage = 1;
+            await loadFilesToTable();
+        };
+        // Root drop target
+        rootLink.addEventListener("dragover", (e) => { e.preventDefault(); rootLink.style.background = "rgba(16,185,129,0.3)"; });
+        rootLink.addEventListener("dragleave", () => { rootLink.style.background = ""; });
+        rootLink.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            rootLink.style.background = "";
+            const dragId = e.dataTransfer.getData("text/file-id");
+            const dragName = e.dataTransfer.getData("text/file-name");
+            if (!dragId || !dragName) return;
+            const baseName = splitVirtualName(dragName).base;
+            const f = (await listFiles()).find(x => x.handle.id === dragId);
+            if (f) {
+                await f.rename(baseName);
+                renameFileInCache(dragId, baseName);
+                await loadFilesToTable(false);
+            }
+        });
+        node.appendChild(rootLink);
+
+        if (currentPath) {
+            const parts = currentPath.split("/").filter(Boolean);
+            let accum = "";
+            for (let i = 0; i < parts.length; i++) {
+                const sep = document.createElement("span");
+                sep.textContent = " / ";
+                node.appendChild(sep);
+
+                const part = parts[i];
+                accum = accum ? `${accum}/${part}` : part;
+                const targetPath = accum;
+
+                const link = document.createElement("span");
+                link.textContent = part;
+                link.style.cursor = "pointer";
+                link.style.padding = "2px 6px";
+                link.style.borderRadius = "4px";
+                link.onclick = async () => {
+                    currentPath = targetPath;
+                    currentPage = 1;
+                    await loadFilesToTable();
+                };
+                
+                // Breadcrumb drop target
+                link.addEventListener("dragover", (e) => { e.preventDefault(); link.style.background = "rgba(16,185,129,0.3)"; });
+                link.addEventListener("dragleave", () => { link.style.background = ""; });
+                link.addEventListener("drop", async (e) => {
+                    e.preventDefault();
+                    link.style.background = "";
+                    const dragId = e.dataTransfer.getData("text/file-id");
+                    const dragName = e.dataTransfer.getData("text/file-name");
+                    if (!dragId || !dragName) return;
+                    const baseName = splitVirtualName(dragName).base;
+                    const newName = joinVirtualName(targetPath, baseName);
+                    const f = (await listFiles()).find(x => x.handle.id === dragId);
+                    if (f) {
+                        await f.rename(newName);
+                        renameFileInCache(dragId, newName);
+                        await loadFilesToTable(false);
+                    }
+                });
+                node.appendChild(link);
+            }
+        }
+
         const folder = qs("#folder-input");
         if (folder && folder.value !== currentPath) folder.value = currentPath;
     }
 
-    function getVisibleEntries(files, searchTerm, tagFilterValue, metas) {
+    function getVisibleEntries(files, searchTerm, tagFilterValue, metas, notesStorage) {
         const q = (searchTerm || "").toLowerCase();
         const prefix = currentPath ? `${currentPath}/` : "";
         const folders = new Map();
@@ -2533,8 +3283,43 @@ export function handleZip(bytes) {
                 if (!q || folder.toLowerCase().includes(q)) folders.set(folder, folder);
             } else {
                 if (rest === ".keep") continue;
-                if (!q || rest.toLowerCase().includes(q) || full.toLowerCase().includes(q)) {
-                    fileEntries.push({ file, displayName: rest, fullName: full });
+                if (!q) {
+                    fileEntries.push({ file, displayName: rest, fullName: full, searchScore: 0 });
+                } else {
+                    // Deep fuzzy search: name
+                    const nameScore = fuzzyScore(q, rest) || fuzzyScore(q, full);
+                    
+                    // Tags
+                    const m = metaMap.get(file.handle.id);
+                    const tagStr = (m && Array.isArray(m.tags)) ? m.tags.join(" ") : "";
+                    const tagScore = fuzzyScore(q, tagStr);
+                    
+                    // Description
+                    const descStr = (m && m.description) ? m.description : "";
+                    const descScore = fuzzyScore(q, descStr);
+
+                    // Mapped notes content
+                    let noteScore = 0;
+                    if (notesStorage) {
+                        const baseName = rest.toLowerCase();
+                        for (const [key, val] of Object.entries(notesStorage)) {
+                            if (key.startsWith("note_text_") && typeof val === "string") {
+                                const noteKeyLower = key.toLowerCase();
+                                if (noteKeyLower.includes(baseName) || baseName.includes(noteKeyLower.replace("note_text_", ""))) {
+                                    noteScore = Math.max(noteScore, fuzzyScore(q, val));
+                                }
+                            }
+                        }
+                    }
+
+                    // Text/Markdown content search
+                    const cachedText = fileTextContentCache.get(file.handle.id) || "";
+                    const contentScore = cachedText ? fuzzyScore(q, cachedText) : 0;
+
+                    const bestScore = Math.max(nameScore, tagScore, descScore, noteScore, contentScore);
+                    if (bestScore > 0) {
+                        fileEntries.push({ file, displayName: rest, fullName: full, searchScore: bestScore });
+                    }
                 }
             }
         }
@@ -2542,6 +3327,9 @@ export function handleZip(bytes) {
         
         const sortValue = localStorage.getItem("bookmarkfs_files_sort") || "name_asc";
         fileEntries.sort((a, b) => {
+            if (q && a.searchScore !== b.searchScore) {
+                return b.searchScore - a.searchScore; // Sort by relevance when searching
+            }
             const metaA = metaMap.get(a.file.handle.id);
             const metaB = metaMap.get(b.file.handle.id);
             
@@ -2937,6 +3725,33 @@ export function handleZip(bytes) {
 
         if (meta.encrypted) {
             let pass = cachedSessionPassphrase || "";
+
+            // Check if file is inside a locked folder path
+            const locks = await getFolderLocks();
+            let targetLockedFolder = "";
+            const fileTitle = meta.name || "";
+            for (const lockedPath of Object.keys(locks)) {
+                if (fileTitle === lockedPath || fileTitle.startsWith(lockedPath + "/")) {
+                    targetLockedFolder = lockedPath;
+                    break;
+                }
+            }
+
+            if (targetLockedFolder) {
+                let folderPass = cachedFolderPassphrases.get(targetLockedFolder);
+                if (!folderPass) {
+                    folderPass = prompt(`File is in locked folder "${targetLockedFolder}". Enter password to decrypt:`);
+                    if (folderPass) {
+                        const ok = await unlockFolder(targetLockedFolder, folderPass);
+                        if (!ok) {
+                            alert("Incorrect password!");
+                            folderPass = "";
+                        }
+                    }
+                }
+                if (folderPass) pass = folderPass;
+            }
+
             if (!pass) {
                 pass = await new Promise((resolve) => {
                     showEncryptDecryptModal("Enter Decryption Passphrase", false, (typedPass, shouldCache) => {
@@ -3106,6 +3921,33 @@ export function handleZip(bytes) {
         const table = qs("#table");
         const tbody = qs("#table tbody");
         if (!tbody) return;
+
+        // Check if currentPath is locked and needs unlocking
+        if (currentPath) {
+            const locks = await getFolderLocks();
+            const parts = currentPath.split("/").filter(Boolean);
+            let accum = "";
+            let lockedParent = "";
+            for (const part of parts) {
+                accum = accum ? `${accum}/${part}` : part;
+                if (locks[accum] && !cachedFolderPassphrases.has(accum)) {
+                    lockedParent = accum;
+                    break;
+                }
+            }
+            if (lockedParent) {
+                const pass = prompt(`Folder "${lockedParent}" is locked. Enter password to view:`);
+                if (pass) {
+                    const ok = await unlockFolder(lockedParent, pass);
+                    if (!ok) {
+                        alert("Incorrect password!");
+                        currentPath = ""; // Send back to root
+                    }
+                } else {
+                    currentPath = ""; // Send back to root
+                }
+            }
+        }
         const currentMode = localStorage.getItem("bookmarkfs_view_mode") || "list";
         if (table) {
             if (currentMode === "grid") {
@@ -3157,7 +3999,8 @@ export function handleZip(bytes) {
             });
         }
 
-        const entries = getVisibleEntries(files, q, tagFilterValue, metas);
+        const notesStorage = await chrome.storage.local.get(null);
+        const entries = getVisibleEntries(files, q, tagFilterValue, metas, notesStorage);
         const totalPages = Math.max(1, Math.ceil(entries.length / Math.max(1, pageSize)));
         if (currentPage > totalPages) currentPage = totalPages;
         const pageInfo = qs("#page-info");
@@ -3175,6 +4018,30 @@ export function handleZip(bytes) {
             tr.style.borderBottom = "1px solid #444";
 
             if (entry.folder) {
+                // Drag-and-drop drop target on folder row
+                tr.addEventListener("dragover", (e) => { e.preventDefault(); tr.style.background = "rgba(16,185,129,0.15)"; });
+                tr.addEventListener("dragleave", () => { tr.style.background = ""; });
+                tr.addEventListener("drop", async (e) => {
+                    e.preventDefault();
+                    tr.style.background = "";
+                    const dragId = e.dataTransfer.getData("text/file-id");
+                    const dragName = e.dataTransfer.getData("text/file-name");
+                    if (!dragId || !dragName) return;
+                    const targetFolder = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+                    const baseName = splitVirtualName(dragName).base;
+                    const newName = joinVirtualName(targetFolder, baseName);
+                    const f = (await listFiles()).find(x => x.handle.id === dragId);
+                    if (f) {
+                        await f.rename(newName);
+                        renameFileInCache(dragId, newName);
+                        await loadFilesToTable(false);
+                    }
+                });
+
+                const locks = await getFolderLocks();
+                const isLocked = !!locks[entry.name];
+                const isUnlocked = isLocked && cachedFolderPassphrases.has(entry.name);
+
                 const tdSelect = document.createElement("td");
                 tdSelect.style.textAlign = "center";
                 const cb = document.createElement("input");
@@ -3188,21 +4055,100 @@ export function handleZip(bytes) {
 
                 const tdPreview = document.createElement("td");
                 const icon = document.createElement("img");
-                icon.src = placeholderDataUrl("DIR", "#2b4d2b");
+                icon.src = isLocked ? placeholderDataUrl(isUnlocked ? "🔓" : "🔒", isUnlocked ? "#2b3c4d" : "#5c2b2b") : placeholderDataUrl("DIR", "#2b4d2b");
                 icon.style.width = "100px";
                 icon.style.height = "100px";
                 icon.style.objectFit = "cover";
+                if (isLocked && !isUnlocked) {
+                    icon.style.filter = "blur(4px)";
+                }
                 tdPreview.appendChild(icon);
+
                 const tdName = document.createElement("td");
                 const btn = document.createElement("button");
                 btn.className = "button";
-                btn.textContent = `[Folder] ${entry.name}`;
+                btn.textContent = isLocked ? (isUnlocked ? `🔓 [Unlocked] ${entry.name}` : `🔒 [Locked Folder]`) : `[Folder] ${entry.name}`;
+                if (isLocked && !isUnlocked) {
+                    btn.style.fontStyle = "italic";
+                    btn.style.color = "var(--text-secondary)";
+                }
                 btn.onclick = async() => {
+                    if (isLocked && !isUnlocked) {
+                        const pass = prompt(`Folder "${entry.name}" is locked. Enter password to unlock:`);
+                        if (!pass) return;
+                        const ok = await unlockFolder(entry.name, pass);
+                        if (!ok) {
+                            alert("Incorrect password!");
+                            return;
+                        }
+                    }
                     currentPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
                     currentPage = 1;
                     await loadFilesToTable();
                 };
                 tdName.appendChild(btn);
+
+                // Add ZIP download button next to folder
+                const dlBtn = document.createElement("button");
+                dlBtn.className = "button";
+                dlBtn.textContent = "📥 ZIP";
+                dlBtn.title = "Download folder as ZIP";
+                dlBtn.style.marginLeft = "6px";
+                dlBtn.style.fontSize = "11px";
+                dlBtn.style.padding = "2px 8px";
+                dlBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    await downloadFolderAsZip(entry.name);
+                };
+                tdName.appendChild(dlBtn);
+
+                // Lock button if folder is not locked
+                if (!isLocked) {
+                    const lockBtn = document.createElement("button");
+                    lockBtn.className = "button";
+                    lockBtn.textContent = "🔒 Lock";
+                    lockBtn.title = "Lock folder with password";
+                    lockBtn.style.marginLeft = "6px";
+                    lockBtn.style.fontSize = "11px";
+                    lockBtn.style.padding = "2px 8px";
+                    lockBtn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const pass = prompt(`Enter password to lock folder "${entry.name}":`);
+                        if (!pass) return;
+                        await lockFolder(entry.name, pass);
+                        alert(`Folder "${entry.name}" is now locked!`);
+                        await loadFilesToTable();
+                    };
+                    tdName.appendChild(lockBtn);
+                } else {
+                    const lockBtn = document.createElement("button");
+                    lockBtn.className = "button";
+                    lockBtn.textContent = isUnlocked ? "🔒 Re-lock" : "🔓 Unlock";
+                    lockBtn.title = isUnlocked ? "Lock this folder again" : "Unlock this folder";
+                    lockBtn.style.marginLeft = "6px";
+                    lockBtn.style.fontSize = "11px";
+                    lockBtn.style.padding = "2px 8px";
+                    lockBtn.onclick = async (e) => {
+                        e.stopPropagation();
+                        if (isUnlocked) {
+                            cachedFolderPassphrases.delete(entry.name);
+                            alert(`Folder "${entry.name}" is now locked.`);
+                            await loadFilesToTable();
+                        } else {
+                            const pass = prompt(`Enter password to unlock folder "${entry.name}":`);
+                            if (!pass) return;
+                            const ok = await unlockFolder(entry.name, pass);
+                            if (ok) {
+                                alert("Folder unlocked!");
+                                await loadFilesToTable();
+                            } else {
+                                alert("Incorrect password!");
+                            }
+                        }
+                    };
+                    tdName.appendChild(lockBtn);
+                }
+
                 tr.appendChild(tdPreview);
                 tr.appendChild(tdName);
                 for (let i = 0; i < 6; i++) {
@@ -3218,6 +4164,16 @@ export function handleZip(bytes) {
             const file = entry.file;
             const meta = await file.readMeta();
             const name = entry.displayName;
+
+            // Make file row draggable
+            tr.setAttribute("draggable", "true");
+            tr.style.cursor = "grab";
+            tr.addEventListener("dragstart", (e) => {
+                e.dataTransfer.setData("text/file-id", file.handle.id);
+                e.dataTransfer.setData("text/file-name", file.handle.title);
+                tr.style.opacity = "0.5";
+            });
+            tr.addEventListener("dragend", () => { tr.style.opacity = "1"; });
 
             const tdSelect = document.createElement("td");
             tdSelect.style.textAlign = "center";
@@ -4418,8 +5374,32 @@ export function handleZip(bytes) {
 
     // ---------- Upload handling ----------
     async function handleFileList(fileList) {
-        let pass = cachedSessionPassphrase;
-        if (!pass) {
+        let activePassphrase = cachedSessionPassphrase || "";
+        const locks = await getFolderLocks();
+        let targetLockedFolder = "";
+        
+        for (const lockedPath of Object.keys(locks)) {
+            if (currentPath === lockedPath || currentPath.startsWith(lockedPath + "/")) {
+                targetLockedFolder = lockedPath;
+                break;
+            }
+        }
+
+        if (targetLockedFolder) {
+            let folderPass = cachedFolderPassphrases.get(targetLockedFolder);
+            if (!folderPass) {
+                folderPass = prompt(`Folder "${targetLockedFolder}" is locked. Enter password to write into it:`);
+                if (!folderPass) return;
+                const ok = await unlockFolder(targetLockedFolder, folderPass);
+                if (!ok) {
+                    alert("Incorrect password!");
+                    return;
+                }
+            }
+            activePassphrase = folderPass;
+        }
+
+        if (!activePassphrase && !targetLockedFolder) {
             showEncryptDecryptModal("Optional Passphrase (AES-GCM)", true, async (typedPass, shouldCache) => {
                 if (typedPass === null) return;
                 if (typedPass && shouldCache) cachedSessionPassphrase = typedPass;
@@ -4430,7 +5410,7 @@ export function handleZip(bytes) {
             });
         } else {
             for (const f of fileList) {
-                await processAndStoreFile(f, pass);
+                await processAndStoreFile(f, activePassphrase);
             }
             await loadFilesToTable(false);
         }
