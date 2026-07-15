@@ -1657,24 +1657,33 @@ export function handleZip(bytes) {
         }
     }
 
-    function parseOTPAuthURL(urlStr) {
-        try {
-            const url = new URL(urlStr);
-            if (url.protocol !== "otpauth:") throw new Error("Invalid protocol");
-            if (url.host !== "totp") throw new Error("Only TOTP is supported");
-            
-            let label = decodeURIComponent(url.pathname.replace(/^\//, ""));
-            const secret = url.searchParams.get("secret");
-            if (!secret) throw new Error("Missing secret parameter");
-            
-            const issuer = url.searchParams.get("issuer") || "";
-            if (issuer && !label.toLowerCase().startsWith(issuer.toLowerCase())) {
-                label = `${issuer}: ${label}`;
+    function parseQRContent(content) {
+        content = content.trim();
+        if (content.toLowerCase().startsWith("otpauth:")) {
+            try {
+                const url = new URL(content);
+                if (url.protocol !== "otpauth:") throw new Error("Invalid protocol");
+                
+                let label = decodeURIComponent(url.pathname.replace(/^\//, ""));
+                const secret = url.searchParams.get("secret");
+                if (!secret) throw new Error("Missing secret parameter");
+                
+                const issuer = url.searchParams.get("issuer") || "";
+                if (issuer && !label.toLowerCase().startsWith(issuer.toLowerCase())) {
+                    label = `${issuer}: ${label}`;
+                }
+                
+                return { label: label.trim(), secret: secret.trim() };
+            } catch (e) {
+                throw new Error("Could not parse otpauth URL: " + e.message);
             }
-            
-            return { label, secret };
-        } catch (e) {
-            throw new Error("Could not parse QR code: " + e.message);
+        } else {
+            // Check if it is a raw Base32 secret
+            const cleaned = content.replace(/[\s=-]+/g, "").toUpperCase();
+            if (/^[A-Z2-7]+$/.test(cleaned) && cleaned.length >= 8) {
+                return { label: "Imported Profile", secret: cleaned };
+            }
+            throw new Error("QR content is not a valid otpauth URL or Base32 secret key");
         }
     }
 
@@ -1723,9 +1732,9 @@ export function handleZip(bytes) {
                 </label>
             </div>
 
-            <div id="twofa-video-container" style="display: none; position: relative; width: 100%; height: 200px; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #27272a;">
-                <video id="twofa-scan-video" style="width: 100%; height: 100%; object-fit: cover;" playsinline></video>
-                <div style="position: absolute; inset: 40px; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
+            <div id="twofa-video-container" style="display: none; position: relative; width: 100%; max-height: 280px; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #27272a;">
+                <video id="twofa-scan-video" style="width: 100%; display: block;" playsinline></video>
+                <div style="position: absolute; top: 10%; bottom: 10%; left: 10%; right: 10%; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
             </div>
 
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
@@ -1780,24 +1789,24 @@ export function handleZip(bytes) {
                 const ctx = canvas.getContext("2d");
 
                 scanInterval = setInterval(() => {
-                    if (video.readyState >= 2) {
+                    if (video.readyState >= 2 && video.videoWidth > 0) {
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         const code = jsQR(imgData.data, imgData.width, imgData.height, {
-                            inversionAttempts: "dontInvert",
+                            inversionAttempts: "attemptBoth",
                         });
 
                         if (code) {
                             try {
-                                const parsed = parseOTPAuthURL(code.data);
+                                const parsed = parseQRContent(code.data);
                                 labelInput.value = parsed.label;
                                 secretInput.value = parsed.secret;
                                 stopCamera();
                                 alert("QR Code scanned successfully!");
                             } catch (err) {
-                                // Ignore and scan again
+                                console.warn("[QR Scanner] Decode parse failed:", err.message);
                             }
                         }
                     }
@@ -1832,7 +1841,7 @@ export function handleZip(bytes) {
                     const code = jsQR(imgData.data, imgData.width, imgData.height);
                     if (code) {
                         try {
-                            const parsed = parseOTPAuthURL(code.data);
+                            const parsed = parseQRContent(code.data);
                             labelInput.value = parsed.label;
                             secretInput.value = parsed.secret;
                             alert("QR Code imported successfully!");
