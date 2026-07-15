@@ -1780,7 +1780,7 @@ export function handleZip(bytes) {
                 const ctx = canvas.getContext("2d");
 
                 scanInterval = setInterval(() => {
-                    if (video.readyState === video.HAVE_CURRENT_DATA) {
+                    if (video.readyState >= 2) {
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
