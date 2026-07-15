@@ -1,5 +1,6 @@
 import { unzipSync, zipSync, gzipSync as fflateGzip, gunzipSync as fflateGunzip } from "fflate";
 import { createExtractorFromData } from "node-unrar-js";
+import jsQR from "jsqr";
 
 async function handleRar(bytes) {
     const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -1656,6 +1657,210 @@ export function handleZip(bytes) {
         }
     }
 
+    function parseOTPAuthURL(urlStr) {
+        try {
+            const url = new URL(urlStr);
+            if (url.protocol !== "otpauth:") throw new Error("Invalid protocol");
+            if (url.host !== "totp") throw new Error("Only TOTP is supported");
+            
+            let label = decodeURIComponent(url.pathname.replace(/^\//, ""));
+            const secret = url.searchParams.get("secret");
+            if (!secret) throw new Error("Missing secret parameter");
+            
+            const issuer = url.searchParams.get("issuer") || "";
+            if (issuer && !label.toLowerCase().startsWith(issuer.toLowerCase())) {
+                label = `${issuer}: ${label}`;
+            }
+            
+            return { label, secret };
+        } catch (e) {
+            throw new Error("Could not parse QR code: " + e.message);
+        }
+    }
+
+    function showAdd2FAParametersModal(callback) {
+        const modal = document.createElement("div");
+        modal.id = "add-2fa-modal";
+        modal.style.position = "fixed";
+        modal.style.inset = "0";
+        modal.style.background = "rgba(10, 10, 10, 0.85)";
+        modal.style.backdropFilter = "blur(8px)";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+        modal.style.zIndex = "100000";
+
+        const box = document.createElement("div");
+        box.style.background = "#18181b";
+        box.style.border = "1px solid #27272a";
+        box.style.color = "#f4f4f5";
+        box.style.padding = "24px";
+        box.style.borderRadius = "16px";
+        box.style.width = "min(420px, 90%)";
+        box.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.5)";
+        box.style.display = "flex";
+        box.style.flexDirection = "column";
+        box.style.gap = "16px";
+
+        box.innerHTML = `
+            <h3 style="margin: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">🔐 Add 2FA Profile</h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 12px; color: #a1a1aa;">Profile Label:</label>
+                <input type="text" id="add-2fa-label" placeholder="e.g. Google: user@gmail.com" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 12px; color: #a1a1aa;">Secret Key:</label>
+                <input type="text" id="add-2fa-secret" placeholder="Base32 Key" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: space-between;">
+                <button id="btn-2fa-cam-scan" class="button" style="flex: 1; font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
+                <label class="button" style="flex: 1; font-size: 12px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0;">
+                    🖼 Upload QR
+                    <input type="file" id="input-2fa-qr-file" accept="image/*" style="display: none;">
+                </label>
+            </div>
+
+            <div id="2fa-video-container" style="display: none; position: relative; width: 100%; height: 200px; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #27272a;">
+                <video id="2fa-scan-video" style="width: 100%; height: 100%; object-fit: cover;" playsinline></video>
+                <div style="position: absolute; inset: 40px; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+                <button id="btn-2fa-save" class="button" style="padding: 6px 16px; font-weight: 600;">Save</button>
+                <button id="btn-2fa-cancel" class="button" style="padding: 6px 16px; background: transparent; border-color: #27272a;">Cancel</button>
+            </div>
+        `;
+
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+
+        let activeStream = null;
+        let scanInterval = null;
+
+        const labelInput = box.querySelector("#add-2fa-label");
+        const secretInput = box.querySelector("#add-2fa-secret");
+        const camBtn = box.querySelector("#btn-2fa-cam-scan");
+        const fileInput = box.querySelector("#input-2fa-qr-file");
+        const videoContainer = box.querySelector("#2fa-video-container");
+        const video = box.querySelector("#2fa-scan-video");
+        const saveBtn = box.querySelector("#btn-2fa-save");
+        const cancelBtn = box.querySelector("#btn-2fa-cancel");
+
+        function stopCamera() {
+            if (scanInterval) {
+                clearInterval(scanInterval);
+                scanInterval = null;
+            }
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+                activeStream = null;
+            }
+            videoContainer.style.display = "none";
+            camBtn.textContent = "📷 Scan Camera";
+        }
+
+        camBtn.onclick = async () => {
+            if (activeStream) {
+                stopCamera();
+                return;
+            }
+
+            try {
+                activeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = activeStream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                videoContainer.style.display = "block";
+                camBtn.textContent = "⏹ Stop Camera";
+
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                scanInterval = setInterval(() => {
+                    if (video.readyState === video.HAVE_CURRENT_DATA) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                            inversionAttempts: "dontInvert",
+                        });
+
+                        if (code) {
+                            try {
+                                const parsed = parseOTPAuthURL(code.data);
+                                labelInput.value = parsed.label;
+                                secretInput.value = parsed.secret;
+                                stopCamera();
+                                alert("QR Code scanned successfully!");
+                            } catch (err) {
+                                // Ignore and scan again
+                            }
+                        }
+                    }
+                }, 250);
+            } catch (err) {
+                alert("Failed to access camera: " + err.message);
+            }
+        };
+
+        fileInput.onchange = () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imgData.data, imgData.width, imgData.height);
+                    if (code) {
+                        try {
+                            const parsed = parseOTPAuthURL(code.data);
+                            labelInput.value = parsed.label;
+                            secretInput.value = parsed.secret;
+                            alert("QR Code imported successfully!");
+                        } catch (err) {
+                            alert("Could not read QR code: " + err.message);
+                        }
+                    } else {
+                        alert("No QR Code detected in image.");
+                    }
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+            fileInput.value = "";
+        };
+
+        saveBtn.onclick = () => {
+            const label = labelInput.value.trim();
+            const secret = secretInput.value.replace(/\s+/g, "").toUpperCase();
+            if (!label || !secret) {
+                alert("Please fill in both Label and Secret Key fields.");
+                return;
+            }
+            stopCamera();
+            modal.remove();
+            callback({ label, secret });
+        };
+
+        cancelBtn.onclick = () => {
+            stopCamera();
+            modal.remove();
+            callback(null);
+        };
+    }
+
     async function show2FAPanel() {
         let panel = qs("#twofa-panel");
         const center = document.querySelector("center") || document.body;
@@ -1682,20 +1887,18 @@ export function handleZip(bytes) {
             center.appendChild(panel);
 
             qs("#btn-add-2fa").onclick = async () => {
-                const label = prompt("Enter profile label (e.g. Google: user@gmail.com):");
-                if (!label) return;
-                const secret = prompt("Enter Base32 Secret Key (without spaces):");
-                if (!secret) return;
-                
-                try {
-                    await generateTOTP(secret.trim());
-                    const profiles = await load2FAProfiles();
-                    profiles.push({ label: label.trim(), secret: secret.replace(/\s+/g, "").toUpperCase() });
-                    await save2FAProfiles(profiles);
-                    await render2FAProfilesList();
-                } catch (err) {
-                    alert("Invalid Base32 secret key: " + err.message);
-                }
+                showAdd2FAParametersModal(async (result) => {
+                    if (!result) return;
+                    try {
+                        await generateTOTP(result.secret);
+                        const profiles = await load2FAProfiles();
+                        profiles.push({ label: result.label, secret: result.secret });
+                        await save2FAProfiles(profiles);
+                        await render2FAProfilesList();
+                    } catch (err) {
+                        alert("Invalid Base32 secret key: " + err.message);
+                    }
+                });
             };
         }
 

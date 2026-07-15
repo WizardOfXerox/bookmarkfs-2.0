@@ -24,6 +24,7 @@
   "dependencies": {
     "base65536": "^4.0.2",
     "fflate": "^0.7.3",
+    "jsqr": "^1.4.0",
     "lzw": "^0.0.3",
     "node-gzip": "^1.1.2",
     "node-unrar-js": "^2.0.2",
