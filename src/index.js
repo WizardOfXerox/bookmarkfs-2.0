@@ -1680,7 +1680,7 @@ export function handleZip(bytes) {
 
     function showAdd2FAParametersModal(callback) {
         const modal = document.createElement("div");
-        modal.id = "add-2fa-modal";
+        modal.id = "add-twofa-modal";
         modal.style.position = "fixed";
         modal.style.inset = "0";
         modal.style.background = "rgba(10, 10, 10, 0.85)";
@@ -1707,30 +1707,30 @@ export function handleZip(bytes) {
             
             <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label style="font-size: 12px; color: #a1a1aa;">Profile Label:</label>
-                <input type="text" id="add-2fa-label" placeholder="e.g. Google: user@gmail.com" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+                <input type="text" id="add-twofa-label" placeholder="e.g. Google: user@gmail.com" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label style="font-size: 12px; color: #a1a1aa;">Secret Key:</label>
-                <input type="text" id="add-2fa-secret" placeholder="Base32 Key" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
+                <input type="text" id="add-twofa-secret" placeholder="Base32 Key" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
             </div>
 
             <div style="display: flex; gap: 8px; justify-content: space-between;">
-                <button id="btn-2fa-cam-scan" class="button" style="flex: 1; font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
+                <button id="btn-twofa-cam-scan" class="button" style="flex: 1; font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
                 <label class="button" style="flex: 1; font-size: 12px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0;">
                     🖼 Upload QR
-                    <input type="file" id="input-2fa-qr-file" accept="image/*" style="display: none;">
+                    <input type="file" id="input-twofa-qr-file" accept="image/*" style="display: none;">
                 </label>
             </div>
 
-            <div id="2fa-video-container" style="display: none; position: relative; width: 100%; height: 200px; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #27272a;">
-                <video id="2fa-scan-video" style="width: 100%; height: 100%; object-fit: cover;" playsinline></video>
+            <div id="twofa-video-container" style="display: none; position: relative; width: 100%; height: 200px; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #27272a;">
+                <video id="twofa-scan-video" style="width: 100%; height: 100%; object-fit: cover;" playsinline></video>
                 <div style="position: absolute; inset: 40px; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
             </div>
 
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
-                <button id="btn-2fa-save" class="button" style="padding: 6px 16px; font-weight: 600;">Save</button>
-                <button id="btn-2fa-cancel" class="button" style="padding: 6px 16px; background: transparent; border-color: #27272a;">Cancel</button>
+                <button id="btn-twofa-save" class="button" style="padding: 6px 16px; font-weight: 600;">Save</button>
+                <button id="btn-twofa-cancel" class="button" style="padding: 6px 16px; background: transparent; border-color: #27272a;">Cancel</button>
             </div>
         `;
 
@@ -1740,14 +1740,14 @@ export function handleZip(bytes) {
         let activeStream = null;
         let scanInterval = null;
 
-        const labelInput = box.querySelector("#add-2fa-label");
-        const secretInput = box.querySelector("#add-2fa-secret");
-        const camBtn = box.querySelector("#btn-2fa-cam-scan");
-        const fileInput = box.querySelector("#input-2fa-qr-file");
-        const videoContainer = box.querySelector("#2fa-video-container");
-        const video = box.querySelector("#2fa-scan-video");
-        const saveBtn = box.querySelector("#btn-2fa-save");
-        const cancelBtn = box.querySelector("#btn-2fa-cancel");
+        const labelInput = box.querySelector("#add-twofa-label");
+        const secretInput = box.querySelector("#add-twofa-secret");
+        const camBtn = box.querySelector("#btn-twofa-cam-scan");
+        const fileInput = box.querySelector("#input-twofa-qr-file");
+        const videoContainer = box.querySelector("#twofa-video-container");
+        const video = box.querySelector("#twofa-scan-video");
+        const saveBtn = box.querySelector("#btn-twofa-save");
+        const cancelBtn = box.querySelector("#btn-twofa-cancel");
 
         function stopCamera() {
             if (scanInterval) {

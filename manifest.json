@@ -51,8 +51,7 @@
         "webNavigation",
         "scripting",
         "downloads",
-        "alarms",
-        "videoCapture"
+        "alarms"
     ],
     "optional_permissions": [
     ],
