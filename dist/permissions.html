@@ -46,16 +46,6 @@
         <p>Chrome requires granting camera permission in a full browser tab before the sidebar can access the camera.</p>
         <button id="grant-btn">Allow Camera Access</button>
     </div>
-    <script>
-        document.getElementById("grant-btn").onclick = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                stream.getTracks().forEach(t => t.stop());
-                window.close();
-            } catch (err) {
-                alert("Permission error: " + err.message);
-            }
-        };
-    </script>
+    <script src="permissions.js"></script>
 </body>
 </html>
