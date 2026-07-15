@@ -5949,6 +5949,12 @@ export function handleZip(bytes) {
         detectContext();
         ensureUI();
 
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get("panel") === "twofa") {
+            const btn = qs("#nav-2fa-btn");
+            if (btn) btn.click();
+        }
+
         if (chrome.sidePanel && chrome.sidePanel.setOptions) {
             chrome.sidePanel.setOptions({ path: "dist/index.html" }).catch(() => {});
         }
