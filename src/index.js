@@ -1599,6 +1599,7 @@ export function handleZip(bytes) {
         if (!file) return [];
         try {
             const raw = await file.read();
+            if (!raw || raw.length < 2) return [];
             const localMeta = await file.readMeta();
             const reconstructed = await reconstructBytesFromSerialized(raw, localMeta);
             const txt = td.decode(reconstructed.bytes);
