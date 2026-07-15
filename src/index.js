@@ -1736,6 +1736,8 @@ export function handleZip(bytes) {
                 <video id="twofa-scan-video" style="width: 100%; display: block;" playsinline></video>
                 <div style="position: absolute; top: 10%; bottom: 10%; left: 10%; right: 10%; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
             </div>
+            
+            <button id="btn-twofa-scan-manual" class="button" style="margin-top: 4px; width: 100%; display: none; padding: 6px 12px; font-size: 13px;">🔍 Scan Current Frame</button>
 
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
                 <button id="btn-twofa-save" class="button" style="padding: 6px 16px; font-weight: 600;">Save</button>
@@ -1755,6 +1757,7 @@ export function handleZip(bytes) {
         const fileInput = box.querySelector("#input-twofa-qr-file");
         const videoContainer = box.querySelector("#twofa-video-container");
         const video = box.querySelector("#twofa-scan-video");
+        const manualScanBtn = box.querySelector("#btn-twofa-scan-manual");
         const saveBtn = box.querySelector("#btn-twofa-save");
         const cancelBtn = box.querySelector("#btn-twofa-cancel");
 
@@ -1768,6 +1771,7 @@ export function handleZip(bytes) {
                 activeStream = null;
             }
             videoContainer.style.display = "none";
+            manualScanBtn.style.display = "none";
             camBtn.textContent = "📷 Scan Camera";
         }
 
@@ -1783,6 +1787,7 @@ export function handleZip(bytes) {
                 video.setAttribute("playsinline", true);
                 video.play();
                 videoContainer.style.display = "block";
+                manualScanBtn.style.display = "block";
                 camBtn.textContent = "⏹ Stop Camera";
 
                 const canvas = document.createElement("canvas");
@@ -1820,6 +1825,38 @@ export function handleZip(bytes) {
                 } else {
                     alert("Failed to access camera: " + err.message);
                 }
+            }
+        };
+
+        manualScanBtn.onclick = () => {
+            if (!activeStream || video.readyState < 2 || video.videoWidth === 0) {
+                alert("Camera feed is not ready. Please wait a second and try again.");
+                return;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                inversionAttempts: "attemptBoth",
+            });
+
+            if (code) {
+                try {
+                    const parsed = parseQRContent(code.data);
+                    labelInput.value = parsed.label;
+                    secretInput.value = parsed.secret;
+                    stopCamera();
+                    alert("QR Code scanned successfully!");
+                } catch (err) {
+                    alert(`A QR Code was detected, but it is not a valid 2FA setup link (must be otpauth:// or a raw Base32 secret key).\n\nScanned Data:\n"${code.data}"`);
+                }
+            } else {
+                alert("No QR Code detected in the current camera frame.\n\nTips:\n1. Position the QR code fully inside the dashed green box.\n2. Avoid screen glare or direct light reflections.\n3. Hold the camera steady.");
             }
         };
 
