@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BookmarkFS Camera Permission</title>
+    <style>
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: #161b22;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            max-width: 400px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.3);
+        }
+        button {
+            background: #10b981;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📷 Camera Access Required</h2>
+        <p>Chrome requires granting camera permission in a full browser tab before the sidebar can access the camera.</p>
+        <button id="grant-btn">Allow Camera Access</button>
+    </div>
+    <script>
+        document.getElementById("grant-btn").onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(t => t.stop());
+                window.close();
+            } catch (err) {
+                alert("Permission error: " + err.message);
+            }
+        };
+    </script>
+</body>
+</html>

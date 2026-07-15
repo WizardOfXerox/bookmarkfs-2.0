@@ -1803,7 +1803,14 @@ export function handleZip(bytes) {
                     }
                 }, 250);
             } catch (err) {
-                alert("Failed to access camera: " + err.message);
+                if (err.name === "NotAllowedError" || err.message.toLowerCase().includes("permission denied")) {
+                    const openTab = confirm("Camera access permission is denied or blocked. Chrome requires granting permission inside a full browser tab before it can be used in the Side Panel.\n\nOpen a permission tab now?");
+                    if (openTab) {
+                        chrome.tabs.create({ url: chrome.runtime.getURL("dist/permissions.html") });
+                    }
+                } else {
+                    alert("Failed to access camera: " + err.message);
+                }
             }
         };
 
