@@ -38,7 +38,11 @@
             path += window.location.search;
             // Do NOT switch side panel path to options.html or editor.html
             if (!path.includes("editor.html") && !path.includes("options.html")) {
-                chrome.sidePanel.setOptions({ path: path }).catch(() => {});
+                const lastPath = localStorage.getItem("bookmarkfs_last_sidepanel_path");
+                if (lastPath !== path) {
+                    chrome.sidePanel.setOptions({ path: path }).catch(() => {});
+                    localStorage.setItem("bookmarkfs_last_sidepanel_path", path);
+                }
             }
         }
     } catch (e) {

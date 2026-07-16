@@ -6277,7 +6277,12 @@ export function handleZip(bytes) {
         const startPanel = urlParams.get("panel");
 
         if (chrome.sidePanel && chrome.sidePanel.setOptions) {
-            chrome.sidePanel.setOptions({ path: "dist/index.html" + window.location.search }).catch(() => {});
+            const path = "dist/index.html" + window.location.search;
+            const lastPath = localStorage.getItem("bookmarkfs_last_sidepanel_path");
+            if (lastPath !== path) {
+                chrome.sidePanel.setOptions({ path: path }).catch(() => {});
+                localStorage.setItem("bookmarkfs_last_sidepanel_path", path);
+            }
         }
 
         // wire main file input
