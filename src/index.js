@@ -6277,7 +6277,7 @@ export function handleZip(bytes) {
         const startPanel = urlParams.get("panel");
 
         if (chrome.sidePanel && chrome.sidePanel.setOptions) {
-            chrome.sidePanel.setOptions({ path: "dist/index.html" }).catch(() => {});
+            chrome.sidePanel.setOptions({ path: "dist/index.html" + window.location.search }).catch(() => {});
         }
 
         // wire main file input

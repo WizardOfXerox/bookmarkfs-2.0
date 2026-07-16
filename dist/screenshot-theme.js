@@ -35,6 +35,7 @@
             if (path.startsWith('/')) {
                 path = path.slice(1);
             }
+            path += window.location.search;
             // Do NOT switch side panel path to options.html or editor.html
             if (!path.includes("editor.html") && !path.includes("options.html")) {
                 chrome.sidePanel.setOptions({ path: path }).catch(() => {});
