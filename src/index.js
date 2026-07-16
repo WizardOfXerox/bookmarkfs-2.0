@@ -858,6 +858,7 @@ export function handleZip(bytes) {
         // Apply dark mode unified with the global theme toggle
         const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
         const isLight = theme === "light";
+        document.documentElement.classList.toggle("light-mode", isLight);
         document.body.classList.toggle("light-mode", isLight);
         document.body.classList.toggle("dark-mode", !isLight);
 
@@ -2111,60 +2112,34 @@ export function handleZip(bytes) {
         for (let i = 0; i < profiles.length; i++) {
             const profile = profiles[i];
             const row = document.createElement("div");
-            row.style.display = "flex";
-            row.style.flexDirection = "column";
-            row.style.padding = "16px";
-            row.style.background = "var(--bg-main)";
-            row.style.border = "1px solid var(--border)";
-            row.style.borderRadius = "10px";
-            row.style.gap = "8px";
-
-            const headerRow = document.createElement("div");
-            headerRow.style.display = "flex";
-            headerRow.style.justifyContent = "space-between";
-            headerRow.style.alignItems = "center";
-            headerRow.style.width = "100%";
-            headerRow.style.gap = "16px";
-            headerRow.style.flexWrap = "wrap";
+            row.className = "twofa-profile-card";
 
             const info = document.createElement("div");
-            info.style.display = "flex";
-            info.style.flexDirection = "column";
-            info.style.gap = "4px";
+            info.className = "twofa-card-info";
 
             const labelEl = document.createElement("div");
-            labelEl.textContent = profile.label;
-            labelEl.style.fontWeight = "600";
-            labelEl.style.color = "var(--text-primary)";
-
-            const secretMask = document.createElement("div");
-            secretMask.textContent = "••••••••••••••••";
-            secretMask.style.fontSize = "11px";
-            secretMask.style.color = "var(--text-secondary)";
+            labelEl.className = "twofa-card-label";
+            const parts = profile.label.split(":");
+            if (parts.length > 1) {
+                const service = parts[0].trim();
+                const username = parts.slice(1).join(":").trim();
+                labelEl.innerHTML = `<span style="color: var(--accent); font-weight: 700;">${service}</span> <span style="color: var(--text-secondary); font-size: 13px; font-weight: normal;">(${username})</span>`;
+            } else {
+                labelEl.textContent = profile.label;
+            }
             
             info.appendChild(labelEl);
-            info.appendChild(secretMask);
 
             const otpArea = document.createElement("div");
-            otpArea.style.display = "flex";
-            otpArea.style.alignItems = "center";
-            otpArea.style.gap = "12px";
+            otpArea.className = "twofa-card-otp";
 
             const codeEl = document.createElement("div");
-            codeEl.className = "totp-code-display";
+            codeEl.className = "totp-code-display twofa-card-code";
             codeEl.dataset.secret = profile.secret;
-            codeEl.style.fontFamily = "monospace";
-            codeEl.style.fontSize = "26px";
-            codeEl.style.fontWeight = "bold";
-            codeEl.style.letterSpacing = "2px";
-            codeEl.style.color = "var(--accent)";
             codeEl.textContent = "------";
 
             const timerEl = document.createElement("div");
-            timerEl.className = "totp-timer-display";
-            timerEl.style.fontSize = "12px";
-            timerEl.style.color = "var(--text-secondary)";
-            timerEl.style.width = "30px";
+            timerEl.className = "totp-timer-display twofa-card-timer";
             timerEl.textContent = "--";
 
             const copyBtn = document.createElement("button");
@@ -2178,38 +2153,12 @@ export function handleZip(bytes) {
                 setTimeout(() => { copyBtn.textContent = "📋 Copy"; }, 1500);
             };
 
-            const delBtn = document.createElement("button");
-            delBtn.className = "button";
-            delBtn.textContent = "🗑 Delete";
-            delBtn.style.padding = "4px 10px";
-            delBtn.style.fontSize = "12px";
-            delBtn.style.borderColor = "#ef4444";
-            delBtn.style.color = "#ef4444";
-            delBtn.onclick = async () => {
-                if (!confirm(`Are you sure you want to delete profile "${profile.label}"?`)) return;
-                const current = await load2FAProfiles();
-                const next = current.filter((p, idx) => idx !== i);
-                try {
-                    await save2FAProfiles(next);
-                    await render2FAProfilesList();
-                } catch(e) {
-                    alert("Delete failed: " + e.message);
-                }
-            };
-
             otpArea.appendChild(codeEl);
             otpArea.appendChild(timerEl);
             otpArea.appendChild(copyBtn);
             
             const actionsRow = document.createElement("div");
-            actionsRow.style.display = "flex";
-            actionsRow.style.gap = "8px";
-            actionsRow.style.flexWrap = "wrap";
-            actionsRow.style.width = "100%";
-            actionsRow.style.marginTop = "8px";
-            actionsRow.style.borderTop = "1px solid var(--border)";
-            actionsRow.style.paddingTop = "8px";
-            actionsRow.style.alignItems = "center";
+            actionsRow.className = "twofa-card-actions";
 
             const editBtn = document.createElement("button");
             editBtn.className = "button";
@@ -2365,13 +2314,29 @@ export function handleZip(bytes) {
                 };
             }
 
+            const delBtn = document.createElement("button");
+            delBtn.className = "button";
+            delBtn.textContent = "🗑 Delete";
+            delBtn.style.padding = "4px 10px";
+            delBtn.style.fontSize = "12px";
+            delBtn.style.borderColor = "#ef4444";
+            delBtn.style.color = "#ef4444";
             delBtn.style.marginLeft = "auto";
+            delBtn.onclick = async () => {
+                if (!confirm(`Are you sure you want to delete profile "${profile.label}"?`)) return;
+                const current = await load2FAProfiles();
+                const next = current.filter((p, idx) => idx !== i);
+                try {
+                    await save2FAProfiles(next);
+                    await render2FAProfilesList();
+                } catch(e) {
+                    alert("Delete failed: " + e.message);
+                }
+            };
             actionsRow.appendChild(delBtn);
 
-            headerRow.appendChild(info);
-            headerRow.appendChild(otpArea);
-            
-            row.appendChild(headerRow);
+            row.appendChild(info);
+            row.appendChild(otpArea);
             row.appendChild(actionsRow);
             if (recoverySection) {
                 row.appendChild(recoverySection);
@@ -3188,6 +3153,7 @@ export function handleZip(bytes) {
             const syncTheme = () => {
                 const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
                 const isLight = theme === "light";
+                document.documentElement.classList.toggle("light-mode", isLight);
                 document.body.classList.toggle("light-mode", isLight);
                 document.body.classList.toggle("dark-mode", !isLight);
                 
@@ -3933,6 +3899,7 @@ export function handleZip(bytes) {
     function applyDarkFromStorage() {
         const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
         const isLight = theme === "light";
+        document.documentElement.classList.toggle("light-mode", isLight);
         document.body.classList.toggle("light-mode", isLight);
         document.body.classList.toggle("dark-mode", !isLight);
     }

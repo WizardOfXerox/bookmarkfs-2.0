@@ -2,6 +2,7 @@
     function syncTheme() {
         const theme = localStorage.getItem("bookmarkfs_theme") || "dark";
         const isLight = theme === "light";
+        document.documentElement.classList.toggle("light-mode", isLight);
         document.body.classList.toggle("light-mode", isLight);
         const toggleBtn = document.getElementById("global-theme-toggle");
         if (toggleBtn) {
