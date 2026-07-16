@@ -828,6 +828,110 @@
         }
     });
 
+    // ========== TEXT TOOLS INTEGRATION ==========
+    const ttHeader = document.getElementById("text-tools-toggle-header");
+    const ttContent = document.getElementById("text-tools-content");
+    const ttIcon = document.getElementById("text-tools-toggle-icon");
+    if (ttHeader && ttContent && ttIcon) {
+        ttHeader.addEventListener("click", () => {
+            const isHidden = ttContent.style.display === "none";
+            ttContent.style.display = isHidden ? "flex" : "none";
+            ttIcon.textContent = isHidden ? "▲" : "▼";
+        });
+    }
+
+    const txtInput = document.getElementById("txt-input");
+    const txtOutput = document.getElementById("txt-output");
+    const txtStats = document.getElementById("txt-stats");
+    const txtSwap = document.getElementById("btn-txt-swap");
+    const txtCopy = document.getElementById("btn-txt-copy");
+    const loadActiveBtn = document.getElementById("btn-txt-load-active");
+    const applyActiveBtn = document.getElementById("btn-txt-apply-active");
+
+    const updateTxtStats = () => {
+        if (!txtInput) return;
+        const val = txtInput.value;
+        const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+        if (txtStats) txtStats.textContent = `Words: ${words} | Chars: ${val.length}`;
+    };
+
+    if (txtInput) txtInput.addEventListener("input", updateTxtStats);
+
+    if (txtSwap && txtInput && txtOutput) {
+        txtSwap.addEventListener("click", () => {
+            txtInput.value = txtOutput.value;
+            txtOutput.value = "";
+            updateTxtStats();
+        });
+    }
+
+    if (txtCopy && txtOutput) {
+        txtCopy.addEventListener("click", () => {
+            navigator.clipboard.writeText(txtOutput.value);
+            txtCopy.textContent = "Copied!";
+            setTimeout(() => { txtCopy.textContent = "Copy"; }, 1500);
+        });
+    }
+
+    if (loadActiveBtn && txtInput && editor) {
+        loadActiveBtn.addEventListener("click", () => {
+            txtInput.value = editor.innerText || "";
+            updateTxtStats();
+        });
+    }
+
+    if (applyActiveBtn && txtOutput && editor) {
+        applyActiveBtn.addEventListener("click", () => {
+            if (!txtOutput.value) return;
+            editor.innerText = txtOutput.value;
+            // Trigger autosave
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveNote, 1000);
+            statusLabel.textContent = "Saving...";
+            // Update char count
+            const textLength = editor.innerText.length;
+            charCount.textContent = `${textLength} characters`;
+        });
+    }
+
+    const textEncoder = new TextEncoder();
+    document.querySelectorAll(".txt-act").forEach(btn => {
+        btn.addEventListener("click", async () => {
+            if (!txtInput || !txtOutput) return;
+            const action = btn.dataset.action;
+            const txt = txtInput.value;
+            try {
+                if (action === "upper") {
+                    txtOutput.value = txt.toUpperCase();
+                } else if (action === "lower") {
+                    txtOutput.value = txt.toLowerCase();
+                } else if (action === "title") {
+                    txtOutput.value = txt.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase());
+                } else if (action === "b64enc") {
+                    txtOutput.value = btoa(unescape(encodeURIComponent(txt)));
+                } else if (action === "b64dec") {
+                    txtOutput.value = decodeURIComponent(escape(atob(txt)));
+                } else if (action === "urlenc") {
+                    txtOutput.value = encodeURIComponent(txt);
+                } else if (action === "urldec") {
+                    txtOutput.value = decodeURIComponent(txt);
+                } else if (action === "sha256") {
+                    const msgUint8 = textEncoder.encode(txt);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                    txtOutput.value = hashHex;
+                } else if (action === "jsonprettify") {
+                    txtOutput.value = JSON.stringify(JSON.parse(txt), null, 2);
+                } else if (action === "uuid") {
+                    txtOutput.value = crypto.randomUUID();
+                }
+            } catch (e) {
+                txtOutput.value = "Error: " + e.message;
+            }
+        });
+    });
+
     // Initialize
     loadGeneralNotesDropdown();
     loadActiveNote();

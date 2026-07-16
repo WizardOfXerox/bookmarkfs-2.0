@@ -33,6 +33,16 @@ export function handleZip(bytes) {
     let pageSize = 25;
     let cachedSessionPassphrase = "";
     let hasPrompted2FAKey = false;
+    
+    // Persistent Clock & Stopwatch state
+    let stopwatchTime = 0; // accumulated ms
+    let stopwatchRunning = false;
+    let stopwatchStartTimestamp = 0;
+    let stopwatchLaps = [];
+    let activeClockTab = "alarm"; // "alarm", "stopwatch", or "world"
+    let worldClockInterval = null;
+
+    let isStartupTwofa = ["twofa", "passwords", "calc", "clock", "regex", "color", "api", "privacy", "rss", "timetracker", "qrscanner"].includes(new URLSearchParams(window.location.search).get("panel"));
 
     // ---------- Sandbox Communication ----------
     let sandboxRequestId = 0;
@@ -567,6 +577,16 @@ export function handleZip(bytes) {
       </fieldset>
 
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🔒 Encryption & Security</legend>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" id="setting-bypass-upload-encryption">
+            <span>Bypass Upload Encryption (Upload unencrypted)</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
         <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🎨 Appearance & Themes</legend>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <label style="display: flex; justify-content: space-between; align-items: center;">
@@ -764,6 +784,7 @@ export function handleZip(bytes) {
             const settings = {
                 maxSize: parseInt(qs("#setting-maxsize").value, 10) || 9092,
                 pageSize: parseInt(qs("#setting-pagesize").value, 10) || 25,
+                bypassUploadEncryption: qs("#setting-bypass-upload-encryption").checked,
                 columns: [...document.querySelectorAll("#settings-popup input[data-col]")]
                     .filter(c => c.checked)
                     .map(c => c.dataset.col)
@@ -914,6 +935,7 @@ export function handleZip(bytes) {
 
         qs("#setting-maxsize").value = s.maxSize || 9092;
         qs("#setting-pagesize").value = s.pageSize || 25;
+        qs("#setting-bypass-upload-encryption").checked = !!s.bypassUploadEncryption;
 
         // Reset all checkboxes first
         document.querySelectorAll("#settings-popup input[data-col]").forEach(c => c.checked = false);
@@ -994,10 +1016,12 @@ export function handleZip(bytes) {
     }
 
     function showEncryptDecryptModal(title, isUpload, callback) {
+        const isLight = document.documentElement.classList.contains("light-mode") || document.body.classList.contains("light-mode");
+
         const modal = document.createElement("div");
         modal.style.position = "fixed";
         modal.style.inset = "0";
-        modal.style.background = "rgba(10, 10, 10, 0.85)";
+        modal.style.background = isLight ? "rgba(255, 255, 255, 0.75)" : "rgba(10, 10, 10, 0.85)";
         modal.style.backdropFilter = "blur(8px)";
         modal.style.display = "flex";
         modal.style.alignItems = "center";
@@ -1005,13 +1029,13 @@ export function handleZip(bytes) {
         modal.style.zIndex = "100000";
 
         const box = document.createElement("div");
-        box.style.background = "#18181b";
-        box.style.border = "1px solid #27272a";
-        box.style.color = "#f4f4f5";
+        box.style.background = isLight ? "#ffffff" : "#18181b";
+        box.style.border = isLight ? "1px solid #e4e4e7" : "1px solid #27272a";
+        box.style.color = isLight ? "#18181b" : "#f4f4f5";
         box.style.padding = "20px";
         box.style.borderRadius = "12px";
         box.style.width = "min(380px, 90%)";
-        box.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.5)";
+        box.style.boxShadow = isLight ? "0 20px 25px -5px rgba(0,0,0,0.1)" : "0 20px 25px -5px rgba(0,0,0,0.5)";
         box.style.display = "flex";
         box.style.flexDirection = "column";
         box.style.gap = "12px";
@@ -1020,13 +1044,13 @@ export function handleZip(bytes) {
         heading.style.margin = "0";
         heading.style.fontSize = "16px";
         heading.style.fontWeight = "600";
-        heading.style.color = "#02ff88";
+        heading.style.color = isLight ? "#008f51" : "#02ff88";
         heading.textContent = title;
 
         const desc = document.createElement("p");
         desc.style.margin = "0";
         desc.style.fontSize = "12px";
-        desc.style.color = "#a1a1aa";
+        desc.style.color = isLight ? "#52525b" : "#a1a1aa";
         desc.textContent = isUpload 
             ? "Optional passphrase (AES-GCM). Leave blank to store unencrypted."
             : "Enter the passphrase to decrypt this file:";
@@ -1037,9 +1061,9 @@ export function handleZip(bytes) {
         input.style.width = "100%";
         input.style.padding = "8px 12px";
         input.style.borderRadius = "6px";
-        input.style.border = "1px solid #27272a";
-        input.style.background = "#09090b";
-        input.style.color = "#f4f4f5";
+        input.style.border = isLight ? "1px solid #d4d4d8" : "1px solid #27272a";
+        input.style.background = isLight ? "#f4f4f5" : "#09090b";
+        input.style.color = isLight ? "#18181b" : "#f4f4f5";
         input.style.boxSizing = "border-box";
 
         const eyeBtn = document.createElement("button");
@@ -1049,7 +1073,7 @@ export function handleZip(bytes) {
         eyeBtn.style.top = "6px";
         eyeBtn.style.background = "none";
         eyeBtn.style.border = "none";
-        eyeBtn.style.color = "#a1a1aa";
+        eyeBtn.style.color = isLight ? "#71717a" : "#a1a1aa";
         eyeBtn.style.cursor = "pointer";
         eyeBtn.innerHTML = "👁️";
 
@@ -1071,7 +1095,7 @@ export function handleZip(bytes) {
         const strengthBar = document.createElement("div");
         strengthBar.style.height = "4px";
         strengthBar.style.width = "100%";
-        strengthBar.style.background = "#27272a";
+        strengthBar.style.background = isLight ? "#e4e4e7" : "#27272a";
         strengthBar.style.borderRadius = "2px";
         strengthBar.style.overflow = "hidden";
         strengthBar.style.display = isUpload ? "block" : "none";
@@ -1084,7 +1108,7 @@ export function handleZip(bytes) {
 
         const strengthLabel = document.createElement("span");
         strengthLabel.style.fontSize = "11px";
-        strengthLabel.style.color = "#71717a";
+        strengthLabel.style.color = isLight ? "#71717a" : "#71717a";
         strengthLabel.style.display = isUpload ? "block" : "none";
         strengthLabel.textContent = "Strength: Empty";
 
@@ -1106,7 +1130,7 @@ export function handleZip(bytes) {
             if (val.length === 0) {
                 percent = 0;
                 text = "Empty";
-                color = "#27272a";
+                color = isLight ? "#e4e4e7" : "#27272a";
             } else if (score <= 2) {
                 percent = 33;
                 color = "#ef4444";
@@ -1143,15 +1167,15 @@ export function handleZip(bytes) {
         const okBtn = document.createElement("button");
         okBtn.className = "button";
         okBtn.textContent = "OK";
-        okBtn.style.borderColor = "#02ff88";
-        okBtn.style.color = "#02ff88";
+        okBtn.style.borderColor = isLight ? "#008f51" : "#02ff88";
+        okBtn.style.color = isLight ? "#008f51" : "#02ff88";
 
         const cacheRow = document.createElement("label");
         cacheRow.style.display = "flex";
         cacheRow.style.alignItems = "center";
         cacheRow.style.gap = "6px";
         cacheRow.style.fontSize = "11px";
-        cacheRow.style.color = "#a1a1aa";
+        cacheRow.style.color = isLight ? "#52525b" : "#a1a1aa";
         cacheRow.style.cursor = "pointer";
 
         const cacheCheckbox = document.createElement("input");
@@ -1505,7 +1529,13 @@ export function handleZip(bytes) {
                 const raw = await f.read();
                 const meta = await f.readMeta();
                 const reconstructed = await reconstructBytesFromSerialized(raw, meta);
-                zipData[relativePath] = reconstructed.bytes;
+                
+                const relativePathParts = relativePath.split("/");
+                const originalFileName = meta.name || relativePathParts[relativePathParts.length - 1];
+                relativePathParts[relativePathParts.length - 1] = originalFileName;
+                const zipPath = relativePathParts.join("/");
+                
+                zipData[zipPath] = reconstructed.bytes;
             }
             if (statusEl) statusEl.textContent = "Compressing ZIP...";
             const zipped = zipSync(zipData);
@@ -1523,6 +1553,69 @@ export function handleZip(bytes) {
         } finally {
             if (statusEl) statusEl.textContent = origText;
         }
+    }
+
+    // ========== Folder Renaming and Deletion ==========
+    async function renameFolder(folderName, newFolderName) {
+        const allFiles = await listFiles();
+        const fullOldPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+        const fullNewPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName;
+        
+        const prefix = fullOldPath + "/";
+        const matches = allFiles.filter(f => f.handle.title === fullOldPath || f.handle.title.startsWith(prefix));
+        
+        for (const f of matches) {
+            const currentTitle = f.handle.title;
+            const nextTitle = currentTitle === fullOldPath 
+                ? fullNewPath 
+                : fullNewPath + currentTitle.slice(fullOldPath.length);
+                
+            await f.rename(nextTitle);
+            renameFileInCache(f.handle.id, nextTitle);
+        }
+        
+        // Handle locks
+        const locks = await getFolderLocks();
+        if (locks[fullOldPath]) {
+            locks[fullNewPath] = locks[fullOldPath];
+            delete locks[fullOldPath];
+            await saveFolderLocks(locks);
+        }
+        if (cachedFolderPassphrases.has(fullOldPath)) {
+            cachedFolderPassphrases.set(fullNewPath, cachedFolderPassphrases.get(fullOldPath));
+            cachedFolderPassphrases.delete(fullOldPath);
+        }
+    }
+
+    async function deleteFolder(folderName) {
+        const allFiles = await listFiles();
+        const fullPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+        const prefix = fullPath + "/";
+        const matches = allFiles.filter(f => f.handle.title === fullPath || f.handle.title.startsWith(prefix));
+        
+        if (matches.length > 0) {
+            if (!confirm(`Are you sure you want to permanently delete the folder "${folderName}" and all its contents (${matches.length} files)?`)) {
+                return false;
+            }
+        } else {
+            if (!confirm(`Delete empty folder "${folderName}"?`)) {
+                return false;
+            }
+        }
+        
+        for (const f of matches) {
+            await f.delete();
+            removeFileFromCache(f.handle.id);
+        }
+        
+        // Handle locks
+        const locks = await getFolderLocks();
+        if (locks[fullPath]) {
+            delete locks[fullPath];
+            await saveFolderLocks(locks);
+        }
+        cachedFolderPassphrases.delete(fullPath);
+        return true;
     }
 
     // ========== Storage Cleanup Scanner ==========
@@ -1669,11 +1762,185 @@ export function handleZip(bytes) {
     }
 
     let twofaInterval = null;
+    let stopQrScannerCameraFn = null;
 
     function stop2FATimer() {
         if (twofaInterval) {
             clearInterval(twofaInterval);
             twofaInterval = null;
+        }
+    }
+
+    function stopAllScannerMedia() {
+        stop2FATimer();
+        if (stopQrScannerCameraFn) {
+            stopQrScannerCameraFn();
+        }
+        if (worldClockInterval) {
+            clearInterval(worldClockInterval);
+            worldClockInterval = null;
+        }
+    }
+
+    function parseOtpauthMigration(urlStr) {
+        const url = new URL(urlStr);
+        const dataParam = url.searchParams.get("data");
+        if (!dataParam) throw new Error("Missing data parameter");
+
+        let base64 = decodeURIComponent(dataParam).replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) {
+            base64 += "=";
+        }
+        const binaryStr = atob(base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        function decodeProto(buf) {
+            let pos = 0;
+            const fields = [];
+            
+            function readVarint() {
+                let val = 0;
+                let shift = 0;
+                while (pos < buf.length) {
+                    const byte = buf[pos++];
+                    val |= (byte & 0x7f) << shift;
+                    if (!(byte & 0x80)) return val;
+                    shift += 7;
+                }
+                return val;
+            }
+
+            while (pos < buf.length) {
+                const tagVar = readVarint();
+                const tag = tagVar >>> 3;
+                const wireType = tagVar & 7;
+
+                if (wireType === 0) {
+                    fields.push({ tag, value: readVarint() });
+                } else if (wireType === 2) {
+                    const len = readVarint();
+                    const valBytes = buf.subarray(pos, pos + len);
+                    pos += len;
+                    fields.push({ tag, value: valBytes });
+                } else if (wireType === 1) {
+                    pos += 8;
+                } else if (wireType === 5) {
+                    pos += 4;
+                } else {
+                    pos++;
+                }
+            }
+            return fields;
+        }
+
+        function base32Encode(buffer) {
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+            let bits = 0;
+            let value = 0;
+            let output = "";
+            for (let i = 0; i < buffer.length; i++) {
+                value = (value << 8) | buffer[i];
+                bits += 8;
+                while (bits >= 5) {
+                    output += alphabet[(value >>> (bits - 5)) & 31];
+                    bits -= 5;
+                }
+            }
+            if (bits > 0) {
+                output += alphabet[(value << (5 - bits)) & 31];
+            }
+            return output;
+        }
+
+        const outerFields = decodeProto(bytes);
+        const otpParams = outerFields.filter(f => f.tag === 1).map(f => f.value);
+        
+        const accounts = [];
+        const decoder = new TextDecoder();
+        otpParams.forEach(paramBytes => {
+            const innerFields = decodeProto(paramBytes);
+            
+            let secretBytes = null;
+            let name = "";
+            let issuer = "";
+            let digits = 6;
+            let type = "totp";
+
+            innerFields.forEach(f => {
+                if (f.tag === 1) {
+                    secretBytes = f.value;
+                } else if (f.tag === 2) {
+                    name = decoder.decode(f.value);
+                } else if (f.tag === 3) {
+                    issuer = decoder.decode(f.value);
+                } else if (f.tag === 5) {
+                    digits = f.value === 2 ? 8 : 6;
+                } else if (f.tag === 6) {
+                    type = f.value === 1 ? "hotp" : "totp";
+                }
+            });
+
+            if (secretBytes) {
+                const secretBase32 = base32Encode(secretBytes);
+                accounts.push({
+                    secret: secretBase32,
+                    label: name,
+                    issuer: issuer,
+                    digits: digits,
+                    type: type
+                });
+            }
+        });
+
+        return accounts;
+    }
+
+    async function handleMigrationImport(migrationUrl) {
+        try {
+            const accounts = parseOtpauthMigration(migrationUrl);
+            if (accounts.length === 0) {
+                alert("No 2FA accounts found in this migration link.");
+                return false;
+            }
+
+            const confirmMsg = `This QR Code contains ${accounts.length} 2FA profile(s) from Google Authenticator:\n\n` + 
+                accounts.map(acc => `- ${acc.issuer ? acc.issuer + ": " : ""}${acc.label}`).join("\n") +
+                `\n\nWould you like to import all of them into BookmarkFS?`;
+
+            if (confirm(confirmMsg)) {
+                const current = await load2FAProfiles();
+                let importedCount = 0;
+                accounts.forEach(acc => {
+                    if (!current.some(p => p.secret === acc.secret)) {
+                        current.push({
+                            label: (acc.issuer ? `${acc.issuer}: ${acc.label}` : acc.label).trim(),
+                            secret: acc.secret,
+                            recoveryCodes: ""
+                        });
+                        importedCount++;
+                    }
+                });
+
+                if (importedCount > 0) {
+                    await save2FAProfiles(current);
+                    alert(`Successfully imported ${importedCount} profile(s) from Google Authenticator!`);
+                    
+                    const listContainer = qs("#twofa-profile-list");
+                    if (listContainer) {
+                        render2FAProfilesList();
+                    }
+                } else {
+                    alert("All profiles in this migration link already exist in your 2FA Authenticator.");
+                }
+                return true;
+            }
+            return false;
+        } catch (e) {
+            alert("Failed to parse Google Authenticator migration data: " + e.message);
+            return false;
         }
     }
 
@@ -1787,6 +2054,190 @@ export function handleZip(bytes) {
         };
     }
 
+    function injectCropOverlay() {
+        const existing = document.getElementById("bookmarkfs-crop-overlay");
+        if (existing) existing.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "bookmarkfs-crop-overlay";
+        overlay.style.position = "fixed";
+        overlay.style.inset = "0";
+        overlay.style.zIndex = "2147483647";
+        overlay.style.cursor = "crosshair";
+        overlay.style.userSelect = "none";
+        overlay.style.background = "rgba(0, 0, 0, 0.6)";
+        overlay.style.display = "block";
+
+        const msgBox = document.createElement("div");
+        msgBox.style.position = "fixed";
+        msgBox.style.top = "20px";
+        msgBox.style.left = "50%";
+        msgBox.style.transform = "translateX(-50%)";
+        msgBox.style.background = "#18181b";
+        msgBox.style.color = "#f4f4f5";
+        msgBox.style.padding = "10px 20px";
+        msgBox.style.borderRadius = "8px";
+        msgBox.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5)";
+        msgBox.style.fontFamily = "system-ui, sans-serif";
+        msgBox.style.fontSize = "14px";
+        msgBox.style.fontWeight = "bold";
+        msgBox.style.zIndex = "2147483647";
+        msgBox.style.display = "flex";
+        msgBox.style.alignItems = "center";
+        msgBox.style.gap = "15px";
+        msgBox.style.border = "1px solid #27272a";
+        msgBox.innerHTML = `
+            <span>📸 Drag a box over the QR code on the page</span>
+            <button id="bookmarkfs-crop-cancel" style="background: #ef4444; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; outline: none;">Cancel</button>
+        `;
+        overlay.appendChild(msgBox);
+
+        const selectionBox = document.createElement("div");
+        selectionBox.style.position = "fixed";
+        selectionBox.style.border = "2px dashed #02ff88";
+        selectionBox.style.background = "rgba(2, 255, 136, 0.15)";
+        selectionBox.style.display = "none";
+        selectionBox.style.pointerEvents = "none";
+        selectionBox.style.zIndex = "2147483646";
+        overlay.appendChild(selectionBox);
+
+        document.body.appendChild(overlay);
+
+        overlay.querySelector("#bookmarkfs-crop-cancel").onclick = (e) => {
+            e.stopPropagation();
+            overlay.remove();
+            chrome.runtime.sendMessage({ type: "bookmarkfs_crop_cancelled" });
+        };
+
+        let startX = 0, startY = 0, isDragging = false;
+
+        overlay.onmousedown = (e) => {
+            if (e.target.id === "bookmarkfs-crop-cancel" || e.target.closest("#bookmarkfs-crop-cancel")) return;
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            selectionBox.style.left = startX + "px";
+            selectionBox.style.top = startY + "px";
+            selectionBox.style.width = "0px";
+            selectionBox.style.height = "0px";
+            selectionBox.style.display = "block";
+        };
+
+        overlay.onmousemove = (e) => {
+            if (!isDragging) return;
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+            const x = Math.min(startX, currentX);
+            const y = Math.min(startY, currentY);
+            const w = Math.abs(startX - currentX);
+            const h = Math.abs(startY - currentY);
+            selectionBox.style.left = x + "px";
+            selectionBox.style.top = y + "px";
+            selectionBox.style.width = w + "px";
+            selectionBox.style.height = h + "px";
+        };
+
+        overlay.onmouseup = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+            const x = Math.min(startX, currentX);
+            const y = Math.min(startY, currentY);
+            const w = Math.abs(startX - currentX);
+            const h = Math.abs(startY - currentY);
+
+            overlay.remove();
+
+            if (w > 10 && h > 10) {
+                chrome.runtime.sendMessage({
+                    type: "bookmarkfs_crop_completed",
+                    x: x,
+                    y: y,
+                    width: w,
+                    height: h,
+                    devicePixelRatio: window.devicePixelRatio || 1
+                });
+            } else {
+                chrome.runtime.sendMessage({ type: "bookmarkfs_crop_cancelled" });
+            }
+        };
+    }
+
+    async function runInjectedCropScanner(isRaw, onSuccess, onError) {
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab) throw new Error("No active tab found.");
+
+            const listener = async (message, sender) => {
+                if (message.type === "bookmarkfs_crop_completed" && sender.tab && sender.tab.id === tab.id) {
+                    chrome.runtime.onMessage.removeListener(listener);
+                    
+                    try {
+                        const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: "png" });
+                        const img = new Image();
+                        img.src = dataUrl;
+                        img.onload = () => {
+                            const dpr = message.devicePixelRatio;
+                            const rx = message.x * dpr;
+                            const ry = message.y * dpr;
+                            const rw = message.width * dpr;
+                            const rh = message.height * dpr;
+
+                            const canvas = document.createElement("canvas");
+                            canvas.width = rw;
+                            canvas.height = rh;
+                            const ctx = canvas.getContext("2d");
+                            ctx.drawImage(img, rx, ry, rw, rh, 0, 0, rw, rh);
+                            
+                            const imgData = ctx.getImageData(0, 0, rw, rh);
+                            const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                                inversionAttempts: "attemptBoth"
+                            });
+                            
+                            if (code) {
+                                if (isRaw) {
+                                    onSuccess(code.data);
+                                } else {
+                                    try {
+                                        const parsed = parseQRContent(code.data);
+                                        onSuccess(parsed);
+                                    } catch (err) {
+                                        onError(`A QR Code was detected, but it is not a valid 2FA setup link.\n\nScanned Data:\n"${code.data}"`);
+                                    }
+                                }
+                            } else {
+                                onError("No QR Code detected in that selection. Try dragging again to cover the entire QR code precisely.");
+                            }
+                        };
+                    } catch (captureErr) {
+                        onError("Capture failed: " + captureErr.message);
+                    }
+                } else if (message.type === "bookmarkfs_crop_cancelled" && sender.tab && sender.tab.id === tab.id) {
+                    chrome.runtime.onMessage.removeListener(listener);
+                }
+            };
+            chrome.runtime.onMessage.addListener(listener);
+
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: injectCropOverlay
+            });
+
+        } catch (err) {
+            chrome.runtime.onMessage.removeListener(listener);
+            if (err.message && (err.message.includes("Capture failed") || err.message.includes("Cannot capture") || err.message.includes("cannot be scripted") || err.message.includes("restricted"))) {
+                onError("Cannot run screen scanner on this page. Note that Google Chrome restricts extensions from scripting or taking screenshots of internal 'chrome://' settings pages, the Chrome Web Store, or other extensions. Try again on a regular website page.");
+            } else {
+                onError(err.message || String(err));
+            }
+        }
+    }
+
+    async function startScreenshotQRScanner(onSuccess, onError) {
+        await runInjectedCropScanner(false, onSuccess, onError);
+    }
+
     function showAdd2FAParametersModal(callback, editProfile = null) {
         const modal = document.createElement("div");
         modal.id = "add-twofa-modal";
@@ -1826,12 +2277,15 @@ export function handleZip(bytes) {
                 <input type="text" id="add-twofa-secret" placeholder="Base32 Key" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
             </div>
 
-            <div style="display: flex; gap: 8px; justify-content: space-between;">
-                <button id="btn-twofa-cam-scan" class="button" style="flex: 1; font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
-                <label class="button" style="flex: 1; font-size: 12px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <button id="btn-twofa-cam-scan" class="button" style="font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
+                <button id="btn-twofa-screen-scan" class="button" style="font-size: 12px; padding: 6px 12px;">🖥️ Screen Scan</button>
+                <button id="btn-twofa-screenshot-crop" class="button" style="font-size: 12px; padding: 6px 12px; grid-column: span 2; border-color: var(--accent) !important; color: var(--accent) !important;">📸 Screenshot Crop (Select QR)</button>
+                <label class="button" style="font-size: 12px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0;">
                     🖼 Upload QR
                     <input type="file" id="input-twofa-qr-file" accept="image/*" style="display: none;">
                 </label>
+                <button id="btn-twofa-paste-scan" class="button" style="font-size: 12px; padding: 6px 12px;">📋 Paste QR</button>
             </div>
 
             <div id="twofa-video-container" style="display: none; position: relative; width: 100%; max-height: 280px; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #27272a;">
@@ -1867,6 +2321,9 @@ export function handleZip(bytes) {
         const labelInput = box.querySelector("#add-twofa-label");
         const secretInput = box.querySelector("#add-twofa-secret");
         const camBtn = box.querySelector("#btn-twofa-cam-scan");
+        const screenBtn = box.querySelector("#btn-twofa-screen-scan");
+        const screenshotBtn = box.querySelector("#btn-twofa-screenshot-crop");
+        const pasteBtn = box.querySelector("#btn-twofa-paste-scan");
         const fileInput = box.querySelector("#input-twofa-qr-file");
         const videoContainer = box.querySelector("#twofa-video-container");
         const video = box.querySelector("#twofa-scan-video");
@@ -1894,6 +2351,9 @@ export function handleZip(bytes) {
             videoContainer.style.display = "none";
             manualScanBtn.style.display = "none";
             camBtn.textContent = "📷 Scan Camera";
+            screenBtn.textContent = "🖥️ Screen Scan";
+            camBtn.style.pointerEvents = "auto";
+            screenBtn.style.pointerEvents = "auto";
         }
 
         camBtn.onclick = async () => {
@@ -1912,20 +2372,47 @@ export function handleZip(bytes) {
                 camBtn.textContent = "⏹ Stop Camera";
 
                 const canvas = document.createElement("canvas");
-                const ctx = canvas.getContext("2d");
+                const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
                 scanInterval = setInterval(() => {
                     if (video.readyState >= 2 && video.videoWidth > 0) {
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                        const vw = video.videoWidth;
+                        const vh = video.videoHeight;
+                        const boxW = Math.round(vw * 0.8);
+                        const boxH = Math.round(vh * 0.8);
+                        const boxX = Math.round((vw - boxW) / 2);
+                        const boxY = Math.round((vh - boxH) / 2);
+
+                        // Try center guide box first
+                        const centerCanvas = document.createElement("canvas");
+                        centerCanvas.width = boxW;
+                        centerCanvas.height = boxH;
+                        const centerCtx = centerCanvas.getContext("2d", { willReadFrequently: true });
+                        centerCtx.drawImage(video, boxX, boxY, boxW, boxH, 0, 0, boxW, boxH);
+                        const centerImgData = centerCtx.getImageData(0, 0, boxW, boxH);
+                        let code = jsQR(centerImgData.data, centerImgData.width, centerImgData.height, {
                             inversionAttempts: "attemptBoth",
                         });
 
+                        // Fallback to full frame
+                        if (!code) {
+                            canvas.width = vw;
+                            canvas.height = vh;
+                            ctx.drawImage(video, 0, 0, vw, vh);
+                            const fullImgData = ctx.getImageData(0, 0, vw, vh);
+                            code = jsQR(fullImgData.data, fullImgData.width, fullImgData.height, {
+                                inversionAttempts: "attemptBoth",
+                            });
+                        }
+
                         if (code) {
                             try {
+                                if (code.data.trim().toLowerCase().startsWith("otpauth-migration:")) {
+                                    stopCamera();
+                                    modal.remove();
+                                    handleMigrationImport(code.data);
+                                    return;
+                                }
                                 const parsed = parseQRContent(code.data);
                                 labelInput.value = parsed.label;
                                 secretInput.value = parsed.secret;
@@ -1949,6 +2436,181 @@ export function handleZip(bytes) {
             }
         };
 
+        screenBtn.onclick = async () => {
+            if (activeStream) {
+                stopCamera();
+                return;
+            }
+
+            try {
+                activeStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                video.srcObject = activeStream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                videoContainer.style.display = "block";
+                manualScanBtn.style.display = "block";
+                screenBtn.textContent = "⏹ Stop Screen Scan";
+                camBtn.style.pointerEvents = "none";
+
+                activeStream.getVideoTracks()[0].addEventListener('ended', () => {
+                    stopCamera();
+                });
+
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+                scanInterval = setInterval(() => {
+                    if (video.readyState >= 2 && video.videoWidth > 0) {
+                        const vw = video.videoWidth;
+                        const vh = video.videoHeight;
+                        const boxW = Math.round(vw * 0.8);
+                        const boxH = Math.round(vh * 0.8);
+                        const boxX = Math.round((vw - boxW) / 2);
+                        const boxY = Math.round((vh - boxH) / 2);
+
+                        // Try center guide box first
+                        const centerCanvas = document.createElement("canvas");
+                        centerCanvas.width = boxW;
+                        centerCanvas.height = boxH;
+                        const centerCtx = centerCanvas.getContext("2d", { willReadFrequently: true });
+                        centerCtx.drawImage(video, boxX, boxY, boxW, boxH, 0, 0, boxW, boxH);
+                        const centerImgData = centerCtx.getImageData(0, 0, boxW, boxH);
+                        let code = jsQR(centerImgData.data, centerImgData.width, centerImgData.height, {
+                            inversionAttempts: "attemptBoth",
+                        });
+
+                        // Fallback to full frame
+                        if (!code) {
+                            canvas.width = vw;
+                            canvas.height = vh;
+                            ctx.drawImage(video, 0, 0, vw, vh);
+                            const fullImgData = ctx.getImageData(0, 0, vw, vh);
+                            code = jsQR(fullImgData.data, fullImgData.width, fullImgData.height, {
+                                inversionAttempts: "attemptBoth",
+                            });
+                        }
+
+                        if (code) {
+                            try {
+                                if (code.data.trim().toLowerCase().startsWith("otpauth-migration:")) {
+                                    stopCamera();
+                                    modal.remove();
+                                    handleMigrationImport(code.data);
+                                    return;
+                                }
+                                const parsed = parseQRContent(code.data);
+                                labelInput.value = parsed.label;
+                                secretInput.value = parsed.secret;
+                                stopCamera();
+                                alert("QR Code scanned from screen successfully!");
+                            } catch (err) {
+                                console.warn("[QR Scanner] Decode parse failed:", err.message);
+                            }
+                        }
+                    }
+                }, 250);
+            } catch (err) {
+                stopCamera();
+                if (err.name !== "NotAllowedError" && !err.message.toLowerCase().includes("permission denied")) {
+                    alert("Failed to capture screen stream: " + err.message);
+                }
+            }
+        };
+
+        screenshotBtn.onclick = () => {
+            stopCamera();
+            startScreenshotQRScannerRaw(
+                (text) => {
+                    if (text.trim().toLowerCase().startsWith("otpauth-migration:")) {
+                        modal.remove();
+                        handleMigrationImport(text);
+                        return;
+                    }
+                    try {
+                        const parsed = parseQRContent(text);
+                        labelInput.value = parsed.label;
+                        secretInput.value = parsed.secret;
+                        alert("QR Code scanned and parsed successfully!");
+                    } catch (err) {
+                        alert(`A QR Code was detected, but it is not a valid 2FA setup link (must be otpauth:// or a raw Base32 secret key).\n\nScanned Data:\n"${text}"`);
+                    }
+                },
+                (errMsg) => {
+                    alert(errMsg);
+                }
+            );
+        };
+
+        const handlePasteImage = async (items) => {
+            for (const item of items) {
+                if (item.type.startsWith("image/")) {
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement("canvas");
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+                            ctx.drawImage(img, 0, 0);
+                            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const code = jsQR(imgData.data, imgData.width, imgData.height);
+                            if (code) {
+                                try {
+                                    if (code.data.trim().toLowerCase().startsWith("otpauth-migration:")) {
+                                        modal.remove();
+                                        handleMigrationImport(code.data);
+                                        return;
+                                    }
+                                    const parsed = parseQRContent(code.data);
+                                    labelInput.value = parsed.label;
+                                    secretInput.value = parsed.secret;
+                                    alert("QR Code scanned from clipboard successfully!");
+                                } catch (err) {
+                                    alert("Could not read QR code: " + err.message);
+                                }
+                            } else {
+                                alert("No QR Code detected in pasted image.");
+                            }
+                        };
+                        img.src = reader.result;
+                    };
+                    reader.readAsDataURL(blob);
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        pasteBtn.onclick = async () => {
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    for (const type of item.types) {
+                        if (type.startsWith("image/")) {
+                            const blob = await item.getType(type);
+                            const items = [{
+                                type: blob.type,
+                                getAsFile: () => blob
+                            }];
+                            await handlePasteImage(items);
+                            return;
+                        }
+                    }
+                }
+                alert("No image found on clipboard! Copy a QR code image/screenshot first.");
+            } catch (err) {
+                alert("Clipboard access denied. Try using the Ctrl+V keyboard shortcut inside this modal.");
+            }
+        };
+
+        const modalPasteListener = (e) => {
+            const items = e.clipboardData?.items || [];
+            handlePasteImage(items);
+        };
+        modal.addEventListener("paste", modalPasteListener);
+
         manualScanBtn.onclick = () => {
             if (!activeStream || video.readyState < 2 || video.videoWidth === 0) {
                 alert("Camera feed is not ready. Please wait a second and try again.");
@@ -1958,7 +2620,7 @@ export function handleZip(bytes) {
             const canvas = document.createElement("canvas");
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1968,6 +2630,12 @@ export function handleZip(bytes) {
 
             if (code) {
                 try {
+                    if (code.data.trim().toLowerCase().startsWith("otpauth-migration:")) {
+                        stopCamera();
+                        modal.remove();
+                        handleMigrationImport(code.data);
+                        return;
+                    }
                     const parsed = parseQRContent(code.data);
                     labelInput.value = parsed.label;
                     secretInput.value = parsed.secret;
@@ -1999,6 +2667,11 @@ export function handleZip(bytes) {
                     const code = jsQR(imgData.data, imgData.width, imgData.height);
                     if (code) {
                         try {
+                            if (code.data.trim().toLowerCase().startsWith("otpauth-migration:")) {
+                                modal.remove();
+                                handleMigrationImport(code.data);
+                                return;
+                            }
                             const parsed = parseQRContent(code.data);
                             labelInput.value = parsed.label;
                             secretInput.value = parsed.secret;
@@ -2037,15 +2710,2349 @@ export function handleZip(bytes) {
                 return;
             }
             stopCamera();
+            modal.removeEventListener("paste", modalPasteListener);
             modal.remove();
             callback({ label, secret, recoveryCodes });
         };
 
         cancelBtn.onclick = () => {
             stopCamera();
+            modal.removeEventListener("paste", modalPasteListener);
             modal.remove();
             callback(null);
         };
+    }
+
+    // ========== PASSWORDS STORAGE ==========
+    async function loadPasswords() {
+        const file = await getFileByName(".passwords.json");
+        if (!file) return [];
+        try {
+            const raw = await file.read();
+            if (!raw || raw.length < 2) return [];
+            const localMeta = await file.readMeta();
+            const reconstructed = await reconstructBytesFromSerialized(raw, localMeta);
+            const txt = td.decode(reconstructed.bytes);
+            return JSON.parse(txt);
+        } catch (e) {
+            console.warn("Failed to load passwords:", e);
+            return [];
+        }
+    }
+
+    async function savePasswords(passwords) {
+        let file = await getFileByName(".passwords.json");
+        if (!file) {
+            file = await createNewFile(".passwords.json");
+        }
+        const text = JSON.stringify(passwords);
+        const bytes = te.encode(text);
+        let pass = cachedSessionPassphrase;
+        if (!pass && !hasPrompted2FAKey) {
+            pass = await new Promise((resolve) => {
+                showEncryptDecryptModal("Set Master Passphrase for Secure Storage", true, (typedPass) => {
+                    resolve(typedPass);
+                });
+            });
+            if (pass === null) throw new Error("Cancelled by user");
+            hasPrompted2FAKey = true;
+            cachedSessionPassphrase = pass;
+        }
+        let meta, serialized;
+        if (pass) {
+            const { ct, salt, iv } = await encryptBytes(bytes, pass);
+            serialized = "r" + b64encodeBytes(ct);
+            meta = {
+                name: ".passwords.json",
+                sizeOriginal: bytes.length,
+                sizeStored: serialized.length,
+                ratio: 1,
+                dateISO: new Date().toISOString(),
+                tags: ["system", "secure"],
+                schemaVersion: 3,
+                encrypted: true,
+                enc: {
+                    salt: b64encodeBytes(salt),
+                    iv: b64encodeBytes(iv)
+                }
+            };
+        } else {
+            serialized = "r" + b64encodeBytes(bytes);
+            meta = {
+                name: ".passwords.json",
+                sizeOriginal: bytes.length,
+                sizeStored: serialized.length,
+                ratio: 1,
+                dateISO: new Date().toISOString(),
+                tags: ["system"],
+                schemaVersion: 3,
+                encrypted: false
+            };
+        }
+        await file.writeMeta(meta);
+        await file.write(serialized);
+        await chrome.storage.local.set({ bookmarkfs_passwords_cache: passwords });
+    }
+
+    // ========== 1. PASSWORDS PANEL ==========
+    async function showPasswordsPanel() {
+        let panel = qs("#passwords-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "passwords-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = "";
+
+        if (!cachedSessionPassphrase) {
+            const file = await getFileByName(".passwords.json");
+            const isRegistered = !!file;
+
+            if (!isRegistered) {
+                panel.innerHTML = `
+                    <div class="big-card" style="padding: 24px; text-align: center;">
+                        <h3>🔑 Create Master Passphrase</h3>
+                        <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 16px;">Set up a master passphrase to secure your credentials vault.</p>
+                        <input type="password" id="passwords-unlock-input" placeholder="New Master Passphrase" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; margin-bottom: 8px; width: 80%;">
+                        <br>
+                        <input type="password" id="passwords-confirm-input" placeholder="Confirm Master Passphrase" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; margin-bottom: 16px; width: 80%;">
+                        <br>
+                        <button id="btn-passwords-unlock" class="button" style="padding: 8px 24px;">Register & Unlock</button>
+                    </div>
+                `;
+                const unlockInput = panel.querySelector("#passwords-unlock-input");
+                const confirmInput = panel.querySelector("#passwords-confirm-input");
+                const unlockBtn = panel.querySelector("#btn-passwords-unlock");
+                
+                const doRegister = async () => {
+                    const typed = unlockInput.value;
+                    const confirmed = confirmInput.value;
+                    if (!typed) {
+                        alert("Passphrase cannot be empty.");
+                        return;
+                    }
+                    if (typed !== confirmed) {
+                        alert("Passphrases do not match.");
+                        return;
+                    }
+                    try {
+                        cachedSessionPassphrase = typed;
+                        hasPrompted2FAKey = true;
+                        // Initialize empty passwords database file
+                        await savePasswords([]);
+                        showPasswordsPanel();
+                    } catch (err) {
+                        cachedSessionPassphrase = "";
+                        alert("Initialization failed: " + err.message);
+                    }
+                };
+                unlockBtn.onclick = doRegister;
+                confirmInput.onkeydown = (e) => { if (e.key === "Enter") doRegister(); };
+                unlockInput.onkeydown = (e) => { if (e.key === "Enter") doRegister(); };
+                return;
+            }
+
+            panel.innerHTML = `
+                <div class="big-card" style="padding: 24px; text-align: center;">
+                    <h3>🔑 Enter Master Passphrase</h3>
+                    <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 16px;">Please authenticate to unlock your password manager.</p>
+                    <input type="password" id="passwords-unlock-input" placeholder="Master Passphrase" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; margin-bottom: 12px; width: 80%;">
+                    <br>
+                    <button id="btn-passwords-unlock" class="button" style="padding: 8px 24px;">Unlock</button>
+                </div>
+            `;
+            const unlockInput = panel.querySelector("#passwords-unlock-input");
+            const unlockBtn = panel.querySelector("#btn-passwords-unlock");
+            const doUnlock = async () => {
+                const typed = unlockInput.value;
+                if (!typed) return;
+                try {
+                    cachedSessionPassphrase = typed;
+                    hasPrompted2FAKey = true;
+                    // Attempt loading to verify passphrase correctness
+                    const file = await getFileByName(".passwords.json");
+                    if (file) {
+                        const raw = await file.read();
+                        const localMeta = await file.readMeta();
+                        if (localMeta.encrypted) {
+                            await reconstructBytesFromSerialized(raw, localMeta);
+                        }
+                    }
+                    showPasswordsPanel();
+                } catch (err) {
+                    cachedSessionPassphrase = "";
+                    alert("Incorrect passphrase or decryption failed.");
+                }
+            };
+            unlockBtn.onclick = doUnlock;
+            unlockInput.onkeydown = (e) => { if (e.key === "Enter") doUnlock(); };
+            return;
+        }
+
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2 style="margin: 0;">🔑 Passwords</h2>
+                    <div>
+                        <button id="btn-add-password" class="button" style="font-size: 12px; padding: 4px 8px;">+ Add</button>
+                        <button id="btn-import-passwords" class="button" style="font-size: 12px; padding: 4px 8px; margin-left: 4px;">Import</button>
+                        <button id="btn-export-passwords" class="button" style="font-size: 12px; padding: 4px 8px; margin-left: 4px;">Export</button>
+                    </div>
+                </div>
+                <input type="text" id="passwords-search" placeholder="Search passwords..." style="width: 100%; padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; margin-bottom: 12px; font-size: 13px; box-sizing: border-box;">
+                <div id="passwords-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;"></div>
+                <input type="file" id="input-import-csv" accept=".csv,.json" style="display: none;">
+            </div>
+        `;
+
+        const listDiv = panel.querySelector("#passwords-list");
+        const searchInput = panel.querySelector("#passwords-search");
+        const addBtn = panel.querySelector("#btn-add-password");
+        const importBtn = panel.querySelector("#btn-import-passwords");
+        const exportBtn = panel.querySelector("#btn-export-passwords");
+        const fileInput = panel.querySelector("#input-import-csv");
+
+        let passwords = await loadPasswords();
+
+        const renderList = () => {
+            const query = searchInput.value.toLowerCase();
+            listDiv.innerHTML = "";
+            const filtered = passwords.filter(p => 
+                (p.title || "").toLowerCase().includes(query) ||
+                (p.username || "").toLowerCase().includes(query) ||
+                (p.url || "").toLowerCase().includes(query)
+            );
+
+            if (filtered.length === 0) {
+                listDiv.innerHTML = `<div style="text-align: center; color: #71717a; padding: 16px; font-size: 13px;">No passwords found.</div>`;
+                return;
+            }
+
+            filtered.forEach((p, idx) => {
+                const card = document.createElement("div");
+                card.className = "history-card";
+                card.style.padding = "10px 14px";
+                card.style.borderRadius = "8px";
+                card.style.background = "var(--bg-card, #1c1917)";
+                card.style.border = "1px solid var(--border-color, #2e2a24)";
+                card.style.display = "flex";
+                card.style.flexDirection = "column";
+                card.style.gap = "4px";
+
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="font-size: 14px; color: var(--accent);">${p.title || p.url}</strong>
+                        <div>
+                            <button class="button btn-edit-pwd" style="font-size: 11px; padding: 2px 6px;">Edit</button>
+                            <button class="button btn-del-pwd" style="font-size: 11px; padding: 2px 6px; margin-left: 4px; border-color: #ef4444; color: #ef4444;">Delete</button>
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #a1a1aa; display: flex; flex-direction: column; gap: 2px;">
+                        <div>Username: <span style="color: #f4f4f5; font-family: monospace;">${p.username || "(empty)"}</span></div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            Password: <span class="pwd-val" style="color: #f4f4f5; font-family: monospace;">••••••••</span>
+                            <button class="button btn-show-pwd" style="font-size: 10px; padding: 1px 4px; line-height: 1;">Show</button>
+                            <button class="button btn-copy-pwd" style="font-size: 10px; padding: 1px 4px; line-height: 1;">Copy</button>
+                        </div>
+                        ${p.url ? `<div>URL: <a href="${p.url}" target="_blank" style="color: var(--accent); text-decoration: none;">${p.url}</a></div>` : ""}
+                        ${p.notes ? `<div style="font-size: 11px; font-style: italic; margin-top: 2px; color: #71717a;">Notes: ${p.notes}</div>` : ""}
+                    </div>
+                `;
+
+                const pwdVal = card.querySelector(".pwd-val");
+                const showBtn = card.querySelector(".btn-show-pwd");
+                const copyBtn = card.querySelector(".btn-copy-pwd");
+                const editEntryBtn = card.querySelector(".btn-edit-pwd");
+                const delEntryBtn = card.querySelector(".btn-del-pwd");
+
+                let shown = false;
+                showBtn.onclick = () => {
+                    shown = !shown;
+                    pwdVal.textContent = shown ? p.password : "••••••••";
+                    showBtn.textContent = shown ? "Hide" : "Show";
+                };
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(p.password);
+                    copyBtn.textContent = "Copied!";
+                    setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+                };
+                editEntryBtn.onclick = () => { showAddEditPasswordModal(p, idx); };
+                delEntryBtn.onclick = async () => {
+                    if (confirm(`Delete password for "${p.title || p.url}"?`)) {
+                        passwords.splice(idx, 1);
+                        await savePasswords(passwords);
+                        renderList();
+                    }
+                };
+
+                listDiv.appendChild(card);
+            });
+        };
+
+        const showAddEditPasswordModal = (existing = null, indexToUpdate = -1) => {
+            const modal = document.createElement("div");
+            modal.style.position = "fixed";
+            modal.style.inset = "0";
+            modal.style.background = "rgba(10, 10, 10, 0.85)";
+            modal.style.backdropFilter = "blur(8px)";
+            modal.style.display = "flex";
+            modal.style.alignItems = "center";
+            modal.style.justifyContent = "center";
+            modal.style.zIndex = "100000";
+
+            const box = document.createElement("div");
+            box.style.background = "#18181b";
+            box.style.border = "1px solid #27272a";
+            box.style.color = "#f4f4f5";
+            box.style.padding = "24px";
+            box.style.borderRadius = "16px";
+            box.style.width = "min(400px, 90%)";
+            box.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.5)";
+            box.style.display = "flex";
+            box.style.flexDirection = "column";
+            box.style.gap = "12px";
+
+            box.innerHTML = `
+                <h3 style="margin: 0; color: var(--accent);">${existing ? "📝 Edit Credentials" : "🔑 Add Credentials"}</h3>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: #a1a1aa;">Site Title:</label>
+                    <input type="text" id="pwd-modal-title" placeholder="e.g. GitHub" style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: #a1a1aa;">URL:</label>
+                    <input type="text" id="pwd-modal-url" placeholder="https://..." style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: #a1a1aa;">Username / Email:</label>
+                    <input type="text" id="pwd-modal-user" placeholder="username" style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <label style="font-size: 11px; color: #a1a1aa;">Password:</label>
+                        <a href="#" id="pwd-modal-gen-toggle" style="font-size: 11px; color: var(--accent); text-decoration: none;">⚙️ Generate</a>
+                    </div>
+                    <input type="text" id="pwd-modal-pass" style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
+                </div>
+
+                <div id="pwd-generator-panel" style="display: none; background: #09090b; padding: 10px; border-radius: 6px; border: 1px solid #27272a; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                        <span>Length (<span id="gen-len-val">20</span>):</span>
+                        <input type="range" id="gen-len" min="8" max="64" value="20" style="width: 120px;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
+                        <label><input type="checkbox" id="gen-upper" checked> A-Z</label>
+                        <label><input type="checkbox" id="gen-lower" checked> a-z</label>
+                        <label><input type="checkbox" id="gen-num" checked> 0-9</label>
+                        <label><input type="checkbox" id="gen-sym" checked> !@#$</label>
+                    </div>
+                    <button id="btn-generate-now" class="button" style="font-size: 11px; padding: 4px;">Generate</button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: #a1a1aa;">Notes:</label>
+                    <textarea id="pwd-modal-notes" placeholder="Notes..." style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 12px; height: 50px; resize: none;"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+                    <button id="btn-modal-pwd-save" class="button" style="padding: 6px 16px;">Save</button>
+                    <button id="btn-modal-pwd-cancel" class="button" style="padding: 6px 16px; background: transparent; border-color: #27272a;">Cancel</button>
+                </div>
+            `;
+
+            modal.appendChild(box);
+            document.body.appendChild(modal);
+
+            const mTitle = box.querySelector("#pwd-modal-title");
+            const mUrl = box.querySelector("#pwd-modal-url");
+            const mUser = box.querySelector("#pwd-modal-user");
+            const mPass = box.querySelector("#pwd-modal-pass");
+            const mNotes = box.querySelector("#pwd-modal-notes");
+            const mSave = box.querySelector("#btn-modal-pwd-save");
+            const mCancel = box.querySelector("#btn-modal-pwd-cancel");
+
+            const genToggle = box.querySelector("#pwd-modal-gen-toggle");
+            const genPanel = box.querySelector("#pwd-generator-panel");
+            const genLen = box.querySelector("#gen-len");
+            const genLenVal = box.querySelector("#gen-len-val");
+            const btnGenNow = box.querySelector("#btn-generate-now");
+
+            if (existing) {
+                mTitle.value = existing.title || "";
+                mUrl.value = existing.url || "";
+                mUser.value = existing.username || "";
+                mPass.value = existing.password || "";
+                mNotes.value = existing.notes || "";
+            }
+
+            genToggle.onclick = (e) => {
+                e.preventDefault();
+                genPanel.style.display = genPanel.style.display === "none" ? "flex" : "none";
+            };
+
+            genLen.oninput = () => { genLenVal.textContent = genLen.value; };
+
+            btnGenNow.onclick = (e) => {
+                e.preventDefault();
+                const len = parseInt(genLen.value);
+                const upper = box.querySelector("#gen-upper").checked;
+                const lower = box.querySelector("#gen-lower").checked;
+                const num = box.querySelector("#gen-num").checked;
+                const sym = box.querySelector("#gen-sym").checked;
+
+                let chars = "";
+                if (upper) chars += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                if (lower) chars += "abcdefghijklmnopqrstuvwxyz";
+                if (num) chars += "0123456789";
+                if (sym) chars += "!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+                if (!chars) {
+                    alert("Please select at least one character set!");
+                    return;
+                }
+
+                const array = new Uint32Array(len);
+                crypto.getRandomValues(array);
+                let pwd = "";
+                for (let i = 0; i < len; i++) {
+                    pwd += chars[array[i] % chars.length];
+                }
+                mPass.value = pwd;
+            };
+
+            mCancel.onclick = () => modal.remove();
+            mSave.onclick = async () => {
+                const t = mTitle.value.trim() || mUrl.value.trim() || "Untitled";
+                const u = mUrl.value.trim();
+                const usr = mUser.value.trim();
+                const p = mPass.value;
+                const n = mNotes.value.trim();
+
+                if (!p) {
+                    alert("Password cannot be empty.");
+                    return;
+                }
+
+                const entry = {
+                    title: t,
+                    url: u,
+                    username: usr,
+                    password: p,
+                    notes: n,
+                    modified: Date.now()
+                };
+
+                if (indexToUpdate >= 0) {
+                    passwords[indexToUpdate] = entry;
+                } else {
+                    passwords.push(entry);
+                }
+
+                await savePasswords(passwords);
+                modal.remove();
+                renderList();
+            };
+        };
+
+        addBtn.onclick = () => { showAddEditPasswordModal(); };
+
+        searchInput.oninput = renderList;
+
+        exportBtn.onclick = () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(passwords, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "bookmarkfs_passwords.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        };
+
+        importBtn.onclick = () => { fileInput.click(); };
+        fileInput.onchange = () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const text = reader.result;
+                    if (file.name.endsWith(".json")) {
+                        const parsed = JSON.parse(text);
+                        if (Array.isArray(parsed)) {
+                            passwords = passwords.concat(parsed);
+                            await savePasswords(passwords);
+                            alert("Imported JSON successfully!");
+                            renderList();
+                        } else {
+                            alert("Invalid passwords JSON format. Must be an array.");
+                        }
+                    } else if (file.name.endsWith(".csv")) {
+                        // Very simple CSV parser
+                        const lines = text.split(/\r?\n/);
+                        if (lines.length > 1) {
+                            const headers = lines[0].toLowerCase().split(",");
+                            const urlIdx = headers.indexOf("url");
+                            const userIdx = headers.indexOf("username") >= 0 ? headers.indexOf("username") : headers.indexOf("login_username");
+                            const passIdx = headers.indexOf("password") >= 0 ? headers.indexOf("password") : headers.indexOf("login_password");
+                            const titleIdx = headers.indexOf("name") >= 0 ? headers.indexOf("name") : headers.indexOf("title");
+
+                            if (passIdx === -1) {
+                                alert("Could not find password column in CSV.");
+                                return;
+                            }
+
+                            let importCount = 0;
+                            for (let i = 1; i < lines.length; i++) {
+                                if (!lines[i].trim()) continue;
+                                const row = lines[i].split(",");
+                                const pVal = row[passIdx];
+                                if (!pVal) continue;
+
+                                const tVal = titleIdx >= 0 ? row[titleIdx] : "";
+                                const uVal = urlIdx >= 0 ? row[urlIdx] : "";
+                                const usrVal = userIdx >= 0 ? row[userIdx] : "";
+
+                                passwords.push({
+                                    title: tVal || uVal || "Imported",
+                                    url: uVal,
+                                    username: usrVal,
+                                    password: pVal,
+                                    notes: "Imported via CSV",
+                                    modified: Date.now()
+                                });
+                                importCount++;
+                            }
+                            await savePasswords(passwords);
+                            alert(`Imported ${importCount} credentials successfully from CSV!`);
+                            renderList();
+                        }
+                    }
+                } catch (e) {
+                    alert("Import failed: " + e.message);
+                }
+            };
+            reader.readAsText(file);
+            fileInput.value = "";
+        };
+
+        renderList();
+    }
+
+    // ========== QR CODE SCANNER PANEL ==========
+    async function startScreenshotQRScannerRaw(onSuccess, onError) {
+        await runInjectedCropScanner(true, onSuccess, onError);
+    }
+
+    function showQrScannerPanel() {
+        let panel = qs("#qrscanner-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "qrscanner-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <h2 style="margin-top: 0; margin-bottom: 4px; color: var(--accent); display: flex; align-items: center; gap: 8px;">🔍 QR Code Scanner</h2>
+                <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Scan any QR code or barcode using your camera, screen capture, screenshot crop, clipboard paste, or file upload.</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-qrscan-cam" class="button" style="font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
+                    <button id="btn-qrscan-screen" class="button" style="font-size: 12px; padding: 6px 12px;">🖥️ Screen Scan</button>
+                    <button id="btn-qrscan-screenshot" class="button" style="font-size: 12px; padding: 6px 12px; grid-column: span 2; border-color: var(--accent) !important; color: var(--accent) !important; font-weight: 600;">📸 Screenshot Crop (Select QR)</button>
+                    <label class="button" style="font-size: 12px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0;">
+                        🖼 Upload QR File
+                        <input type="file" id="input-qrscan-file" accept="image/*" style="display: none;">
+                    </label>
+                    <button id="btn-qrscan-paste" class="button" style="font-size: 12px; padding: 6px 12px;">📋 Paste Image</button>
+                </div>
+
+                <div id="qrscan-video-container" style="display: none; position: relative; width: 100%; max-height: 280px; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #27272a;">
+                    <video id="qrscan-video" style="width: 100%; display: block;" playsinline></video>
+                    <div style="position: absolute; top: 10%; bottom: 10%; left: 10%; right: 10%; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
+                </div>
+                
+                <button id="btn-qrscan-scan-manual" class="button" style="margin-top: 4px; width: 100%; display: none; padding: 6px 12px; font-size: 13px;">🔍 Scan Current Frame</button>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 12px; font-weight: 600; color: #a1a1aa;">Scanned Output:</label>
+                    <textarea id="qrscan-output" readonly placeholder="Scanned QR code data will appear here..." style="width: 100%; height: 100px; padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                    <button id="btn-qrscan-copy" class="button" style="padding: 6px 16px; font-weight: 600; background: var(--accent); color: #000; display: none;">📋 Copy Output</button>
+                    <button id="btn-qrscan-clear" class="button" style="padding: 6px 16px; background: transparent; border-color: #27272a;">Clear</button>
+                </div>
+            </div>
+        `;
+
+        let activeStream = null;
+        let scanInterval = null;
+
+        const camBtn = panel.querySelector("#btn-qrscan-cam");
+        const screenBtn = panel.querySelector("#btn-qrscan-screen");
+        const screenshotBtn = panel.querySelector("#btn-qrscan-screenshot");
+        const fileInput = panel.querySelector("#input-qrscan-file");
+        const pasteBtn = panel.querySelector("#btn-qrscan-paste");
+        const videoContainer = panel.querySelector("#qrscan-video-container");
+        const video = panel.querySelector("#qrscan-video");
+        const output = panel.querySelector("#qrscan-output");
+        const copyBtn = panel.querySelector("#btn-qrscan-copy");
+        const clearBtn = panel.querySelector("#btn-qrscan-clear");
+        const manualScanBtn = panel.querySelector("#btn-qrscan-scan-manual");
+
+        function handleScanSuccess(text) {
+            if (text.trim().toLowerCase().startsWith("otpauth-migration:")) {
+                stopCamera();
+                handleMigrationImport(text);
+                return;
+            }
+            output.value = text;
+            copyBtn.style.display = "block";
+            stopCamera();
+            alert("QR Code scanned successfully!");
+        }
+
+        function stopCamera() {
+            if (scanInterval) {
+                clearInterval(scanInterval);
+                scanInterval = null;
+            }
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+                activeStream = null;
+            }
+            videoContainer.style.display = "none";
+            manualScanBtn.style.display = "none";
+            camBtn.textContent = "📷 Scan Camera";
+            screenBtn.textContent = "🖥️ Screen Scan";
+            camBtn.style.pointerEvents = "auto";
+            screenBtn.style.pointerEvents = "auto";
+            document.removeEventListener("paste", globalPasteHandler);
+        }
+
+        stopQrScannerCameraFn = stopCamera;
+
+        camBtn.onclick = async () => {
+            if (activeStream) {
+                stopCamera();
+                return;
+            }
+
+            try {
+                activeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = activeStream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                videoContainer.style.display = "block";
+                manualScanBtn.style.display = "block";
+                camBtn.textContent = "⏹ Stop Camera";
+
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+                scanInterval = setInterval(() => {
+                    if (video.readyState >= 2 && video.videoWidth > 0) {
+                        const vw = video.videoWidth;
+                        const vh = video.videoHeight;
+                        const boxW = Math.round(vw * 0.8);
+                        const boxH = Math.round(vh * 0.8);
+                        const boxX = Math.round((vw - boxW) / 2);
+                        const boxY = Math.round((vh - boxH) / 2);
+
+                        // Try center guide box first
+                        const centerCanvas = document.createElement("canvas");
+                        centerCanvas.width = boxW;
+                        centerCanvas.height = boxH;
+                        const centerCtx = centerCanvas.getContext("2d", { willReadFrequently: true });
+                        centerCtx.drawImage(video, boxX, boxY, boxW, boxH, 0, 0, boxW, boxH);
+                        const centerImgData = centerCtx.getImageData(0, 0, boxW, boxH);
+                        let code = jsQR(centerImgData.data, centerImgData.width, centerImgData.height, {
+                            inversionAttempts: "attemptBoth",
+                        });
+
+                        // Fallback to full frame
+                        if (!code) {
+                            canvas.width = vw;
+                            canvas.height = vh;
+                            ctx.drawImage(video, 0, 0, vw, vh);
+                            const fullImgData = ctx.getImageData(0, 0, vw, vh);
+                            code = jsQR(fullImgData.data, fullImgData.width, fullImgData.height, {
+                                inversionAttempts: "attemptBoth",
+                            });
+                        }
+
+                        if (code) {
+                            handleScanSuccess(code.data);
+                        }
+                    }
+                }, 250);
+            } catch (err) {
+                if (err.name === "NotAllowedError" || err.message.toLowerCase().includes("permission denied")) {
+                    const openTab = confirm("Camera access permission is denied or blocked. Chrome requires granting permission inside a full browser tab before it can be used in the Side Panel.\n\nOpen a permission tab now?");
+                    if (openTab) {
+                        chrome.tabs.create({ url: chrome.runtime.getURL("dist/permissions.html") });
+                    }
+                } else {
+                    alert("Failed to access camera: " + err.message);
+                }
+            }
+        };
+
+        screenBtn.onclick = async () => {
+            if (activeStream) {
+                stopCamera();
+                return;
+            }
+
+            try {
+                activeStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                video.srcObject = activeStream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                videoContainer.style.display = "block";
+                manualScanBtn.style.display = "block";
+                screenBtn.textContent = "⏹ Stop Screen Scan";
+                camBtn.style.pointerEvents = "none";
+
+                activeStream.getVideoTracks()[0].addEventListener('ended', () => {
+                    stopCamera();
+                });
+
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+                scanInterval = setInterval(() => {
+                    if (video.readyState >= 2 && video.videoWidth > 0) {
+                        const vw = video.videoWidth;
+                        const vh = video.videoHeight;
+                        const boxW = Math.round(vw * 0.8);
+                        const boxH = Math.round(vh * 0.8);
+                        const boxX = Math.round((vw - boxW) / 2);
+                        const boxY = Math.round((vh - boxH) / 2);
+
+                        // Try center guide box first
+                        const centerCanvas = document.createElement("canvas");
+                        centerCanvas.width = boxW;
+                        centerCanvas.height = boxH;
+                        const centerCtx = centerCanvas.getContext("2d", { willReadFrequently: true });
+                        centerCtx.drawImage(video, boxX, boxY, boxW, boxH, 0, 0, boxW, boxH);
+                        const centerImgData = centerCtx.getImageData(0, 0, boxW, boxH);
+                        let code = jsQR(centerImgData.data, centerImgData.width, centerImgData.height, {
+                            inversionAttempts: "attemptBoth",
+                        });
+
+                        // Fallback to full frame
+                        if (!code) {
+                            canvas.width = vw;
+                            canvas.height = vh;
+                            ctx.drawImage(video, 0, 0, vw, vh);
+                            const fullImgData = ctx.getImageData(0, 0, vw, vh);
+                            code = jsQR(fullImgData.data, fullImgData.width, fullImgData.height, {
+                                inversionAttempts: "attemptBoth",
+                            });
+                        }
+
+                        if (code) {
+                            handleScanSuccess(code.data);
+                        }
+                    }
+                }, 250);
+            } catch (err) {
+                stopCamera();
+                if (err.name !== "NotAllowedError" && !err.message.toLowerCase().includes("permission denied")) {
+                    alert("Failed to capture screen stream: " + err.message);
+                }
+            }
+        };
+
+        manualScanBtn.onclick = () => {
+            if (!activeStream || video.readyState < 2 || video.videoWidth === 0) {
+                alert("Video stream is not ready. Please wait a second and try again.");
+                return;
+            }
+
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
+            const boxW = Math.round(vw * 0.8);
+            const boxH = Math.round(vh * 0.8);
+            const boxX = Math.round((vw - boxW) / 2);
+            const boxY = Math.round((vh - boxH) / 2);
+
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+            // Try center guide box first
+            const centerCanvas = document.createElement("canvas");
+            centerCanvas.width = boxW;
+            centerCanvas.height = boxH;
+            const centerCtx = centerCanvas.getContext("2d", { willReadFrequently: true });
+            centerCtx.drawImage(video, boxX, boxY, boxW, boxH, 0, 0, boxW, boxH);
+            const centerImgData = centerCtx.getImageData(0, 0, boxW, boxH);
+            let code = jsQR(centerImgData.data, centerImgData.width, centerImgData.height, {
+                inversionAttempts: "attemptBoth",
+            });
+
+            // Fallback to full frame
+            if (!code) {
+                canvas.width = vw;
+                canvas.height = vh;
+                ctx.drawImage(video, 0, 0, vw, vh);
+                const fullImgData = ctx.getImageData(0, 0, vw, vh);
+                code = jsQR(fullImgData.data, fullImgData.width, fullImgData.height, {
+                    inversionAttempts: "attemptBoth",
+                });
+            }
+
+            if (code) {
+                handleScanSuccess(code.data);
+            } else {
+                alert("No QR Code detected in the current frame.\n\nTips:\n1. Position the QR code fully inside the dashed green box.\n2. Avoid screen glare or direct light reflections.\n3. Hold steady.");
+            }
+        };
+
+        screenshotBtn.onclick = () => {
+            stopCamera();
+            startScreenshotQRScannerRaw(
+                (text) => {
+                    handleScanSuccess(text);
+                },
+                (errMsg) => {
+                    alert(errMsg);
+                }
+            );
+        };
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                        inversionAttempts: "attemptBoth"
+                    });
+                    if (code) {
+                        handleScanSuccess(code.data);
+                    } else {
+                        alert("No QR Code detected in the uploaded image.");
+                    }
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        pasteBtn.onclick = async () => {
+            try {
+                const items = await navigator.clipboard.read();
+                for (const item of items) {
+                    for (const type of item.types) {
+                        if (type.startsWith("image/")) {
+                            const blob = await item.getType(type);
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const img = new Image();
+                                img.onload = () => {
+                                    const canvas = document.createElement("canvas");
+                                    canvas.width = img.width;
+                                    canvas.height = img.height;
+                                    const ctx = canvas.getContext("2d");
+                                    ctx.drawImage(img, 0, 0);
+                                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                                    const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                                        inversionAttempts: "attemptBoth"
+                                    });
+                                    if (code) {
+                                        handleScanSuccess(code.data);
+                                    } else {
+                                        alert("No QR Code detected in the pasted image.");
+                                    }
+                                };
+                                img.src = reader.result;
+                            };
+                            reader.readAsDataURL(blob);
+                            return;
+                        }
+                    }
+                }
+                alert("No image found in clipboard. Copy an image first, then click Paste.");
+            } catch (err) {
+                alert("Failed to read clipboard: " + err.message);
+            }
+        };
+
+        const handlePasteImage = async (items) => {
+            for (const item of items) {
+                if (item.type.startsWith("image/")) {
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement("canvas");
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext("2d");
+                            ctx.drawImage(img, 0, 0);
+                            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                                inversionAttempts: "attemptBoth"
+                            });
+                            if (code) {
+                                handleScanSuccess(code.data);
+                            } else {
+                                alert("No QR Code detected in the pasted image.");
+                            }
+                        };
+                        img.src = reader.result;
+                    };
+                    reader.readAsDataURL(blob);
+                    return;
+                }
+            }
+        };
+
+        const globalPasteHandler = (e) => {
+            if (panel.style.display === "block" && e.clipboardData && e.clipboardData.items) {
+                handlePasteImage(e.clipboardData.items);
+            }
+        };
+        document.addEventListener("paste", globalPasteHandler);
+
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(output.value);
+            const orig = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => { copyBtn.textContent = orig; }, 1500);
+        };
+
+        clearBtn.onclick = () => {
+            output.value = "";
+            copyBtn.style.display = "none";
+        };
+    }
+
+    // ========== 2. CALCULATOR PANEL ==========
+    function showCalcPanel() {
+        let panel = qs("#calc-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "calc-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px;">
+                <h2 style="margin-top: 0; margin-bottom: 12px;">🧮 Calculator & Convert</h2>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid #27272a; padding-bottom: 6px;">
+                    <a href="#" id="calc-tab-basic" style="color: var(--accent); text-decoration: none; font-weight: bold; font-size: 13px;">Calc</a>
+                    <a href="#" id="calc-tab-convert" style="color: #71717a; text-decoration: none; font-size: 13px; margin-left: 12px;">Convert</a>
+                </div>
+
+                <div id="calc-basic-view">
+                    <input type="text" id="calc-screen" style="width: 100%; padding: 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 18px; text-align: right; font-family: monospace; box-sizing: border-box;" readonly>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px;">
+                        <button class="button calc-btn" data-val="C" style="background: #3f3f46;">C</button>
+                        <button class="button calc-btn" data-val="(">(</button>
+                        <button class="button calc-btn" data-val=")">)</button>
+                        <button class="button calc-btn" data-val="/" style="background: #27272a; color: var(--accent); font-weight: bold;">/</button>
+                        
+                        <button class="button calc-btn" data-val="7">7</button>
+                        <button class="button calc-btn" data-val="8">8</button>
+                        <button class="button calc-btn" data-val="9">9</button>
+                        <button class="button calc-btn" data-val="*" style="background: #27272a; color: var(--accent); font-weight: bold;">*</button>
+                        
+                        <button class="button calc-btn" data-val="4">4</button>
+                        <button class="button calc-btn" data-val="5">5</button>
+                        <button class="button calc-btn" data-val="6">6</button>
+                        <button class="button calc-btn" data-val="-" style="background: #27272a; color: var(--accent); font-weight: bold;">-</button>
+                        
+                        <button class="button calc-btn" data-val="1">1</button>
+                        <button class="button calc-btn" data-val="2">2</button>
+                        <button class="button calc-btn" data-val="3">3</button>
+                        <button class="button calc-btn" data-val="+" style="background: #27272a; color: var(--accent); font-weight: bold;">+</button>
+                        
+                        <button class="button calc-btn" data-val="0">0</button>
+                        <button class="button calc-btn" data-val=".">.</button>
+                        <button class="button calc-btn" data-val="back" style="font-size: 11px;">⌫</button>
+                        <button class="button calc-btn" data-val="=" style="background: var(--accent); color: #000; font-weight: bold;">=</button>
+                    </div>
+                </div>
+
+                <div id="calc-convert-view" style="display: none; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <label style="font-size: 11px; color: #a1a1aa;">Category:</label>
+                        <select id="conv-cat" style="padding: 6px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+                            <option value="length">Length (px / rem / em / cm / in)</option>
+                            <option value="temp">Temperature (°C / °F / K)</option>
+                            <option value="data">Data Size (B / KB / MB / GB)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;">
+                            <input type="number" id="conv-input" value="1" style="padding: 8px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; box-sizing: border-box; width: 100%;">
+                            <select id="conv-from" style="padding: 4px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 4px; outline: none; font-size: 12px; margin-top: 4px;"></select>
+                        </div>
+                        <div style="align-self: center; font-size: 16px;">➡️</div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;">
+                            <input type="text" id="conv-output" style="padding: 8px; background: #09090b; border: 1px solid #27272a; color: #a1a1aa; border-radius: 6px; outline: none; font-size: 13px; box-sizing: border-box; width: 100%;" readonly>
+                            <select id="conv-to" style="padding: 4px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 4px; outline: none; font-size: 12px; margin-top: 4px;"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const basicTab = panel.querySelector("#calc-tab-basic");
+        const convertTab = panel.querySelector("#calc-tab-convert");
+        const basicView = panel.querySelector("#calc-basic-view");
+        const convertView = panel.querySelector("#calc-convert-view");
+
+        basicTab.onclick = (e) => {
+            e.preventDefault();
+            basicTab.style.fontWeight = "bold";
+            basicTab.style.color = "var(--accent)";
+            convertTab.style.fontWeight = "normal";
+            convertTab.style.color = "#71717a";
+            basicView.style.display = "block";
+            convertView.style.display = "none";
+        };
+        convertTab.onclick = (e) => {
+            e.preventDefault();
+            convertTab.style.fontWeight = "bold";
+            convertTab.style.color = "var(--accent)";
+            basicTab.style.fontWeight = "normal";
+            basicTab.style.color = "#71717a";
+            basicView.style.display = "none";
+            convertView.style.display = "flex";
+        };
+
+        // Basic Calc Core
+        const screen = panel.querySelector("#calc-screen");
+        let calcVal = "";
+        
+        function safeEvaluateMath(str) {
+            str = str.replace(/\s+/g, "");
+            let pos = 0;
+            function parseExpr() {
+                let val = parseTerm();
+                while (pos < str.length) {
+                    const op = str[pos];
+                    if (op === "+" || op === "-") {
+                        pos++;
+                        const val2 = parseTerm();
+                        val = op === "+" ? val + val2 : val - val2;
+                    } else { break; }
+                }
+                return val;
+            }
+            function parseTerm() {
+                let val = parseFactor();
+                while (pos < str.length) {
+                    const op = str[pos];
+                    if (op === "*" || op === "/") {
+                        pos++;
+                        const val2 = parseFactor();
+                        val = op === "*" ? val * val2 : val / val2;
+                    } else { break; }
+                }
+                return val;
+            }
+            function parseFactor() {
+                if (str[pos] === "(") {
+                    pos++;
+                    const val = parseExpr();
+                    if (str[pos] === ")") pos++;
+                    return val;
+                }
+                let start = pos;
+                if (str[pos] === "-") pos++;
+                while (pos < str.length && /[0-9.]/.test(str[pos])) pos++;
+                const numStr = str.substring(start, pos);
+                return parseFloat(numStr) || 0;
+            }
+            try {
+                return parseExpr();
+            } catch(e) { return "Error"; }
+        }
+
+        panel.querySelectorAll(".calc-btn").forEach(btn => {
+            btn.onclick = () => {
+                const val = btn.dataset.val;
+                if (val === "C") {
+                    calcVal = "";
+                } else if (val === "back") {
+                    calcVal = calcVal.substring(0, calcVal.length - 1);
+                } else if (val === "=") {
+                    if (calcVal) {
+                        calcVal = String(safeEvaluateMath(calcVal));
+                    }
+                } else {
+                    calcVal += val;
+                }
+                screen.value = calcVal;
+            };
+        });
+
+        // Convert UI Core
+        const convCat = panel.querySelector("#conv-cat");
+        const convInput = panel.querySelector("#conv-input");
+        const convOutput = panel.querySelector("#conv-output");
+        const convFrom = panel.querySelector("#conv-from");
+        const convTo = panel.querySelector("#conv-to");
+
+        const units = {
+            length: {
+                px: 1,
+                rem: 16,
+                em: 16,
+                cm: 37.795,
+                in: 96
+            },
+            temp: {
+                C: "C",
+                F: "F",
+                K: "K"
+            },
+            data: {
+                B: 1,
+                KB: 1024,
+                MB: 1024 * 1024,
+                GB: 1024 * 1024 * 1024
+            }
+        };
+
+        const setupConvertUnits = () => {
+            const cat = convCat.value;
+            convFrom.innerHTML = "";
+            convTo.innerHTML = "";
+            Object.keys(units[cat]).forEach(u => {
+                const opt1 = document.createElement("option");
+                opt1.value = u; opt1.textContent = u;
+                convFrom.appendChild(opt1);
+
+                const opt2 = document.createElement("option");
+                opt2.value = u; opt2.textContent = u;
+                convTo.appendChild(opt2);
+            });
+            if (cat === "length") convTo.value = "rem";
+            if (cat === "temp") convTo.value = "F";
+            if (cat === "data") convTo.value = "MB";
+            runConversion();
+        };
+
+        const runConversion = () => {
+            const cat = convCat.value;
+            const val = parseFloat(convInput.value) || 0;
+            const from = convFrom.value;
+            const to = convTo.value;
+            if (!from || !to) return;
+
+            if (cat === "temp") {
+                if (from === to) { convOutput.value = val; return; }
+                let c = val;
+                if (from === "F") c = (val - 32) * 5/9;
+                else if (from === "K") c = val - 273.15;
+                
+                let res = c;
+                if (to === "F") res = c * 9/5 + 32;
+                else if (to === "K") res = c + 273.15;
+                convOutput.value = res.toFixed(3);
+            } else {
+                const baseVal = val * units[cat][from];
+                const converted = baseVal / units[cat][to];
+                convOutput.value = converted.toFixed(4).replace(/\.?0+$/, "");
+            }
+        };
+
+        convCat.onchange = setupConvertUnits;
+        convInput.oninput = runConversion;
+        convFrom.onchange = runConversion;
+        convTo.onchange = runConversion;
+
+        setupConvertUnits();
+    }
+
+    // ========== 3. REMINDERS PANEL ==========
+    // ========== 4. CLOCK & REMINDER PANEL ==========
+    async function showClockPanel() {
+        let panel = qs("#clock-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "clock-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = "";
+
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">⏰ Clock & Reminders</h2>
+                
+                <!-- Tab Controls -->
+                <div style="display: flex; border-bottom: 1px solid #27272a; margin-bottom: 8px;">
+                    <button id="tab-clock-alarm" style="flex: 1; padding: 8px; background: transparent; border: none; border-bottom: 2px solid ${activeClockTab === "alarm" ? "var(--accent)" : "transparent"}; color: ${activeClockTab === "alarm" ? "#ffffff" : "#a1a1aa"}; font-weight: bold; cursor: pointer; font-size: 13px;">Alarm & Reminders</button>
+                    <button id="tab-clock-stopwatch" style="flex: 1; padding: 8px; background: transparent; border: none; border-bottom: 2px solid ${activeClockTab === "stopwatch" ? "var(--accent)" : "transparent"}; color: ${activeClockTab === "stopwatch" ? "#ffffff" : "#a1a1aa"}; font-weight: bold; cursor: pointer; font-size: 13px;">Stopwatch</button>
+                    <button id="tab-clock-world" style="flex: 1; padding: 8px; background: transparent; border: none; border-bottom: 2px solid ${activeClockTab === "world" ? "var(--accent)" : "transparent"}; color: ${activeClockTab === "world" ? "#ffffff" : "#a1a1aa"}; font-weight: bold; cursor: pointer; font-size: 13px;">World Time</button>
+                </div>
+
+                <!-- Alarm & Reminders Content Container -->
+                <div id="clock-alarm-content" style="display: ${activeClockTab === "alarm" ? "flex" : "none"}; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; color: #a1a1aa;">Reminder Message:</label>
+                        <input type="text" id="remind-msg" placeholder="e.g. Drink water! 💧" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; box-sizing: border-box; width: 100%;">
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; color: #a1a1aa;">Set Time:</label>
+                        <input type="datetime-local" id="remind-time" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; box-sizing: border-box; width: 100%;">
+                    </div>
+
+                    <div style="display: flex; gap: 6px;">
+                        <button class="button remind-quick" data-min="5" style="flex: 1; font-size: 11px; padding: 4px;">5m</button>
+                        <button class="button remind-quick" data-min="15" style="flex: 1; font-size: 11px; padding: 4px;">15m</button>
+                        <button class="button remind-quick" data-min="30" style="flex: 1; font-size: 11px; padding: 4px;">30m</button>
+                        <button class="button remind-quick" data-min="60" style="flex: 1; font-size: 11px; padding: 4px;">1h</button>
+                    </div>
+
+                    <button id="btn-set-reminder" class="button" style="padding: 8px; font-weight: bold; width: 100%;">Set Reminder</button>
+
+                    <h3 style="margin-top: 10px; margin-bottom: 6px; font-size: 14px;">Active Countdowns</h3>
+                    <div id="reminders-active-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                </div>
+
+                <!-- Stopwatch Content Container -->
+                <div id="clock-stopwatch-content" style="display: ${activeClockTab === "stopwatch" ? "flex" : "none"}; flex-direction: column; gap: 12px; align-items: center;">
+                    <div id="stopwatch-display" style="font-size: 36px; font-family: monospace; font-weight: bold; color: #f4f4f5; margin: 10px 0;">00:00.00</div>
+                    
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <button id="btn-stopwatch-toggle" class="button" style="flex: 1; font-weight: bold;">Start</button>
+                        <button id="btn-stopwatch-lap" class="button" style="flex: 1; font-weight: bold; background: transparent; border-color: #27272a;">Lap</button>
+                        <button id="btn-stopwatch-reset" class="button" style="flex: 1; font-weight: bold; background: transparent; border-color: #27272a;">Reset</button>
+                    </div>
+
+                    <div id="stopwatch-laps" style="width: 100%; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #27272a; padding-top: 8px; margin-top: 4px;">
+                        <!-- Recorded laps -->
+                    </div>
+                </div>
+
+                <!-- World Clock Content Container -->
+                <div id="clock-world-content" style="display: ${activeClockTab === "world" ? "flex" : "none"}; flex-direction: column; gap: 12px;">
+                    <!-- Local Time Header -->
+                    <div style="background: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <span style="font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em;">Your Local Time</span>
+                        <div id="world-local-time" style="font-size: 28px; font-weight: 800; color: var(--accent); font-family: monospace;">00:00:00</div>
+                        <span id="world-local-date" style="font-size: 12px; color: #f4f4f5;">-</span>
+                    </div>
+
+                    <!-- World Clocks List -->
+                    <div id="world-clocks-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 2px;">
+                        <!-- Timezone cards -->
+                    </div>
+
+                    <!-- Add Timezone Form -->
+                    <div style="display: flex; gap: 6px; border-top: 1px solid #27272a; padding-top: 10px; margin-top: 4px;">
+                        <select id="select-world-timezone" style="flex: 1; padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; font-size: 13px; outline: none; cursor: pointer;">
+                            <option value="UTC">UTC / GMT</option>
+                            <option value="America/New_York">New York (EST/EDT)</option>
+                            <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                            <option value="America/Chicago">Chicago (CST/CDT)</option>
+                            <option value="America/Denver">Denver (MST/MDT)</option>
+                            <option value="Europe/London">London (GMT/BST)</option>
+                            <option value="Europe/Paris">Paris / Berlin (CET/CEST)</option>
+                            <option value="Europe/Moscow">Moscow (MSK)</option>
+                            <option value="Asia/Dubai">Dubai (GST)</option>
+                            <option value="Asia/Kolkata">Mumbai (IST)</option>
+                            <option value="Asia/Singapore">Singapore / Beijing (SGT)</option>
+                            <option value="Asia/Tokyo">Tokyo (JST)</option>
+                            <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                            <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                        </select>
+                        <button id="btn-add-world-clock" class="button" style="padding: 6px 12px; font-size: 12px; font-weight: 600;">➕ Add</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const msgInput = panel.querySelector("#remind-msg");
+        const timeInput = panel.querySelector("#remind-time");
+        const setBtn = panel.querySelector("#btn-set-reminder");
+        const activeList = panel.querySelector("#reminders-active-list");
+
+        // Tab logic
+        const tabAlarm = panel.querySelector("#tab-clock-alarm");
+        const tabStopwatch = panel.querySelector("#tab-clock-stopwatch");
+        const tabWorld = panel.querySelector("#tab-clock-world");
+        const alarmContent = panel.querySelector("#clock-alarm-content");
+        const stopwatchContent = panel.querySelector("#clock-stopwatch-content");
+        const worldContent = panel.querySelector("#clock-world-content");
+
+        tabAlarm.onclick = () => {
+            activeClockTab = "alarm";
+            tabAlarm.style.borderBottomColor = "var(--accent)";
+            tabAlarm.style.color = "#ffffff";
+            tabStopwatch.style.borderBottomColor = "transparent";
+            tabStopwatch.style.color = "#a1a1aa";
+            tabWorld.style.borderBottomColor = "transparent";
+            tabWorld.style.color = "#a1a1aa";
+            alarmContent.style.display = "flex";
+            stopwatchContent.style.display = "none";
+            worldContent.style.display = "none";
+            if (worldClockInterval) {
+                clearInterval(worldClockInterval);
+                worldClockInterval = null;
+            }
+        };
+
+        tabStopwatch.onclick = () => {
+            activeClockTab = "stopwatch";
+            tabAlarm.style.borderBottomColor = "transparent";
+            tabAlarm.style.color = "#a1a1aa";
+            tabStopwatch.style.borderBottomColor = "var(--accent)";
+            tabStopwatch.style.color = "#ffffff";
+            tabWorld.style.borderBottomColor = "transparent";
+            tabWorld.style.color = "#a1a1aa";
+            alarmContent.style.display = "none";
+            stopwatchContent.style.display = "flex";
+            worldContent.style.display = "none";
+            if (worldClockInterval) {
+                clearInterval(worldClockInterval);
+                worldClockInterval = null;
+            }
+            renderLaps();
+        };
+
+        tabWorld.onclick = () => {
+            activeClockTab = "world";
+            tabAlarm.style.borderBottomColor = "transparent";
+            tabAlarm.style.color = "#a1a1aa";
+            tabStopwatch.style.borderBottomColor = "transparent";
+            tabStopwatch.style.color = "#a1a1aa";
+            tabWorld.style.borderBottomColor = "var(--accent)";
+            tabWorld.style.color = "#ffffff";
+            alarmContent.style.display = "none";
+            stopwatchContent.style.display = "none";
+            worldContent.style.display = "flex";
+            updateWorldClocks();
+            if (worldClockInterval) clearInterval(worldClockInterval);
+            worldClockInterval = setInterval(updateWorldClocks, 1000);
+        };
+
+        // Pre-fill local date-time string for Alarm & Reminders
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 5);
+        const localISO = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().substring(0, 16);
+        timeInput.value = localISO;
+
+        panel.querySelectorAll(".remind-quick").forEach(btn => {
+            btn.onclick = () => {
+                const mins = parseInt(btn.dataset.min);
+                const t = new Date();
+                t.setMinutes(t.getMinutes() + mins);
+                timeInput.value = new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().substring(0, 16);
+            };
+        });
+
+        const loadRemindersList = async () => {
+            const data = await chrome.storage.local.get("bookmarkfs_reminders");
+            const reminders = data.bookmarkfs_reminders || [];
+            activeList.innerHTML = "";
+
+            const active = reminders.filter(r => !r.completed);
+            if (active.length === 0) {
+                activeList.innerHTML = `<div style="text-align: center; color: #71717a; font-size: 11px; padding: 8px;">No active reminders.</div>`;
+                return;
+            }
+
+            active.forEach((r, idx) => {
+                const item = document.createElement("div");
+                item.className = "history-card";
+                item.style.padding = "8px 12px";
+                item.style.borderRadius = "6px";
+                item.style.display = "flex";
+                item.style.justifyContent = "space-between";
+                item.style.alignItems = "center";
+                item.style.fontSize = "12px";
+                item.style.background = "#1c1917";
+                item.style.border = "1px solid #2e2a24";
+
+                const diff = r.targetTime - Date.now();
+                const diffMin = Math.max(0, Math.ceil(diff / 60000));
+
+                item.innerHTML = `
+                    <div>
+                        <strong style="color: var(--accent);">${r.message}</strong>
+                        <div style="font-size: 10px; color: #a1a1aa; margin-top: 2px;">Due in ${diffMin} mins (${new Date(r.targetTime).toLocaleTimeString()})</div>
+                    </div>
+                    <button class="button btn-cancel-remind" style="font-size: 10px; padding: 2px 6px; border-color: #ef4444; color: #ef4444;">Cancel</button>
+                `;
+
+                item.querySelector(".btn-cancel-remind").onclick = async () => {
+                    await chrome.alarms.clear(r.alarmName);
+                    const updated = reminders.filter(x => x.alarmName !== r.alarmName);
+                    await chrome.storage.local.set({ bookmarkfs_reminders: updated });
+                    loadRemindersList();
+                };
+
+                activeList.appendChild(item);
+            });
+        };
+
+        setBtn.onclick = async () => {
+            const msg = msgInput.value.trim() || "Reminder!";
+            const tStr = timeInput.value;
+            if (!tStr) return;
+            const targetTime = new Date(tStr).getTime();
+            if (targetTime <= Date.now()) {
+                alert("Reminder time must be in the future.");
+                return;
+            }
+
+            const alarmName = "bookmarkfs_reminder_" + targetTime;
+            const delayMin = (targetTime - Date.now()) / 60000;
+            
+            await chrome.alarms.create(alarmName, { delayInMinutes: delayMin });
+
+            const data = await chrome.storage.local.get("bookmarkfs_reminders");
+            const reminders = data.bookmarkfs_reminders || [];
+            reminders.push({
+                alarmName,
+                message: msg,
+                targetTime,
+                completed: false
+            });
+            await chrome.storage.local.set({ bookmarkfs_reminders: reminders });
+
+            msgInput.value = "";
+            loadRemindersList();
+            alert("Reminder set successfully!");
+        };
+
+        loadRemindersList();
+
+        // Stopwatch implementation details
+        const stopwatchDisplay = panel.querySelector("#stopwatch-display");
+        const stopwatchToggleBtn = panel.querySelector("#btn-stopwatch-toggle");
+        const stopwatchLapBtn = panel.querySelector("#btn-stopwatch-lap");
+        const stopwatchResetBtn = panel.querySelector("#btn-stopwatch-reset");
+        const stopwatchLapsContainer = panel.querySelector("#stopwatch-laps");
+
+        function formatStopwatchTime(ms) {
+            const min = Math.floor(ms / 60000);
+            const sec = Math.floor((ms % 60000) / 1000);
+            const centi = Math.floor((ms % 1000) / 10);
+            return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(centi).padStart(2, '0')}`;
+        }
+
+        let localStopwatchInterval = null;
+
+        function updateStopwatchDisplay() {
+            let elapsed = stopwatchTime;
+            if (stopwatchRunning) {
+                elapsed += (Date.now() - stopwatchStartTimestamp);
+            }
+            stopwatchDisplay.textContent = formatStopwatchTime(elapsed);
+        }
+
+        function renderLaps() {
+            stopwatchLapsContainer.innerHTML = "";
+            if (stopwatchLaps.length === 0) {
+                stopwatchLapsContainer.innerHTML = `<div style="text-align: center; color: #71717a; font-size: 11px; padding: 4px;">No laps recorded.</div>`;
+                return;
+            }
+            stopwatchLaps.forEach((lap, idx) => {
+                const lapDiv = document.createElement("div");
+                lapDiv.style.display = "flex";
+                lapDiv.style.justifyContent = "space-between";
+                lapDiv.style.fontSize = "12px";
+                lapDiv.style.padding = "4px 8px";
+                lapDiv.style.background = "#18181b";
+                lapDiv.style.border = "1px solid #27272a";
+                lapDiv.style.borderRadius = "4px";
+                lapDiv.innerHTML = `
+                    <span style="color: #a1a1aa;">Lap ${stopwatchLaps.length - idx}</span>
+                    <strong style="color: var(--accent); font-family: monospace;">${formatStopwatchTime(lap)}</strong>
+                `;
+                stopwatchLapsContainer.appendChild(lapDiv);
+            });
+        }
+
+        const startTimer = () => {
+            if (localStopwatchInterval) clearInterval(localStopwatchInterval);
+            localStopwatchInterval = setInterval(() => {
+                updateStopwatchDisplay();
+            }, 30);
+        };
+
+        stopwatchToggleBtn.onclick = () => {
+            if (stopwatchRunning) {
+                stopwatchTime += (Date.now() - stopwatchStartTimestamp);
+                stopwatchRunning = false;
+                if (localStopwatchInterval) clearInterval(localStopwatchInterval);
+                stopwatchToggleBtn.textContent = "Start";
+                stopwatchToggleBtn.style.background = "#10b981";
+                stopwatchToggleBtn.style.borderColor = "#10b981";
+                stopwatchToggleBtn.style.color = "#000000";
+            } else {
+                stopwatchStartTimestamp = Date.now();
+                stopwatchRunning = true;
+                startTimer();
+                stopwatchToggleBtn.textContent = "Stop";
+                stopwatchToggleBtn.style.background = "#ef4444";
+                stopwatchToggleBtn.style.borderColor = "#ef4444";
+                stopwatchToggleBtn.style.color = "#ffffff";
+            }
+            updateStopwatchDisplay();
+        };
+
+        stopwatchLapBtn.onclick = () => {
+            if (!stopwatchRunning && stopwatchTime === 0) return;
+            let elapsed = stopwatchTime;
+            if (stopwatchRunning) {
+                elapsed += (Date.now() - stopwatchStartTimestamp);
+            }
+            stopwatchLaps.unshift(elapsed);
+            renderLaps();
+        };
+
+        stopwatchResetBtn.onclick = () => {
+            stopwatchRunning = false;
+            stopwatchTime = 0;
+            stopwatchLaps = [];
+            if (localStopwatchInterval) clearInterval(localStopwatchInterval);
+            stopwatchToggleBtn.textContent = "Start";
+            stopwatchToggleBtn.style.background = "#10b981";
+            stopwatchToggleBtn.style.borderColor = "#10b981";
+            stopwatchToggleBtn.style.color = "#000000";
+            updateStopwatchDisplay();
+            renderLaps();
+        };
+
+        if (stopwatchRunning) {
+            startTimer();
+            stopwatchToggleBtn.textContent = "Stop";
+            stopwatchToggleBtn.style.background = "#ef4444";
+            stopwatchToggleBtn.style.borderColor = "#ef4444";
+            stopwatchToggleBtn.style.color = "#ffffff";
+        } else {
+            stopwatchToggleBtn.textContent = "Start";
+            stopwatchToggleBtn.style.background = "#10b981";
+            stopwatchToggleBtn.style.borderColor = "#10b981";
+            stopwatchToggleBtn.style.color = "#000000";
+        }
+        updateStopwatchDisplay();
+        renderLaps();
+
+        // ========== World Time Implementation Details ==========
+        const localTimeEl = panel.querySelector("#world-local-time");
+        const localDateEl = panel.querySelector("#world-local-date");
+        const worldClocksList = panel.querySelector("#world-clocks-list");
+        const selectTimezone = panel.querySelector("#select-world-timezone");
+        const addWorldClockBtn = panel.querySelector("#btn-add-world-clock");
+
+        function formatOffset(tz) {
+            try {
+                const now = new Date();
+                const parts = new Intl.DateTimeFormat('en-US', {
+                    timeZone: tz,
+                    timeZoneName: 'longOffset'
+                }).formatToParts(now);
+                const tzPart = parts.find(p => p.type === 'timeZoneName');
+                return tzPart ? tzPart.value : "";
+            } catch(e) {
+                return "";
+            }
+        }
+
+        async function updateWorldClocks() {
+            const now = new Date();
+            
+            if (localTimeEl) {
+                localTimeEl.textContent = now.toTimeString().split(' ')[0];
+            }
+            if (localDateEl) {
+                localDateEl.textContent = now.toLocaleDateString("en-US", {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+
+            const data = await chrome.storage.local.get("bookmarkfs_world_clocks");
+            let worldClocks = data.bookmarkfs_world_clocks || [
+                { name: "New York", tz: "America/New_York" },
+                { name: "London", tz: "Europe/London" },
+                { name: "Tokyo", tz: "Asia/Tokyo" }
+            ];
+
+            if (!data.bookmarkfs_world_clocks) {
+                await chrome.storage.local.set({ bookmarkfs_world_clocks: worldClocks });
+            }
+
+            if (!worldClocksList) return;
+            
+            let html = "";
+            worldClocks.forEach((clock, index) => {
+                let timeStr = "";
+                let dateStr = "";
+                try {
+                    timeStr = now.toLocaleTimeString("en-US", {
+                        timeZone: clock.tz,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                    dateStr = now.toLocaleDateString("en-US", {
+                        timeZone: clock.tz,
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                } catch(e) {
+                    timeStr = now.toLocaleTimeString();
+                    dateStr = now.toLocaleDateString();
+                }
+
+                const offsetVal = formatOffset(clock.tz);
+
+                html += `
+                    <div class="history-card" style="padding: 10px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #1c1917; border: 1px solid #2e2a24; font-size: 13px;">
+                        <div>
+                            <div style="font-weight: 700; color: #f4f4f5;">${clock.name}</div>
+                            <div style="font-size: 11px; color: #a1a1aa; margin-top: 2px;">
+                                ${dateStr} &bull; <span style="font-family: monospace;">${offsetVal}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="font-family: monospace; font-size: 16px; font-weight: bold; color: var(--accent);">${timeStr}</div>
+                            <button class="btn-delete-world-clock" data-index="${index}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1;">&times;</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            worldClocksList.innerHTML = html;
+
+            worldClocksList.querySelectorAll(".btn-delete-world-clock").forEach(btn => {
+                btn.onclick = async (e) => {
+                    const idx = parseInt(btn.dataset.index);
+                    const currentData = await chrome.storage.local.get("bookmarkfs_world_clocks");
+                    const currentClocks = currentData.bookmarkfs_world_clocks || [];
+                    currentClocks.splice(idx, 1);
+                    await chrome.storage.local.set({ bookmarkfs_world_clocks: currentClocks });
+                    updateWorldClocks();
+                };
+            });
+        }
+
+        if (addWorldClockBtn) {
+            addWorldClockBtn.onclick = async () => {
+                const tz = selectTimezone.value;
+                const name = selectTimezone.options[selectTimezone.selectedIndex].text.split(' (')[0];
+                const currentData = await chrome.storage.local.get("bookmarkfs_world_clocks");
+                const currentClocks = currentData.bookmarkfs_world_clocks || [];
+                
+                if (currentClocks.some(c => c.tz === tz)) {
+                    alert("This timezone is already in your list.");
+                    return;
+                }
+
+                currentClocks.push({ name, tz });
+                await chrome.storage.local.set({ bookmarkfs_world_clocks: currentClocks });
+                updateWorldClocks();
+            };
+        }
+
+        if (activeClockTab === "world") {
+            updateWorldClocks();
+            if (worldClockInterval) clearInterval(worldClockInterval);
+            worldClockInterval = setInterval(updateWorldClocks, 1000);
+        }
+    }
+
+
+
+    // ========== 6. REGEX PANEL ==========
+    function showRegexPanel() {
+        let panel = qs("#regex-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "regex-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <h2 style="margin: 0; margin-bottom: 4px;">🔍 Regex Tester</h2>
+                
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <span style="font-family: monospace; font-size: 16px; color: #a1a1aa;">/</span>
+                    <input type="text" id="regex-pattern" placeholder="pattern" style="flex: 1; padding: 6px 8px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
+                    <span style="font-family: monospace; font-size: 16px; color: #a1a1aa;">/</span>
+                    <input type="text" id="regex-flags" value="g" style="width: 40px; padding: 6px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace; text-align: center;">
+                </div>
+
+                <textarea id="regex-text" placeholder="Enter test string here..." style="width: 100%; height: 80px; padding: 8px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 12px; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
+                
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #a1a1aa; margin-top: 2px;">
+                    <span>Matches Found: <strong id="regex-match-count" style="color: var(--accent);">0</strong></span>
+                </div>
+
+                <div id="regex-output" style="width: 100%; height: 80px; padding: 8px; background: #09090b; border: 1px solid #27272a; border-radius: 6px; font-size: 12px; font-family: monospace; overflow-y: auto; white-space: pre-wrap; box-sizing: border-box;"></div>
+            </div>
+        `;
+
+        const patternInput = panel.querySelector("#regex-pattern");
+        const flagsInput = panel.querySelector("#regex-flags");
+        const textInput = panel.querySelector("#regex-text");
+        const countText = panel.querySelector("#regex-match-count");
+        const output = panel.querySelector("#regex-output");
+
+        const runTest = () => {
+            const p = patternInput.value;
+            const f = flagsInput.value;
+            const text = textInput.value;
+            output.innerHTML = "";
+
+            if (!p) {
+                output.textContent = text;
+                countText.textContent = "0";
+                return;
+            }
+
+            try {
+                const regex = new RegExp(p, f);
+                let html = "";
+                let matches = 0;
+
+                // Escape text for display to prevent XSS
+                const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+                if (f.includes("g")) {
+                    let lastIdx = 0;
+                    let match;
+                    while ((match = regex.exec(text)) !== null) {
+                        if (match[0].length === 0) {
+                            regex.lastIndex++;
+                            continue;
+                        }
+                        const start = match.index;
+                        const end = regex.lastIndex;
+                        html += escaped.substring(lastIdx, start) + `<mark style="background: var(--accent); color: #000; padding: 0 2px; border-radius: 2px;">${escaped.substring(start, end)}</mark>`;
+                        lastIdx = end;
+                        matches++;
+                    }
+                    html += escaped.substring(lastIdx);
+                } else {
+                    const match = text.match(regex);
+                    if (match) {
+                        const start = match.index;
+                        const end = start + match[0].length;
+                        html = escaped.substring(0, start) + `<mark style="background: var(--accent); color: #000; padding: 0 2px; border-radius: 2px;">${escaped.substring(start, end)}</mark>` + escaped.substring(end);
+                        matches = 1;
+                    } else {
+                        html = escaped;
+                    }
+                }
+                
+                output.innerHTML = html || escaped;
+                countText.textContent = matches;
+            } catch (err) {
+                output.innerHTML = `<span style="color: #ef4444;">Invalid regex: ${err.message}</span>`;
+                countText.textContent = "0";
+            }
+        };
+
+        patternInput.oninput = runTest;
+        flagsInput.oninput = runTest;
+        textInput.oninput = runTest;
+    }
+
+    // ========== 7. COLOR PANEL ==========
+    function showColorPanel() {
+        let panel = qs("#color-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "color-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <h2 style="margin: 0; margin-bottom: 4px;">🎨 Color & Contrast</h2>
+                
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <input type="color" id="color-input-picker" value="#4ade80" style="width: 50px; height: 50px; border: none; padding: 0; background: transparent; cursor: pointer; border-radius: 8px;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                        <input type="text" id="color-hex-val" value="#4ADE80" style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
+                        <input type="text" id="color-rgb-val" style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;" readonly>
+                    </div>
+                    <button id="btn-color-dropper" class="button" style="padding: 8px 12px; height: 50px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px;" title="Sample color from webpage">🧪 Dropper</button>
+                </div>
+
+                <div style="background: #09090b; border: 1px solid #27272a; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+                    <h3 style="margin: 0; font-size: 13px; color: #a1a1aa;">Contrast Ratio Checker</h3>
+                    <div style="display: flex; gap: 6px; font-size: 12px; align-items: center;">
+                        <span>FG:</span>
+                        <input type="text" id="contrast-fg" value="#FFFFFF" style="width: 60px; padding: 4px; background: #18181b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 4px; outline: none; font-family: monospace;">
+                        <span>BG:</span>
+                        <input type="text" id="contrast-bg" value="#4ADE80" style="width: 60px; padding: 4px; background: #18181b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 4px; outline: none; font-family: monospace;">
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px; border-top: 1px solid #27272a; padding-top: 6px;">
+                        <span>Ratio: <strong id="contrast-ratio" style="color: var(--accent);">0.0</strong></span>
+                        <span id="contrast-badge" style="padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px;">PASS</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const picker = panel.querySelector("#color-input-picker");
+        const hexVal = panel.querySelector("#color-hex-val");
+        const rgbVal = panel.querySelector("#color-rgb-val");
+        const cfg = panel.querySelector("#contrast-fg");
+        const cbg = panel.querySelector("#contrast-bg");
+        const ratioText = panel.querySelector("#contrast-ratio");
+        const badge = panel.querySelector("#contrast-badge");
+        const dropperBtn = panel.querySelector("#btn-color-dropper");
+
+        if (!window.EyeDropper) {
+            dropperBtn.style.display = "none";
+        } else {
+            dropperBtn.onclick = async () => {
+                try {
+                    const eyeDropper = new window.EyeDropper();
+                    const result = await eyeDropper.open();
+                    const colorHex = result.sRGBHex.toUpperCase();
+                    hexVal.value = colorHex;
+                    updateColor();
+                    cbg.value = colorHex;
+                    updateContrast();
+                } catch (e) {
+                    console.log("Dropper cancelled or failed:", e);
+                }
+            };
+        }
+
+        function hexToRgb(hex) {
+            const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+            hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function getLuminance(r, g, b) {
+            const a = [r, g, b].map((v) => {
+                v /= 255;
+                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            });
+            return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+        }
+
+        const updateColor = () => {
+            const hex = hexVal.value;
+            const rgb = hexToRgb(hex);
+            if (rgb) {
+                rgbVal.value = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+                picker.value = hex;
+            }
+        };
+
+        const updateContrast = () => {
+            const rgb1 = hexToRgb(cfg.value);
+            const rgb2 = hexToRgb(cbg.value);
+            if (rgb1 && rgb2) {
+                const l1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+                const l2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+                const brightest = Math.max(l1, l2);
+                const darkest = Math.min(l1, l2);
+                const ratio = (brightest + 0.05) / (darkest + 0.05);
+
+                ratioText.textContent = ratio.toFixed(2) + ":1";
+                if (ratio >= 4.5) {
+                    badge.textContent = "PASS (AAA)";
+                    badge.style.background = "#10b981";
+                    badge.style.color = "#000";
+                } else if (ratio >= 3.0) {
+                    badge.textContent = "PASS (AA)";
+                    badge.style.background = "#fbbf24";
+                    badge.style.color = "#000";
+                } else {
+                    badge.textContent = "FAIL";
+                    badge.style.background = "#ef4444";
+                    badge.style.color = "#000";
+                }
+            }
+        };
+
+        picker.oninput = () => {
+            hexVal.value = picker.value.toUpperCase();
+            updateColor();
+            cbg.value = picker.value.toUpperCase();
+            updateContrast();
+        };
+
+        hexVal.oninput = () => {
+            updateColor();
+            updateContrast();
+        };
+
+        cfg.oninput = updateContrast;
+        cbg.oninput = updateContrast;
+
+        updateColor();
+        updateContrast();
+    }
+
+    // ========== 8. API TESTER PANEL ==========
+    function showApiPanel() {
+        let panel = qs("#api-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "api-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <h2 style="margin: 0; margin-bottom: 4px;">📦 API Request Tester</h2>
+                
+                <div style="display: flex; gap: 6px;">
+                    <select id="api-method" style="padding: 6px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-weight: bold;">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                    <input type="text" id="api-url" placeholder="https://api.github.com" style="flex: 1; padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span style="font-size: 10px; color: #a1a1aa;">Request Body (JSON, Optional):</span>
+                    <textarea id="api-body" placeholder="{}" style="width: 100%; height: 60px; padding: 6px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 11px; font-family: monospace; resize: none; box-sizing: border-box;"></textarea>
+                </div>
+
+                <button id="btn-api-send" class="button" style="padding: 8px; font-weight: bold;">Send Request</button>
+
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #a1a1aa; margin-top: 4px;">
+                    <span>Status: <strong id="api-status" style="color: #71717a;">-</strong></span>
+                    <span>Time: <strong id="api-time" style="color: #71717a;">0ms</strong></span>
+                </div>
+
+                <textarea id="api-response" placeholder="Response body will appear here..." style="width: 100%; height: 160px; padding: 8px; background: #09090b; border: 1px solid #27272a; color: #a1a1aa; border-radius: 6px; outline: none; font-size: 11px; font-family: monospace; resize: vertical; box-sizing: border-box;" readonly></textarea>
+            </div>
+        `;
+
+        const method = panel.querySelector("#api-method");
+        const url = panel.querySelector("#api-url");
+        const body = panel.querySelector("#api-body");
+        const sendBtn = panel.querySelector("#btn-api-send");
+        const statusText = panel.querySelector("#api-status");
+        const timeText = panel.querySelector("#api-time");
+        const responseText = panel.querySelector("#api-response");
+
+        sendBtn.onclick = async () => {
+            const requestUrl = url.value.trim();
+            if (!requestUrl) return;
+
+            responseText.value = "Sending request...";
+            statusText.textContent = "PENDING";
+            statusText.style.color = "#fbbf24";
+            
+            const start = Date.now();
+            try {
+                const options = {
+                    method: method.value,
+                    headers: { "Content-Type": "application/json" }
+                };
+
+                if (method.value !== "GET" && body.value.trim()) {
+                    options.body = body.value;
+                }
+
+                const resp = await fetch(requestUrl, options);
+                const elapsed = Date.now() - start;
+                timeText.textContent = elapsed + "ms";
+                
+                statusText.textContent = `${resp.status} ${resp.statusText}`;
+                if (resp.ok) statusText.style.color = "#10b981";
+                else statusText.style.color = "#ef4444";
+
+                const text = await resp.text();
+                try {
+                    responseText.value = JSON.stringify(JSON.parse(text), null, 2);
+                } catch {
+                    responseText.value = text;
+                }
+            } catch (err) {
+                statusText.textContent = "FAILED";
+                statusText.style.color = "#ef4444";
+                responseText.value = "Request failed: " + err.message;
+            }
+        };
+    }
+
+    // ========== 9. PRIVACY REPORT PANEL ==========
+    function showPrivacyPanel() {
+        let panel = qs("#privacy-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "privacy-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <h2 style="margin: 0; margin-bottom: 4px;">🛡️ Privacy Report</h2>
+                
+                <button id="btn-privacy-scan" class="button" style="padding: 8px; font-weight: bold; width: 100%;">Scan Current Tab</button>
+                
+                <div id="privacy-results" style="display: none; flex-direction: column; gap: 8px; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px solid #27272a; padding-bottom: 6px;">
+                        <span>Cookies Found:</span>
+                        <strong id="privacy-cookies-count" style="color: var(--accent);">0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px solid #27272a; padding-bottom: 6px;">
+                        <span>Scripts Loaded:</span>
+                        <strong id="privacy-scripts-count" style="color: var(--accent);">0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px solid #27272a; padding-bottom: 6px;">
+                        <span>Fingerprinting Indicators:</span>
+                        <strong id="privacy-fingerprint" style="color: var(--accent);">None detected</strong>
+                    </div>
+                    <div style="font-size: 11px; color: #a1a1aa; line-height: 1.4; margin-top: 4px;">
+                        <strong>Tip:</strong> You can spoof your browser agent in the 🕵️ UA panel to mitigate tracking footprint.
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const scanBtn = panel.querySelector("#btn-privacy-scan");
+        const resultsDiv = panel.querySelector("#privacy-results");
+        const cookiesCount = panel.querySelector("#privacy-cookies-count");
+        const scriptsCount = panel.querySelector("#privacy-scripts-count");
+        const fingerprintText = panel.querySelector("#privacy-fingerprint");
+
+        scanBtn.onclick = async () => {
+            try {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (!tab || !tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://")) {
+                    alert("Cannot scan system or extension pages.");
+                    return;
+                }
+
+                const res = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => {
+                        return {
+                            cookies: document.cookie ? document.cookie.split(";").length : 0,
+                            scripts: document.querySelectorAll("script[src]").length,
+                            canvasDetected: !!document.querySelector("canvas")
+                        };
+                    }
+                });
+
+                if (res && res[0] && res[0].result) {
+                    const r = res[0].result;
+                    cookiesCount.textContent = r.cookies;
+                    scriptsCount.textContent = r.scripts;
+                    fingerprintText.textContent = r.canvasDetected ? "Canvas rendering detected (High probability)" : "Low risk";
+                    fingerprintText.style.color = r.canvasDetected ? "#fbbf24" : "#10b981";
+                    resultsDiv.style.display = "flex";
+                }
+            } catch (err) {
+                alert("Failed to scan tab: " + err.message);
+            }
+        };
+    }
+
+    // ========== 10. RSS READER PANEL ==========
+    async function showRssPanel() {
+        let panel = qs("#rss-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "rss-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = "";
+
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <h2 style="margin: 0;">📡 RSS Reader</h2>
+                    <button id="btn-refresh-rss" class="button" style="font-size: 11px; padding: 4px 8px;">🔄 Refresh</button>
+                </div>
+                
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="rss-input" placeholder="https://news.ycombinator.com/rss" style="flex: 1; padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+                    <button id="btn-add-rss" class="button" style="font-size: 12px; padding: 6px 12px;">Add</button>
+                </div>
+
+                <div id="rss-feeds-list" style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 80px; overflow-y: auto;"></div>
+                
+                <hr style="border: 0; border-top: 1px solid #27272a; margin: 4px 0;">
+                
+                <div id="rss-articles" style="display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto;"></div>
+            </div>
+        `;
+
+        const feedInput = panel.querySelector("#rss-input");
+        const addBtn = panel.querySelector("#btn-add-rss");
+        const refreshBtn = panel.querySelector("#btn-refresh-rss");
+        const feedsList = panel.querySelector("#rss-feeds-list");
+        const articlesList = panel.querySelector("#rss-articles");
+
+        const data = await chrome.storage.local.get(["bookmarkfs_rss_feeds", "bookmarkfs_rss_articles"]);
+        let feeds = data.bookmarkfs_rss_feeds || [];
+        let articles = data.bookmarkfs_rss_articles || {};
+
+        const renderFeeds = () => {
+            feedsList.innerHTML = "";
+            if (feeds.length === 0) {
+                feedsList.innerHTML = `<span style="font-size: 11px; color: #71717a;">No subscribed feeds.</span>`;
+                return;
+            }
+            feeds.forEach((feed, idx) => {
+                const badge = document.createElement("span");
+                badge.className = "button";
+                badge.style.fontSize = "10px";
+                badge.style.padding = "2px 6px";
+                badge.style.cursor = "pointer";
+                badge.style.borderRadius = "4px";
+                badge.style.display = "inline-flex";
+                badge.style.alignItems = "center";
+                badge.style.gap = "4px";
+                badge.innerHTML = `${feed.title} <span class="rss-del" style="color: #ef4444; font-weight: bold; margin-left: 2px;">×</span>`;
+
+                badge.onclick = (e) => {
+                    if (e.target.classList.contains("rss-del")) {
+                        e.stopPropagation();
+                        feeds.splice(idx, 1);
+                        delete articles[feed.url];
+                        saveFeeds();
+                        return;
+                    }
+                    renderArticles(feed.url);
+                };
+
+                feedsList.appendChild(badge);
+            });
+        };
+
+        const saveFeeds = async () => {
+            await chrome.storage.local.set({ bookmarkfs_rss_feeds: feeds, bookmarkfs_rss_articles: articles });
+            renderFeeds();
+            renderArticles();
+        };
+
+        const renderArticles = (specificUrl = null) => {
+            articlesList.innerHTML = "";
+            let list = [];
+            if (specificUrl) {
+                list = articles[specificUrl] || [];
+            } else {
+                Object.keys(articles).forEach(k => {
+                    list = list.concat(articles[k]);
+                });
+            }
+
+            if (list.length === 0) {
+                articlesList.innerHTML = `<div style="text-align: center; color: #71717a; font-size: 12px; padding: 16px;">No articles loaded. Click Refresh or add a feed.</div>`;
+                return;
+            }
+
+            // Render articles
+            list.forEach(a => {
+                const card = document.createElement("div");
+                card.className = "history-card";
+                card.style.padding = "8px 12px";
+                card.style.borderRadius = "6px";
+                card.style.fontSize = "12px";
+                card.style.background = "#1c1917";
+                card.style.border = "1px solid #2e2a24";
+
+                card.innerHTML = `
+                    <strong style="font-size: 13px;"><a href="${a.link}" target="_blank" style="color: var(--accent); text-decoration: none;">${a.title}</a></strong>
+                    <div style="font-size: 10px; color: #71717a; margin-top: 2px;">${a.pubDate || "Recently"}</div>
+                    <p style="margin: 4px 0 0 0; color: #a1a1aa; font-size: 11px; line-height: 1.3;">${a.desc || ""}</p>
+                `;
+                articlesList.appendChild(card);
+            });
+        };
+
+        const refreshAllFeeds = async () => {
+            if (refreshBtn) refreshBtn.textContent = "⌛ Loading...";
+            
+            for (const feed of feeds) {
+                try {
+                    const resp = await fetch(feed.url);
+                    const text = await resp.text();
+                    const itemRegex = /<item>([\s\S]*?)<\/item>|<entry>([\s\S]*?)<\/entry>/g;
+                    let match;
+                    const feedArticles = [];
+                    let count = 0;
+                    while ((match = itemRegex.exec(text)) !== null && count < 25) {
+                        const content = match[1] || match[2] || '';
+                        
+                        const titleMatch = content.match(/<title[^>]*>([\s\S]*?)<\/title>/);
+                        let title = titleMatch ? titleMatch[1] : '';
+                        if (title.startsWith('<![CDATA[')) title = title.substring(9, title.length - 3);
+                        title = title.replace(/<[^>]*>/g, '').trim();
+                        
+                        const linkMatch = content.match(/<link[^>]*href=["']([^"']+)["']|<link[^>]*>([\s\S]*?)<\/link>/);
+                        const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '').trim() : '';
+                        
+                        const descMatch = content.match(/<description[^>]*>([\s\S]*?)<\/description>|<summary[^>]*>([\s\S]*?)<\/summary>|<content[^>]*>([\s\S]*?)<\/content>/);
+                        let desc = descMatch ? (descMatch[1] || descMatch[2] || descMatch[3] || '') : '';
+                        if (desc.startsWith('<![CDATA[')) desc = desc.substring(9, desc.length - 3);
+                        desc = desc.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').substring(0, 200).trim();
+                        
+                        const dateMatch = content.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>|<published[^>]*>([\s\S]*?)<\/published>|<updated[^>]*>([\s\S]*?)<\/updated>/);
+                        const pubDate = dateMatch ? (dateMatch[1] || dateMatch[2] || dateMatch[3] || '') : '';
+                        
+                        feedArticles.push({ title, link, desc, pubDate });
+                        count++;
+                    }
+                    articles[feed.url] = feedArticles;
+                } catch (e) {
+                    console.warn('RSS fetch failed in foreground for', feed.url, e);
+                }
+            }
+            
+            await chrome.storage.local.set({ bookmarkfs_rss_articles: articles });
+            if (refreshBtn) refreshBtn.textContent = "🔄 Refresh";
+            renderArticles();
+        };
+
+        addBtn.onclick = async () => {
+            const url = feedInput.value.trim();
+            if (!url) return;
+            try {
+                addBtn.textContent = "...";
+                const resp = await fetch(url);
+                const text = await resp.text();
+                // Extract feed title
+                const titleMatch = text.match(/<title[^>]*>([\s\S]*?)<\/title>/);
+                let title = titleMatch ? titleMatch[1] : "Feed";
+                if (title.startsWith("<![CDATA[")) title = title.substring(9, title.length - 3);
+                title = title.substring(0, 15).replace(/<[^>]*>/g, '').trim();
+
+                feeds.push({ title, url });
+                feedInput.value = "";
+                
+                await saveFeeds();
+                await refreshAllFeeds();
+            } catch (e) {
+                alert("Failed to subscribe to RSS: " + e.message);
+            } finally {
+                addBtn.textContent = "Add";
+            }
+        };
+
+        if (refreshBtn) {
+            refreshBtn.onclick = refreshAllFeeds;
+        }
+
+        renderFeeds();
+        renderArticles();
+        
+        // Auto-fetch if articles are completely empty
+        if (feeds.length > 0 && Object.keys(articles).length === 0) {
+            refreshAllFeeds();
+        }
+    }
+
+    // ========== 11. SITE TIME TRACKER ==========
+    async function showTimeTrackerPanel() {
+        let panel = qs("#timetracker-panel");
+        const center = document.querySelector("center") || document.body;
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "timetracker-panel";
+            panel.style.width = "100%";
+            center.appendChild(panel);
+        }
+        panel.style.display = "block";
+        panel.innerHTML = "";
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const data = await chrome.storage.local.get("bookmarkfs_timetracker");
+        const tracker = data.bookmarkfs_timetracker || {};
+        const todayData = tracker[todayStr] || {};
+
+        let sorted = Object.keys(todayData).map(k => ({ domain: k, seconds: todayData[k] }))
+            .sort((a, b) => b.seconds - a.seconds);
+
+        panel.innerHTML = `
+            <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <h2 style="margin: 0; margin-bottom: 4px;">📊 Active Time Tracker</h2>
+                <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 4px;">Top domains visited today:</div>
+                <div id="timetracker-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+        `;
+
+        const listDiv = panel.querySelector("#timetracker-list");
+        if (sorted.length === 0) {
+            listDiv.innerHTML = `<div style="text-align: center; color: #71717a; font-size: 12px; padding: 16px;">No tracking data recorded for today yet.</div>`;
+            return;
+        }
+
+        const maxSeconds = sorted[0].seconds;
+        sorted.forEach(item => {
+            const row = document.createElement("div");
+            row.style.display = "flex";
+            row.style.flexDirection = "column";
+            row.style.gap = "2px";
+
+            const percent = (item.seconds / maxSeconds) * 100;
+            const minutes = Math.ceil(item.seconds / 60);
+
+            row.innerHTML = `
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span style="color: #f4f4f5; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${item.domain}</span>
+                    <strong style="color: var(--accent);">${minutes}m</strong>
+                </div>
+                <div style="width: 100%; height: 6px; background: #27272a; border-radius: 3px; overflow: hidden;">
+                    <div style="width: ${percent}%; height: 100%; background: var(--accent); border-radius: 3px;"></div>
+                </div>
+            `;
+            listDiv.appendChild(row);
+        });
     }
 
     async function show2FAPanel() {
@@ -2096,7 +5103,7 @@ export function handleZip(bytes) {
         panel.style.display = "block";
         await render2FAProfilesList();
         
-        stop2FATimer();
+        stopAllScannerMedia();
         twofaInterval = setInterval(async () => {
             await updateTOTPCodes();
         }, 1000);
@@ -2409,7 +5416,13 @@ export function handleZip(bytes) {
                 const raw = await f.read();
                 const meta = await f.readMeta();
                 const reconstructed = await reconstructBytesFromSerialized(raw, meta);
-                zipData[f.handle.title] = reconstructed.bytes;
+                
+                const pathParts = f.handle.title.split("/");
+                const originalFileName = meta.name || pathParts[pathParts.length - 1];
+                pathParts[pathParts.length - 1] = originalFileName;
+                const zipPath = pathParts.join("/");
+                
+                zipData[zipPath] = reconstructed.bytes;
             }
 
             countSpan.textContent = "Compressing ZIP archive...";
@@ -3089,21 +6102,44 @@ export function handleZip(bytes) {
     function ensureUI() {
         const center = document.querySelector("center") || document.body;
         const urlParams = new URLSearchParams(window.location.search);
-        const isStartupTwofa = urlParams.get("panel") === "twofa";
+        const startPanel = urlParams.get("panel") || "files";
+        const INLINE_PANELS = ["twofa", "passwords", "calc", "clock", "regex", "color", "api", "privacy", "rss", "timetracker", "qrscanner"];
+        const isCustomPanelActive = INLINE_PANELS.includes(startPanel);
 
         if (!qs("#panel-nav-bar")) {
             const nav = document.createElement("div");
             nav.id = "panel-nav-bar";
+            
+            // Check if startup panel is one of the dropdown tools
+            const dropdownPanels = ["passwords", "calc", "clock", "regex", "color", "api", "privacy", "rss", "timetracker", "qrscanner"];
+            const isDropdownActive = dropdownPanels.includes(startPanel);
+
             nav.innerHTML = `
                 <div class="nav-links">
-                    <a href="index.html" class="nav-btn ${isStartupTwofa ? "" : "active"}" data-panel="files">📁 Files</a>
-                    <a href="#" class="nav-btn ${isStartupTwofa ? "active" : ""}" id="nav-2fa-btn" data-panel="twofa">🔐 2FA</a>
+                    <a href="index.html" class="nav-btn ${startPanel === "files" ? "active" : ""}" data-panel="files">📁 Files</a>
                     <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
                     <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
                     <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
                     <a href="notes.html" class="nav-btn" data-panel="notes">📝 Notes</a>
                     <a href="/dist/capture.html" class="nav-btn" data-panel="screenshot">📸 Screenshot</a>
-                    <a href="ua.html" class="nav-btn" data-panel="ua">🕵️ UA</a>
+                    <a href="#" class="nav-btn ${startPanel === "twofa" ? "active" : ""}" id="nav-2fa-btn" data-panel="twofa">🔐 2FA</a>
+                    
+                    <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                        <button class="nav-btn dropdown-trigger ${isDropdownActive ? "active" : ""}">🛠️ Tools ▾</button>
+                        <div class="dropdown-content">
+                            <a href="#" class="nav-btn ${startPanel === "qrscanner" ? "active" : ""}" data-panel="qrscanner">🔍 QR Scanner</a>
+                            <a href="#" class="nav-btn ${startPanel === "passwords" ? "active" : ""}" data-panel="passwords">🔑 Passwords</a>
+                            <a href="ua.html" class="nav-btn" data-panel="ua">🕵️ UA</a>
+                            <a href="#" class="nav-btn ${startPanel === "calc" ? "active" : ""}" data-panel="calc">🧮 Calc</a>
+                            <a href="#" class="nav-btn ${startPanel === "clock" ? "active" : ""}" data-panel="clock">⏰ Clock</a>
+                            <a href="#" class="nav-btn ${startPanel === "regex" ? "active" : ""}" data-panel="regex">🔍 Regex</a>
+                            <a href="#" class="nav-btn ${startPanel === "color" ? "active" : ""}" data-panel="color">🎨 Color</a>
+                            <a href="#" class="nav-btn ${startPanel === "api" ? "active" : ""}" data-panel="api">📦 API</a>
+                            <a href="#" class="nav-btn ${startPanel === "privacy" ? "active" : ""}" data-panel="privacy">🛡️ Privacy</a>
+                            <a href="#" class="nav-btn ${startPanel === "rss" ? "active" : ""}" data-panel="rss">📡 RSS</a>
+                            <a href="#" class="nav-btn ${startPanel === "timetracker" ? "active" : ""}" data-panel="timetracker">📊 Time</a>
+                        </div>
+                    </div>
                 </div>
                 <div class="nav-controls">
                     <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
@@ -3111,15 +6147,42 @@ export function handleZip(bytes) {
             `;
             document.body.insertBefore(nav, document.body.firstChild);
 
+            // Toggle dropdown behavior
+            const trigger = nav.querySelector(".dropdown-trigger");
+            const dropdown = nav.querySelector(".dropdown-content");
+            trigger.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isHidden = window.getComputedStyle(dropdown).display === "none";
+                dropdown.style.display = isHidden ? "grid" : "none";
+            };
+
+            document.addEventListener("click", (e) => {
+                if (dropdown && !dropdown.contains(e.target) && e.target !== trigger) {
+                    dropdown.style.display = "none";
+                }
+            });
+
             // Bind panel switching
-            const navLinks = nav.querySelectorAll(".nav-btn");
+            const navLinks = nav.querySelectorAll(".nav-btn:not(.dropdown-trigger)");
             navLinks.forEach(link => {
                 link.onclick = (e) => {
                     const panel = link.dataset.panel;
-                    if (panel === "twofa") {
+                    if (!panel) return;
+
+                    if (INLINE_PANELS.includes(panel)) {
                         e.preventDefault();
                         navLinks.forEach(l => l.classList.remove("active"));
+                        
+                        const dropdownPanels = ["passwords", "calc", "clock", "regex", "color", "api", "privacy", "rss", "timetracker", "qrscanner"];
+                        if (dropdownPanels.includes(panel)) {
+                            trigger.classList.add("active");
+                        } else {
+                            trigger.classList.remove("active");
+                        }
+                        
                         link.classList.add("active");
+                        dropdown.style.display = "none";
                         
                         // Hide Files view containers
                         const filesView = qs("#files-panel-view");
@@ -3131,17 +6194,38 @@ export function handleZip(bytes) {
                         const bulkBar = qs("#bulk-bar");
                         if (bulkBar) bulkBar.style.display = "none";
                         
-                        // Show 2FA panel
-                        show2FAPanel();
+                        // Hide all other inline panels
+                        stopAllScannerMedia();
+                        INLINE_PANELS.forEach(p => {
+                            const pDiv = qs(`#${p}-panel`);
+                            if (pDiv) pDiv.style.display = "none";
+                        });
+                        
+                        // Show/Render the selected panel
+                        if (panel === "twofa") show2FAPanel();
+                        else if (panel === "passwords") showPasswordsPanel();
+                        else if (panel === "calc") showCalcPanel();
+                        else if (panel === "clock") showClockPanel();
+                        else if (panel === "regex") showRegexPanel();
+                        else if (panel === "color") showColorPanel();
+                        else if (panel === "api") showApiPanel();
+                        else if (panel === "privacy") showPrivacyPanel();
+                        else if (panel === "rss") showRssPanel();
+                        else if (panel === "timetracker") showTimeTrackerPanel();
+                        else if (panel === "qrscanner") showQrScannerPanel();
                     } else if (panel === "files") {
                         e.preventDefault();
                         navLinks.forEach(l => l.classList.remove("active"));
+                        trigger.classList.remove("active");
                         link.classList.add("active");
+                        dropdown.style.display = "none";
                         
-                        // Hide 2FA panel
-                        const twofaPanel = qs("#twofa-panel");
-                        if (twofaPanel) twofaPanel.style.display = "none";
-                        stop2FATimer();
+                        // Hide all custom panels
+                        stopAllScannerMedia();
+                        INLINE_PANELS.forEach(p => {
+                            const pDiv = qs(`#${p}-panel`);
+                            if (pDiv) pDiv.style.display = "none";
+                        });
                         
                         // Show Files view containers
                         const filesView = qs("#files-panel-view");
@@ -3184,7 +6268,7 @@ export function handleZip(bytes) {
             const filesView = document.createElement("div");
             filesView.id = "files-panel-view";
             filesView.style.width = "100%";
-            if (isStartupTwofa) {
+            if (isCustomPanelActive) {
                 filesView.style.display = "none";
             }
             center.appendChild(filesView);
@@ -3661,8 +6745,6 @@ export function handleZip(bytes) {
                 }
             }
         }
-
-        // Table head if missing
         const table = qs("#table");
         if (table && !table.querySelector("thead")) {
             table.innerHTML = "";
@@ -3672,6 +6754,7 @@ export function handleZip(bytes) {
           <th style="width: 30px; text-align:center;"><input type="checkbox" id="bulk-select-all"></th>
           <th style="width: 80px;">Preview</th>
           <th>Name</th>
+          <th style="width: 100px;">Type</th>
           <th style="width: 85px;">Size</th>
           <th style="width: 90px;">Date</th>
           <th style="width: 42px; text-align:center;" title="Download">📥</th>
@@ -4458,6 +7541,37 @@ export function handleZip(bytes) {
         }
     }
 
+    function getFriendlyFileType(name, mime) {
+        const ext = name.split('.').pop().toLowerCase();
+        if (!ext || ext === name.toLowerCase()) {
+            return "File";
+        }
+        switch (ext) {
+            case "png": case "jpg": case "jpeg": case "gif": case "webp": case "svg": case "bmp":
+                return ext.toUpperCase() + " Image";
+            case "mp4": case "webm": case "mkv": case "mov": case "avi":
+                return ext.toUpperCase() + " Video";
+            case "mp3": case "wav": case "flac": case "ogg": case "m4a":
+                return ext.toUpperCase() + " Audio";
+            case "txt":
+                return "Text Document";
+            case "md":
+                return "Markdown Document";
+            case "json":
+                return "JSON File";
+            case "js": case "ts": case "py": case "sh": case "html": case "css": case "go": case "rs": case "java": case "cpp": case "c":
+                return ext.toUpperCase() + " Code";
+            case "pdf":
+                return "PDF Document";
+            case "zip": case "rar": case "7z": case "tar": case "gz":
+                return ext.toUpperCase() + " Archive";
+            case "exe": case "msi":
+                return "Executable";
+            default:
+                return ext.toUpperCase() + " File";
+        }
+    }
+
 
     // ---------- UI Rendering ----------
     async function loadFilesToTable(bypassCache = false) {
@@ -4631,48 +7745,46 @@ export function handleZip(bytes) {
                 };
                 tdName.appendChild(btn);
 
-                // Add ZIP download button next to folder
+                const tdType = document.createElement("td");
+                tdType.textContent = "Folder";
+                tdType.style.color = "var(--text-secondary)";
+                tdType.style.fontWeight = "500";
+
+                const tdSize = document.createElement("td");
+                tdSize.textContent = "-";
+                tdSize.className = "cell-empty";
+
+                const tdDate = document.createElement("td");
+                tdDate.textContent = "-";
+                tdDate.className = "cell-empty";
+
+                const tdDl = document.createElement("td");
+                tdDl.style.textAlign = "center";
                 const dlBtn = document.createElement("button");
-                dlBtn.className = "button";
-                dlBtn.textContent = "📥 ZIP";
+                dlBtn.className = "button icon-button";
+                dlBtn.innerHTML = "📥";
                 dlBtn.title = "Download folder as ZIP";
-                dlBtn.style.marginLeft = "6px";
-                dlBtn.style.fontSize = "11px";
-                dlBtn.style.padding = "2px 8px";
                 dlBtn.onclick = async (e) => {
                     e.stopPropagation();
                     await downloadFolderAsZip(entry.name);
                 };
-                tdName.appendChild(dlBtn);
+                tdDl.appendChild(dlBtn);
 
-                // Lock button if folder is not locked
-                if (!isLocked) {
-                    const lockBtn = document.createElement("button");
-                    lockBtn.className = "button";
-                    lockBtn.textContent = "🔒 Lock";
-                    lockBtn.title = "Lock folder with password";
-                    lockBtn.style.marginLeft = "6px";
-                    lockBtn.style.fontSize = "11px";
-                    lockBtn.style.padding = "2px 8px";
-                    lockBtn.onclick = async (e) => {
-                        e.stopPropagation();
-                        const pass = prompt(`Enter password to lock folder "${entry.name}":`);
-                        if (!pass) return;
-                        await lockFolder(entry.name, pass);
-                        alert(`Folder "${entry.name}" is now locked!`);
-                        await loadFilesToTable();
-                    };
-                    tdName.appendChild(lockBtn);
-                } else {
-                    const lockBtn = document.createElement("button");
-                    lockBtn.className = "button";
-                    lockBtn.textContent = isUnlocked ? "🔒 Re-lock" : "🔓 Unlock";
-                    lockBtn.title = isUnlocked ? "Lock this folder again" : "Unlock this folder";
-                    lockBtn.style.marginLeft = "6px";
-                    lockBtn.style.fontSize = "11px";
-                    lockBtn.style.padding = "2px 8px";
-                    lockBtn.onclick = async (e) => {
-                        e.stopPropagation();
+                const tdClip = document.createElement("td");
+                tdClip.textContent = "-";
+                tdClip.className = "cell-empty";
+
+                const tdShare = document.createElement("td");
+                tdShare.style.textAlign = "center";
+                const lockBtn = document.createElement("button");
+                lockBtn.className = "button icon-button";
+                lockBtn.innerHTML = isLocked ? "🔒" : "🔓";
+                lockBtn.title = isLocked 
+                    ? (isUnlocked ? "Lock this folder again (Re-lock)" : "Unlock this folder") 
+                    : "Lock folder with password";
+                lockBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (isLocked) {
                         if (isUnlocked) {
                             cachedFolderPassphrases.delete(entry.name);
                             alert(`Folder "${entry.name}" is now locked.`);
@@ -4688,18 +7800,57 @@ export function handleZip(bytes) {
                                 alert("Incorrect password!");
                             }
                         }
-                    };
-                    tdName.appendChild(lockBtn);
-                }
+                    } else {
+                        const pass = prompt(`Enter password to lock folder "${entry.name}":`);
+                        if (!pass) return;
+                        await lockFolder(entry.name, pass);
+                        alert(`Folder "${entry.name}" is now locked!`);
+                        await loadFilesToTable();
+                    }
+                };
+                tdShare.appendChild(lockBtn);
+
+                const tdRen = document.createElement("td");
+                tdRen.style.textAlign = "center";
+                const renBtn = document.createElement("button");
+                renBtn.className = "button icon-button";
+                renBtn.innerHTML = "✏️";
+                renBtn.title = "Rename folder";
+                renBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const next = prompt("Rename folder to:", entry.name);
+                    if (!next || next === entry.name) return;
+                    const userNewName = normalizeVirtualPath(next);
+                    await renameFolder(entry.name, userNewName);
+                    await loadFilesToTable();
+                };
+                tdRen.appendChild(renBtn);
+
+                const tdDel = document.createElement("td");
+                tdDel.style.textAlign = "center";
+                const delBtn = document.createElement("button");
+                delBtn.className = "button icon-button";
+                delBtn.innerHTML = "🗑️";
+                delBtn.title = "Delete folder";
+                delBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const ok = await deleteFolder(entry.name);
+                    if (ok) {
+                        await loadFilesToTable();
+                    }
+                };
+                tdDel.appendChild(delBtn);
 
                 tr.appendChild(tdPreview);
                 tr.appendChild(tdName);
-                for (let i = 0; i < 6; i++) {
-                    const td = document.createElement("td");
-                    td.textContent = "-";
-                    td.className = "cell-empty";
-                    tr.appendChild(td);
-                }
+                tr.appendChild(tdType);
+                tr.appendChild(tdSize);
+                tr.appendChild(tdDate);
+                tr.appendChild(tdDl);
+                tr.appendChild(tdClip);
+                tr.appendChild(tdShare);
+                tr.appendChild(tdRen);
+                tr.appendChild(tdDel);
                 tbody.appendChild(tr);
                 continue;
             }
@@ -4743,46 +7894,50 @@ export function handleZip(bytes) {
                 img.src = cachedThumb;
             } else {
                 try {
-                    const raw = await file.read();
-                    if (!raw || raw.length < 2) {
-                        img.src = placeholderDataUrl("FILE");
+                    if (meta && meta.encrypted) {
+                        img.src = placeholderDataUrl("SECURE", "#5c2b2b");
                     } else {
-                        const localMeta = await file.readMeta();
-                        let bytes;
-                        let mime = "";
-                        try {
-                            const reconstructed = await reconstructBytesFromSerialized(raw, localMeta || meta);
-                            bytes = reconstructed.bytes;
-                            mime = reconstructed.mime;
-                        } catch {
-                            const tag = raw[0];
-                            const payload = raw.slice(1);
-                            bytes = b64decodeToBytes(payload);
-                            if (tag === "c") bytes = gunzipSync(bytes);
-                            mime = (localMeta && localMeta.type) || (meta && meta.type) || "";
-                        }
-                        if (!mime || mime === "application/octet-stream") {
-                            mime = getMimeType(name);
-                            if (!mime || mime === "application/octet-stream") mime = sniffMimeFromBytes(bytes) || "application/octet-stream";
-                        }
-                        if (mime.startsWith("image/")) {
-                            img.src = dataURLFromParts(`data:${mime};base64`, bytes);
-                        } else if (mime.startsWith("text/") || mime === "application/json" || mime === "application/xml") {
-                            let previewText = "";
-                            try {
-                                previewText = td.decode(bytes);
-                            } catch {
-                                previewText = "";
-                            }
-                            img.src = textPreviewDataUrl(previewText);
-                        } else if (mime.startsWith("video/")) {
-                            img.src = placeholderDataUrl("VIDEO", "#3b2a49");
-                        } else if (mime.startsWith("audio/")) {
-                            img.src = placeholderDataUrl("AUDIO", "#214a3a");
+                        const raw = await file.read();
+                        if (!raw || raw.length < 2) {
+                            img.src = placeholderDataUrl("FILE");
                         } else {
-                            const ext = (name.split(".").pop() || "").toUpperCase().slice(0, 8);
-                            const label = ext || (mime.split("/")[1] || "FILE").toUpperCase().slice(0, 8);
-                            img.src = placeholderDataUrl(label);
+                            const localMeta = await file.readMeta();
+                            let bytes;
+                            let mime = "";
+                            try {
+                                const reconstructed = await reconstructBytesFromSerialized(raw, localMeta || meta);
+                                bytes = reconstructed.bytes;
+                                mime = reconstructed.mime;
+                            } catch {
+                                const tag = raw[0];
+                                const payload = raw.slice(1);
+                                bytes = b64decodeToBytes(payload);
+                                if (tag === "c") bytes = gunzipSync(bytes);
+                                mime = (localMeta && localMeta.type) || (meta && meta.type) || "";
+                            }
+                            if (!mime || mime === "application/octet-stream") {
+                                mime = getMimeType(name);
+                                if (!mime || mime === "application/octet-stream") mime = sniffMimeFromBytes(bytes) || "application/octet-stream";
+                            }
+                            if (mime.startsWith("image/")) {
+                                img.src = dataURLFromParts(`data:${mime};base64`, bytes);
+                            } else if (mime.startsWith("text/") || mime === "application/json" || mime === "application/xml") {
+                                let previewText = "";
+                                try {
+                                    previewText = td.decode(bytes);
+                                } catch {
+                                    previewText = "";
+                                }
+                                img.src = textPreviewDataUrl(previewText);
+                            } else if (mime.startsWith("video/")) {
+                                img.src = placeholderDataUrl("VIDEO", "#3b2a49");
+                            } else if (mime.startsWith("audio/")) {
+                                img.src = placeholderDataUrl("AUDIO", "#214a3a");
+                            } else {
+                                const ext = (name.split(".").pop() || "").toUpperCase().slice(0, 8);
+                                const label = ext || (mime.split("/")[1] || "FILE").toUpperCase().slice(0, 8);
+                                img.src = placeholderDataUrl(label);
+                            }
                         }
                     }
                 } catch {
@@ -5761,7 +8916,7 @@ export function handleZip(bytes) {
                             const blobUrl = URL.createObjectURL(blob);
                             const a = document.createElement("a");
                             a.href = blobUrl;
-                            a.download = name;
+                            a.download = m.name || name;
                             document.body.appendChild(a);
                             a.click();
                             a.remove();
@@ -5809,7 +8964,7 @@ export function handleZip(bytes) {
                 const url = URL.createObjectURL(new Blob([reconstructed.bytes], { type: reconstructed.mime || "application/octet-stream" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = name;
+                a.download = (localMeta && localMeta.name) || name;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -5900,8 +9055,13 @@ export function handleZip(bytes) {
             };
             tdDel.appendChild(btnDel);
 
+            const tdType = document.createElement("td");
+            tdType.textContent = getFriendlyFileType(name, (meta && meta.type) || "");
+            tdType.style.color = "var(--text-secondary)";
+
             tr.appendChild(tdPreview);
             tr.appendChild(tdName);
+            tr.appendChild(tdType);
             tr.appendChild(tdSize);
             tr.appendChild(tdDate);
             tr.appendChild(tdDl);
@@ -5942,6 +9102,15 @@ export function handleZip(bytes) {
             activePassphrase = folderPass;
         }
 
+        const settings = getSettings();
+        if (settings.bypassUploadEncryption && !targetLockedFolder) {
+            for (const f of fileList) {
+                await processAndStoreFile(f, "");
+            }
+            await loadFilesToTable(false);
+            return;
+        }
+
         if (!activePassphrase && !targetLockedFolder) {
             showEncryptDecryptModal("Optional Passphrase (AES-GCM)", true, async (typedPass, shouldCache) => {
                 if (typedPass === null) return;
@@ -5978,7 +9147,9 @@ export function handleZip(bytes) {
         }
 
         const folderValue = currentPath;
-        let targetName = folderValue ? `${folderValue}/${file.name}` : file.name;
+        const fileParts = file.name.split('.');
+        const baseName = fileParts.length > 1 ? fileParts.slice(0, -1).join('.') : file.name;
+        let targetName = folderValue ? `${folderValue}/${baseName}` : baseName;
         let existing = await getFileByName(targetName);
         if (existing) {
             const action = (prompt(`File ${targetName} exists. Type replace / keep / cancel`, "replace") || "cancel").toLowerCase();
@@ -6227,6 +9398,37 @@ export function handleZip(bytes) {
                 alert("Drop upload failed: " + err.message);
             }
         }, false);
+
+        // Clipboard paste file upload support
+        body.addEventListener("paste", async (e) => {
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.isContentEditable)) return;
+            
+            const filesPanel = qs("#files-panel-view");
+            if (!filesPanel || filesPanel.style.display === "none") return;
+            
+            const items = e.clipboardData?.items || [];
+            const files = [];
+            for (const item of items) {
+                if (item.kind === "file") {
+                    const file = item.getAsFile();
+                    if (file) {
+                        files.push(file);
+                    }
+                } else if (item.kind === "string" && item.type === "text/plain") {
+                    item.getAsString(async (text) => {
+                        const blob = new Blob([text], { type: "text/plain" });
+                        const now = new Date();
+                        const timestamp = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + String(now.getSeconds()).padStart(2, '0');
+                        const file = new File([blob], `pasted_${timestamp}.txt`, { type: "text/plain" });
+                        await handleFileList([file]);
+                    });
+                }
+            }
+            if (files.length) {
+                await handleFileList(files);
+            }
+        });
     }
 
     function detectContext() {
@@ -6357,7 +9559,8 @@ export function handleZip(bytes) {
         setupDragDrop();
 
         // initial render
-        if (startPanel === "twofa") {
+        const INLINE_PANELS = ["twofa", "passwords", "calc", "clock", "regex", "color", "api", "privacy", "rss", "timetracker", "qrscanner"];
+        if (INLINE_PANELS.includes(startPanel)) {
             const root = await fsRoot();
             const rootChildren = await chrome.bookmarks.getChildren(root.id);
             const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
@@ -6365,7 +9568,7 @@ export function handleZip(bytes) {
             cachedMetas = await Promise.all(files.map(async f => {
                 try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
             }));
-            const btn = qs("#nav-2fa-btn");
+            const btn = qs(`.nav-links .nav-btn[data-panel="${startPanel}"]`);
             if (btn) btn.click();
         } else {
             await loadFilesToTable(true);
@@ -6548,6 +9751,139 @@ export function handleZip(bytes) {
       }
       body.light-mode .twofa-modal-box div[style*="font-weight: 600"] {
           color: #1f2937 !important;
+      }
+
+      /* Custom panels in light mode */
+      body.light-mode #passwords-panel,
+      body.light-mode #calc-panel,
+      body.light-mode #clock-panel,
+      body.light-mode #regex-panel,
+      body.light-mode #color-panel,
+      body.light-mode #api-panel,
+      body.light-mode #privacy-panel,
+      body.light-mode #rss-panel,
+      body.light-mode #timetracker-panel,
+      body.light-mode #qrscanner-panel {
+          color: #1f2937 !important;
+      }
+      body.light-mode #passwords-panel h2,
+      body.light-mode #calc-panel h2,
+      body.light-mode #clock-panel h2,
+      body.light-mode #regex-panel h2,
+      body.light-mode #color-panel h2,
+      body.light-mode #api-panel h2,
+      body.light-mode #privacy-panel h2,
+      body.light-mode #rss-panel h2,
+      body.light-mode #timetracker-panel h2,
+      body.light-mode #qrscanner-panel h2 {
+          color: #1f2937 !important;
+      }
+      body.light-mode #passwords-panel input,
+      body.light-mode #calc-panel input,
+      body.light-mode #clock-panel input,
+      body.light-mode #regex-panel input,
+      body.light-mode #color-panel input,
+      body.light-mode #api-panel input,
+      body.light-mode #rss-panel input,
+      body.light-mode #passwords-panel textarea,
+      body.light-mode #regex-panel textarea,
+      body.light-mode #api-panel textarea,
+      body.light-mode #qrscanner-panel textarea,
+      body.light-mode #calc-panel select,
+      body.light-mode #color-panel select,
+      body.light-mode #api-panel select {
+          background: #f9fafb !important;
+          border-color: #d1d5db !important;
+          color: #1f2937 !important;
+      }
+      body.light-mode #passwords-panel label,
+      body.light-mode #calc-panel label,
+      body.light-mode #clock-panel label,
+      body.light-mode #regex-panel label,
+      body.light-mode #color-panel label,
+      body.light-mode #api-panel label,
+      body.light-mode #qrscanner-panel label {
+          color: #4b5563 !important;
+      }
+      body.light-mode #calc-screen,
+      body.light-mode #conv-output,
+      body.light-mode #txt-output,
+      body.light-mode #regex-output,
+      body.light-mode #api-response,
+      body.light-mode #qrscan-output {
+          background: #f3f4f6 !important;
+          border-color: #d1d5db !important;
+          color: #4b5563 !important;
+      }
+      body.light-mode .history-card,
+      body.light-mode .big-card {
+          background: #ffffff !important;
+          border-color: #d1d5db !important;
+          color: #1f2937 !important;
+      }
+      body.light-mode #passwords-panel a,
+      body.light-mode #calc-panel a,
+      body.light-mode #rss-panel a {
+          color: var(--accent) !important;
+      }
+
+      /* Navigation dropdown styling */
+      .nav-dropdown {
+          position: relative;
+          display: inline-block;
+      }
+      .dropdown-content {
+          display: none;
+          position: absolute;
+          right: 0;
+          top: 100%;
+          background: rgba(24, 24, 27, 0.95) !important;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(63, 63, 70, 0.8) !important;
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          z-index: 100000;
+          min-width: 320px;
+          padding: 8px;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
+      }
+      body.light-mode .dropdown-content {
+          background: rgba(255, 255, 255, 0.95) !important;
+          border-color: rgba(209, 213, 221, 0.8) !important;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      }
+      .dropdown-content .nav-btn {
+          display: flex !important;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 13px;
+          color: var(--text-color) !important;
+          text-decoration: none !important;
+          transition: all 0.2s ease;
+          border: none !important;
+          background: transparent !important;
+          text-align: left;
+          width: 100%;
+          box-sizing: border-box;
+      }
+      .dropdown-content .nav-btn:hover {
+          background: rgba(255, 255, 255, 0.08) !important;
+          transform: translateY(-1px);
+      }
+      body.light-mode .dropdown-content .nav-btn:hover {
+          background: rgba(0, 0, 0, 0.05) !important;
+      }
+      .dropdown-content .nav-btn.active {
+          background: var(--accent) !important;
+          color: #000000 !important;
+          font-weight: 600;
+      }
+      body.light-mode .dropdown-content .nav-btn.active {
+          color: #ffffff !important;
       }
     `;
         const s = document.createElement("style");

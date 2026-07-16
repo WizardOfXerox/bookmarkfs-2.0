@@ -9,31 +9,42 @@ function initContextMenu() {
         return;
     }
     chrome.contextMenus.removeAll(() => {
-        chrome.contextMenus.create({
+        const createMenu = (opts) => {
+            chrome.contextMenus.create(opts, () => {
+                if (chrome.runtime.lastError) {
+                    const err = chrome.runtime.lastError.message;
+                    if (!err.includes("duplicate id")) {
+                        console.warn("Context menu registration warning:", err);
+                    }
+                }
+            });
+        };
+
+        createMenu({
             id: "save-image-to-bookmarkfs",
             title: "Save Image to BookmarkFS",
             contexts: ["image"]
         });
 
-        chrome.contextMenus.create({
+        createMenu({
             id: "capture-full-page-screenshot",
             title: "Capture Full-Page Screenshot to BookmarkFS",
             contexts: ["page"]
         });
 
-        chrome.contextMenus.create({
+        createMenu({
             id: "add-page-to-bookmarks",
             title: "Add Page to Bookmarks",
             contexts: ["page", "link"]
         });
 
-        chrome.contextMenus.create({
+        createMenu({
             id: "open-bookmarkfs-dashboard",
             title: "Open BookmarkFS Dashboard",
             contexts: ["page", "image"]
         });
 
-        chrome.contextMenus.create({
+        createMenu({
             id: "open-in-sidebar-browser",
             title: "Open Link/Page in Sidebar Browser",
             contexts: ["page", "link"]
@@ -135,7 +146,9 @@ async function storeRawBytesInBookmarks(filename, bytes, mime) {
     const children = await chrome.bookmarks.getChildren(root.id);
 
     // Resolve duplicates
-    let uniqueName = filename;
+    const fileParts = filename.split('.');
+    const baseName = fileParts.length > 1 ? fileParts.slice(0, -1).join('.') : filename;
+    let uniqueName = baseName;
     while (children.some(b => b.title === uniqueName)) {
         uniqueName = incrementVersionedName(uniqueName);
     }
@@ -161,6 +174,7 @@ async function storeRawBytesInBookmarks(filename, bytes, mime) {
 
     const metaObj = {
         schemaVersion: 3,
+        name: filename,
         type: mime,
         sizeOriginal: bytes.length,
         sizeStored: serialized.length,
@@ -468,9 +482,29 @@ async function restoreLatestSessionOnStartup() {
             // Guard to sync with sessions.js tab load timestamp
             chrome.storage.local.set({ last_auto_restore_timestamp: Date.now() });
 
+            let windowId = null;
+            try {
+                const win = await chrome.windows.getCurrent();
+                windowId = win.id;
+            } catch (winErr) {
+                try {
+                    const allWins = await chrome.windows.getAll();
+                    if (allWins.length > 0) {
+                        windowId = allWins[0].id;
+                    } else {
+                        const newWin = await chrome.windows.create();
+                        windowId = newWin.id;
+                    }
+                } catch (winErr2) {
+                    console.error("Failed to query or create window for session restore", winErr2);
+                }
+            }
+
             for (const t of latest.tabs) {
                 if (t.url) {
-                    await chrome.tabs.create({ url: t.url, active: false });
+                    const opts = { url: t.url, active: false };
+                    if (windowId !== null) opts.windowId = windowId;
+                    await chrome.tabs.create(opts);
                 }
             }
             console.log(`Auto-restored ${latest.tabs.length} tabs on browser startup.`);
@@ -960,7 +994,7 @@ async function updateDeclarativeNetRequestRules() {
     try {
         const rules = [];
 
-        // Rule 1: CSP removal
+        // Rule 1: CSP and frame-busting security headers removal
         if (settings.cspBypass !== false) {
             rules.push({
                 id: 1,
@@ -971,7 +1005,27 @@ async function updateDeclarativeNetRequestRules() {
                         { header: "frame-options", operation: "remove" },
                         { header: "x-frame-options", operation: "remove" },
                         { header: "content-security-policy", operation: "remove" },
-                        { header: "content-security-policy-report-only", operation: "remove" }
+                        { header: "content-security-policy-report-only", operation: "remove" },
+                        { header: "x-webkit-csp", operation: "remove" },
+                        { header: "x-content-security-policy", operation: "remove" },
+                        { header: "cross-origin-resource-policy", operation: "remove" },
+                        { header: "cross-origin-opener-policy", operation: "remove" },
+                        { header: "cross-origin-embedder-policy", operation: "remove" }
+                    ]
+                },
+                condition: {
+                    resourceTypes: ["sub_frame"]
+                }
+            });
+
+            // Rule 4: Strip Referer header to prevent origin detection (bypasses extension check)
+            rules.push({
+                id: 4,
+                priority: 1,
+                action: {
+                    type: "modifyHeaders",
+                    requestHeaders: [
+                        { header: "referer", operation: "remove" }
                     ]
                 },
                 condition: {
@@ -1033,7 +1087,7 @@ async function updateDeclarativeNetRequestRules() {
         rules.push(uaRule);
 
         await chrome.declarativeNetRequest.updateDynamicRules({
-            removeRuleIds: [1, 2, 3],
+            removeRuleIds: [1, 2, 3, 4],
             addRules: rules
         });
         console.log("Registered declarativeNetRequest rules. Current User-Agent:", activeUa);
@@ -1066,6 +1120,88 @@ if (chrome.alarms) {
                 await updateDeclarativeNetRequestRules();
                 console.log("Rotated User-Agent (Periodic):", newUa);
             }
+        }
+        
+        // Reminder notifications
+        if (alarm.name.startsWith('bookmarkfs_reminder_')) {
+            const data = await chrome.storage.local.get('bookmarkfs_reminders');
+            const reminders = data.bookmarkfs_reminders || [];
+            const reminder = reminders.find(r => r.alarmName === alarm.name);
+            if (reminder) {
+                chrome.notifications.create(alarm.name, {
+                    type: 'basic',
+                    iconUrl: 'icons/128x128.png',
+                    title: '⏰ BookmarkFS Reminder',
+                    message: reminder.message || 'Your reminder is due!',
+                    priority: 2
+                });
+                const updated = reminders.map(r =>
+                    r.alarmName === alarm.name ? { ...r, completed: true, completedAt: Date.now() } : r
+                );
+                await chrome.storage.local.set({ bookmarkfs_reminders: updated });
+            }
+        }
+        
+        // RSS Feed Polling
+        if (alarm.name === 'bookmarkfs_rss_poll') {
+            const data = await chrome.storage.local.get(['bookmarkfs_rss_feeds', 'bookmarkfs_rss_articles']);
+            const feeds = data.bookmarkfs_rss_feeds || [];
+            const articles = data.bookmarkfs_rss_articles || {};
+            for (const feed of feeds) {
+                try {
+                    const resp = await fetch(feed.url);
+                    const text = await resp.text();
+                    // In Manifest V3 service workers, DOMParser is not directly available, so we use regex or a simple XML parser.
+                    // Wait, DOMParser actually isn't available in service worker background scripts!
+                    // Let's implement a robust regex parser to parse RSS feed items in background.js.
+                    const itemRegex = /<item>([\s\S]*?)<\/item>|<entry>([\s\S]*?)<\/entry>/g;
+                    let match;
+                    const feedArticles = [];
+                    let count = 0;
+                    while ((match = itemRegex.exec(text)) !== null && count < 50) {
+                        const content = match[1] || match[2] || '';
+                        
+                        const titleMatch = content.match(/<title[^>]*>([\s\S]*?)<\/title>/);
+                        let title = titleMatch ? titleMatch[1] : '';
+                        if (title.startsWith('<![CDATA[')) title = title.substring(9, title.length - 3);
+                        
+                        const linkMatch = content.match(/<link[^>]*href=["']([^"']+)["']|<link[^>]*>([\s\S]*?)<\/link>/);
+                        const link = linkMatch ? (linkMatch[1] || linkMatch[2] || '') : '';
+                        
+                        const descMatch = content.match(/<description[^>]*>([\s\S]*?)<\/description>|<summary[^>]*>([\s\S]*?)<\/summary>|<content[^>]*>([\s\S]*?)<\/content>/);
+                        let desc = descMatch ? (descMatch[1] || descMatch[2] || descMatch[3] || '') : '';
+                        if (desc.startsWith('<![CDATA[')) desc = desc.substring(9, desc.length - 3);
+                        desc = desc.replace(/<[^>]*>/g, '').substring(0, 300); // Strip HTML tags
+                        
+                        const dateMatch = content.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>|<published[^>]*>([\s\S]*?)<\/published>|<updated[^>]*>([\s\S]*?)<\/updated>/);
+                        const pubDate = dateMatch ? (dateMatch[1] || dateMatch[2] || dateMatch[3] || '') : '';
+                        
+                        const guidMatch = content.match(/<guid[^>]*>([\s\S]*?)<\/guid>|<id[^>]*>([\s\S]*?)<\/id>/);
+                        let guid = guidMatch ? (guidMatch[1] || guidMatch[2] || '') : (link || title);
+                        if (guid.startsWith('<![CDATA[')) guid = guid.substring(9, guid.length - 3);
+                        
+                        feedArticles.push({ title, link, desc, pubDate, guid, read: false });
+                        count++;
+                    }
+                    articles[feed.url] = feedArticles;
+                } catch (e) {
+                    console.warn('RSS fetch failed for', feed.url, e);
+                }
+            }
+            await chrome.storage.local.set({ bookmarkfs_rss_articles: articles });
+        }
+
+        
+        // Time limit reached
+        if (alarm.name.startsWith('bookmarkfs_timelimit_')) {
+            const domain = alarm.name.replace('bookmarkfs_timelimit_', '');
+            chrome.notifications.create(alarm.name, {
+                type: 'basic',
+                iconUrl: 'icons/128x128.png',
+                title: '📊 Time Limit Reached',
+                message: `You've reached your daily limit for ${domain}`,
+                priority: 2
+            });
         }
     });
 }
@@ -1125,6 +1261,102 @@ chrome.runtime.onStartup.addListener(async () => {
         }
         await updateDeclarativeNetRequestRules();
         await setupUaAlarms();
+    }
+});
+
+// ===== SITE TIME TRACKER =====
+let _timeTrackerState = { domain: null, startTime: null, paused: false };
+
+async function updateTimeTracker() {
+    if (_timeTrackerState.paused) return;
+    const data = await chrome.storage.local.get('bookmarkfs_timetracker_paused');
+    if (data.bookmarkfs_timetracker_paused) { _timeTrackerState.paused = true; return; }
+    
+    const now = Date.now();
+    if (_timeTrackerState.domain && _timeTrackerState.startTime) {
+        const elapsed = Math.round((now - _timeTrackerState.startTime) / 1000);
+        if (elapsed > 0 && elapsed < 300) {
+            const today = new Date().toISOString().split('T')[0];
+            const storageData = await chrome.storage.local.get('bookmarkfs_timetracker');
+            const tracker = storageData.bookmarkfs_timetracker || {};
+            if (!tracker[today]) tracker[today] = {};
+            if (!tracker[today][_timeTrackerState.domain]) tracker[today][_timeTrackerState.domain] = 0;
+            tracker[today][_timeTrackerState.domain] += elapsed;
+            await chrome.storage.local.set({ bookmarkfs_timetracker: tracker });
+        }
+    }
+    _timeTrackerState.startTime = now;
+}
+
+async function onActiveTabChanged() {
+    try {
+        await updateTimeTracker();
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        if (tab?.url) {
+            try {
+                const url = new URL(tab.url);
+                _timeTrackerState.domain = url.hostname || null;
+            } catch { _timeTrackerState.domain = null; }
+        } else {
+            _timeTrackerState.domain = null;
+        }
+        _timeTrackerState.startTime = Date.now();
+    } catch (e) { /* ignore */ }
+}
+
+if (chrome.tabs && chrome.tabs.onActivated) {
+    chrome.tabs.onActivated.addListener(() => onActiveTabChanged());
+}
+if (chrome.windows && chrome.windows.onFocusChanged) {
+    chrome.windows.onFocusChanged.addListener((windowId) => {
+        if (windowId === chrome.windows.WINDOW_ID_NONE) {
+            updateTimeTracker();
+            _timeTrackerState.domain = null;
+        } else {
+            onActiveTabChanged();
+        }
+    });
+}
+setInterval(() => updateTimeTracker(), 30000);
+
+// ===== PASSWORD AUTOFILL MESSAGE HANDLER =====
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'bookmarkfs_password_lookup') {
+        chrome.storage.local.get('bookmarkfs_passwords_cache', (data) => {
+            const cache = data.bookmarkfs_passwords_cache || [];
+            const matches = cache.filter(e => {
+                try {
+                    return new URL(e.url).hostname === msg.domain;
+                } catch { return false; }
+            });
+            sendResponse({ entries: matches });
+        });
+        return true; // Keep channel open for async response
+    }
+    
+    if (msg.type === 'bookmarkfs_password_save') {
+        chrome.storage.local.get('bookmarkfs_passwords_pending', (data) => {
+            const pending = data.bookmarkfs_passwords_pending || [];
+            // De-duplicate pending saves for the same username and url/domain
+            const isDup = pending.some(p => p.url === msg.url && p.username === msg.username);
+            if (!isDup) {
+                pending.push({
+                    url: msg.url,
+                    username: msg.username,
+                    password: msg.password,
+                    timestamp: Date.now()
+                });
+                chrome.storage.local.set({ bookmarkfs_passwords_pending: pending });
+            }
+        });
+        sendResponse({ ok: true });
+        return true;
+    }
+    
+    if (msg.type === 'bookmarkfs_open_passwords') {
+        chrome.tabs.create({ url: chrome.runtime.getURL('dist/index.html?panel=passwords') });
+        sendResponse({ ok: true });
+        return true;
     }
 });
 

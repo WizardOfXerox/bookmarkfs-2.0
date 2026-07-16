@@ -51,12 +51,22 @@
         "webNavigation",
         "scripting",
         "downloads",
-        "alarms"
+        "alarms",
+        "notifications"
     ],
     "optional_permissions": [
     ],
     "host_permissions": [
         "<all_urls>"
+    ],
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["dist/password_autofill.js"],
+            "css": ["dist/password_autofill.css"],
+            "run_at": "document_idle",
+            "all_frames": false
+        }
     ]
 }
 

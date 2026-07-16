@@ -23,6 +23,9 @@ All credits for the core bookmark exploit concept go to the original creator. Bo
 *   **⚡ Subtree-Caching Optimization (100x Faster)**: Prefetches the entire virtual files structure in a single `chrome.bookmarks.getSubTree` request, loading file lists instantly.
 *   **📁 Virtual Folder Management**: Create directories using the `📁 New Folder` buttons. Right-click folders to rename them or recursively delete their sub-trees.
 *   **🔒 Client-Side AES-GCM Encryption**: Optional AES-GCM (256-bit) encryption using WebCrypto. Integrated with a custom modal containing a **Password Strength Meter** and a cryptographic **Password Generator**.
+*   **🔒 Lazy Decryption**: File list thumbnail drawing checks file metadata first, loading placeholder lock images for encrypted files to defer all passphrase prompts until files are downloaded or previewed.
+*   **🎨 Dynamic Modal Themes**: Passphrase entry modals dynamically inherit styling from light-mode / dark-mode user themes with high contrast colors.
+*   **🗂️ File Type Column & Clean Naming**: Displays a dedicated `Type` column with friendly labels (e.g. `PNG Image`, `JSON File`) and automatically strips extensions from display names on upload while keeping original filenames for downloads.
 *   **📝 In-Browser Text & Markdown Editor**: Toggle edit mode directly inside the preview modal for text-based files, modify content and update tags, and save changes back to bookmarks.
 *   **📦 Bulk Operations (ZIP / Move / Delete)**: Select multiple rows using checkboxes to download them as a compiled ZIP archive, move them in bulk, or delete them.
 *   **📊 Graphical Storage Analyzer**: Color-coded, responsive analytics bar showing folder space distribution by file categories.
@@ -50,7 +53,7 @@ All credits for the core bookmark exploit concept go to the original creator. Bo
 
 ### 5. 📝 Rich-Text Page Notes Panel
 *   **📝 Tab-Scoped & General Notes**: Switch note scopes between "General Notes", "Domain Notes", and specific "Page URL Notes".
-*   **📝 Formatting Ribbon**: MS Word-style rich text ribbon supporting Bold, Italic, Underline, Strikethrough, lists, and clear formatting.
+*   **📝 Formatting Ribbon & Text Tools**: MS Word-style rich text ribbon supporting formatting tags. Integrates collapsible **Text Tools** (Case conversion, character/word counters, trim, find/replace) in an accordion drawer.
 *   **📎 Attachments Manager**: Upload any file (images, PDFs, documents) as note attachments, stored in local storage and download-ready in one click.
 *   **📤 Note Backups**: Export individual notes or download a full JSON backup of all notes and attachments.
 
@@ -59,11 +62,25 @@ All credits for the core bookmark exploit concept go to the original creator. Bo
 *   **✏️ Vector Annotation Editor**: Draw, crop, blur, write text, and add vector shapes (arrows, rectangles) on captured images.
 *   **📸 In-Place Preview Modal**: Clicking screenshot thumbnails opens a modal overlay (`#preview-modal`) with Open, Edit, and Delete actions, keeping the user in the sidebar instead of opening new tabs.
 *   **🏷️ Toolbar Badge Alerts**: Real-time toolbar badge notifications overlay a green `Note` indicator if notes exist for your active tab.
+*   **🧹 Clean Navigation Layout**: Screenshot Viewer, Editor, and Options pages utilize a clean primary header navigation with secondary utilities moved inside a unified **`🛠️ Tools ▾`** dropdown.
 
-### 7. 🕵️ Network User-Agent Swapper
+### 7. 🕵️ Network User-Agent Swapper & Utilities
 *   **🕵️ UA Switcher & Overrides**: Intercepts requests to modify UA headers.
 *   **🔄 Dynamic Rotation**: Rotate through mobile UAs to force sites to serve mobile-responsive versions inside the sidebar view.
 *   **Facebook Desktop Bypass**: Excludes Facebook domains to prevent iframe redirect script loops.
+*   **📡 Instant Foreground RSS Sync**: Foreground parser fetching feed articles directly to resolve sync latency on launch.
+*   **🔑 Passwords Vault Setup**: Custom master passphrase registration flow initialized on first access to the Passwords manager.
+
+### 8. 🔐 2FA Authenticator & Google Authenticator Migration
+*   **📲 Authenticator Dashboard**: Full-featured standard TOTP generator inside the sidebar. Renders ticking 30-second progress indicators, live profile filtering, and search options.
+*   **📷 Integrated QR Scanner**: Supports camera feeds, screen sharing streams, localized screenshot selection crops, file uploads, and clipboard images.
+*   **📲 Google Authenticator Import**: Natively parses `otpauth-migration://` Protocol Buffers export links, translating bulk migration QR codes from official mobile Google Authenticator apps into individual TOTP profiles.
+*   **📂 Virtual Filesystem Persistence**: Automatically persists and manages all 2FA credentials inside standard synced virtual folders as encrypted/decrypted metadata JSON payloads (`.2fa.json`).
+
+### 9. ⏰ Clock Panel & World Time
+*   **🌍 World Clock View**: Live card list of custom world timezones and major global cities showing target local times, dates, and GMT offsets.
+*   **⏰ Persistent Settings**: Custom timezone listings are saved to local storage with simple add/delete actions.
+*   **⚡ Performance Optimized**: Automatic event timer cleanups prevent background battery drain.
 
 ---
 

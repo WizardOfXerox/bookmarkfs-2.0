@@ -322,13 +322,29 @@
     <div id="panel-nav-bar">
         <div class="nav-links">
             <a href="index.html" class="nav-btn">📁 Files</a>
-            <a href="index.html?panel=twofa" class="nav-btn">🔐 2FA</a>
             <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
             <a href="sessions.html" class="nav-btn">🗂️ Sessions</a>
             <a href="web.html" class="nav-btn">🌐 Web</a>
             <a href="notes.html" class="nav-btn active">📝 Notes</a>
             <a href="/dist/capture.html" class="nav-btn">📸 Screenshot</a>
-            <a href="ua.html" class="nav-btn" data-panel="ua">🕵️ UA</a>
+            <a href="index.html?panel=twofa" class="nav-btn">🔐 2FA</a>
+            
+            <div class="nav-dropdown" style="position: relative; display: inline-block;">
+                <button class="nav-btn dropdown-trigger">🛠️ Tools ▾</button>
+                <div class="dropdown-content">
+                    <a href="index.html?panel=qrscanner" class="nav-btn">🔍 QR Scanner</a>
+                    <a href="index.html?panel=passwords" class="nav-btn">🔑 Passwords</a>
+                    <a href="ua.html" class="nav-btn">🕵️ UA</a>
+                    <a href="index.html?panel=calc" class="nav-btn">🧮 Calc</a>
+                    <a href="index.html?panel=clock" class="nav-btn">⏰ Clock</a>
+                    <a href="index.html?panel=regex" class="nav-btn">🔍 Regex</a>
+                    <a href="index.html?panel=color" class="nav-btn">🎨 Color</a>
+                    <a href="index.html?panel=api" class="nav-btn">📦 API</a>
+                    <a href="index.html?panel=privacy" class="nav-btn">🛡️ Privacy</a>
+                    <a href="index.html?panel=rss" class="nav-btn">📡 RSS</a>
+                    <a href="index.html?panel=timetracker" class="nav-btn">📊 Time</a>
+                </div>
+            </div>
         </div>
         <div class="nav-controls">
             <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
@@ -390,6 +406,49 @@
             </div>
         </div>
 
+        <!-- Text Tools Card -->
+        <div class="notes-editor-card" id="notes-text-tools-card" style="margin-top: 10px;">
+            <h3 class="index-title" style="margin: 0; border: none; padding: 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" id="text-tools-toggle-header">
+                <span>🔄 Text Tools</span>
+                <span id="text-tools-toggle-icon">▼</span>
+            </h3>
+            
+            <div id="text-tools-content" style="display: none; flex-direction: column; gap: 8px; margin-top: 10px;">
+                <p style="font-size: 11px; color: var(--text-secondary); margin: 0;">
+                    Transform the active note's text, or use the scratchpad below.
+                </p>
+                <div style="display: flex; gap: 8px; margin-bottom: 4px;">
+                    <button id="btn-txt-load-active" class="web-btn" style="flex: 1; font-size: 11px; padding: 6px;" title="Load active note content into scratchpad">Load Active Note</button>
+                    <button id="btn-txt-apply-active" class="web-btn" style="flex: 1; font-size: 11px; padding: 6px;" title="Replace active note content with scratchpad output">Apply to Note</button>
+                </div>
+                
+                <textarea id="txt-input" placeholder="Scratchpad input..." style="width: 100%; height: 80px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 6px; outline: none; font-size: 12px; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 4px 0;">
+                    <button class="web-btn txt-act" data-action="upper" style="font-size: 11px; padding: 4px;">UPPERCASE</button>
+                    <button class="web-btn txt-act" data-action="lower" style="font-size: 11px; padding: 4px;">lowercase</button>
+                    <button class="web-btn txt-act" data-action="title" style="font-size: 11px; padding: 4px;">Title Case</button>
+                    <button class="web-btn txt-act" data-action="b64enc" style="font-size: 11px; padding: 4px;">Base64 Encode</button>
+                    <button class="web-btn txt-act" data-action="b64dec" style="font-size: 11px; padding: 4px;">Base64 Decode</button>
+                    <button class="web-btn txt-act" data-action="urlenc" style="font-size: 11px; padding: 4px;">URL Encode</button>
+                    <button class="web-btn txt-act" data-action="urldec" style="font-size: 11px; padding: 4px;">URL Decode</button>
+                    <button class="web-btn txt-act" data-action="sha256" style="font-size: 11px; padding: 4px;">SHA-256 Hash</button>
+                    <button class="web-btn txt-act" data-action="jsonprettify" style="font-size: 11px; padding: 4px;">Prettify JSON</button>
+                    <button class="web-btn txt-act" data-action="uuid" style="font-size: 11px; padding: 4px;">UUID Gen</button>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                    <span style="font-size: 10px; color: var(--text-secondary);" id="txt-stats">Words: 0 | Chars: 0</span>
+                    <div>
+                        <button id="btn-txt-swap" class="web-btn" style="font-size: 10px; padding: 2px 6px;">Swap ↕</button>
+                        <button id="btn-txt-copy" class="web-btn" style="font-size: 10px; padding: 2px 6px; margin-left: 4px;">Copy</button>
+                    </div>
+                </div>
+
+                <textarea id="txt-output" placeholder="Output will appear here..." style="width: 100%; height: 80px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 6px; outline: none; font-size: 12px; font-family: monospace; resize: vertical; box-sizing: border-box;" readonly></textarea>
+            </div>
+        </div>
+
         <!-- Saved Notes Index -->
         <div class="notes-index-card">
             <div class="index-title-row" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
@@ -406,6 +465,7 @@
         </div>
     </div>
 
+    <script src="nav-init.js"></script>
     <script src="notes.js"></script>
 </body>
 </html>
