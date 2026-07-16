@@ -1757,6 +1757,17 @@ export function handleZip(bytes) {
             
             <button id="btn-twofa-scan-manual" class="button" style="margin-top: 4px; width: 100%; display: none; padding: 6px 12px; font-size: 13px;">🔍 Scan Current Frame</button>
 
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="font-size: 12px; color: #a1a1aa;">Recovery Codes (Optional):</label>
+                    <label class="button" style="font-size: 11px; padding: 2px 8px; cursor: pointer; margin: 0; display: inline-flex; align-items: center; justify-content: center; border-color: #52525b; color: #d4d4d8; height: 18px; border-radius: 4px;">
+                        📄 Import File
+                        <input type="file" id="input-twofa-recovery-file" accept=".txt,.json,text/plain" style="display: none;">
+                    </label>
+                </div>
+                <textarea id="add-twofa-recovery" placeholder="Enter recovery codes, keys, or backup info..." style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace; resize: vertical; height: 60px; box-sizing: border-box; width: 100%;"></textarea>
+            </div>
+
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
                 <button id="btn-twofa-save" class="button" style="padding: 6px 16px; font-weight: 600;">Save</button>
                 <button id="btn-twofa-cancel" class="button" style="padding: 6px 16px; background: transparent; border-color: #27272a;">Cancel</button>
@@ -1776,6 +1787,8 @@ export function handleZip(bytes) {
         const videoContainer = box.querySelector("#twofa-video-container");
         const video = box.querySelector("#twofa-scan-video");
         const manualScanBtn = box.querySelector("#btn-twofa-scan-manual");
+        const recoveryInput = box.querySelector("#add-twofa-recovery");
+        const recoveryFileInput = box.querySelector("#input-twofa-recovery-file");
         const saveBtn = box.querySelector("#btn-twofa-save");
         const cancelBtn = box.querySelector("#btn-twofa-cancel");
 
@@ -1913,16 +1926,29 @@ export function handleZip(bytes) {
             fileInput.value = "";
         };
 
+        recoveryFileInput.onchange = () => {
+            const file = recoveryFileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                recoveryInput.value = reader.result;
+            };
+            reader.readAsText(file);
+            recoveryFileInput.value = "";
+        };
+
         saveBtn.onclick = () => {
             const label = labelInput.value.trim();
             const secret = secretInput.value.replace(/\s+/g, "").toUpperCase();
+            const recoveryCodes = recoveryInput.value.trim();
             if (!label || !secret) {
                 alert("Please fill in both Label and Secret Key fields.");
                 return;
             }
             stopCamera();
             modal.remove();
-            callback({ label, secret });
+            callback({ label, secret, recoveryCodes });
         };
 
         cancelBtn.onclick = () => {
@@ -1963,7 +1989,11 @@ export function handleZip(bytes) {
                     try {
                         await generateTOTP(result.secret);
                         const profiles = await load2FAProfiles();
-                        profiles.push({ label: result.label, secret: result.secret });
+                        profiles.push({
+                            label: result.label,
+                            secret: result.secret,
+                            recoveryCodes: result.recoveryCodes || ""
+                        });
                         await save2FAProfiles(profiles);
                         await render2FAProfilesList();
                     } catch (err) {
@@ -1997,14 +2027,20 @@ export function handleZip(bytes) {
             const profile = profiles[i];
             const row = document.createElement("div");
             row.style.display = "flex";
-            row.style.justifyContent = "space-between";
-            row.style.alignItems = "center";
+            row.style.flexDirection = "column";
             row.style.padding = "16px";
             row.style.background = "var(--bg-main)";
             row.style.border = "1px solid var(--border)";
             row.style.borderRadius = "10px";
-            row.style.gap = "16px";
-            row.style.flexWrap = "wrap";
+            row.style.gap = "8px";
+
+            const headerRow = document.createElement("div");
+            headerRow.style.display = "flex";
+            headerRow.style.justifyContent = "space-between";
+            headerRow.style.alignItems = "center";
+            headerRow.style.width = "100%";
+            headerRow.style.gap = "16px";
+            headerRow.style.flexWrap = "wrap";
 
             const info = document.createElement("div");
             info.style.display = "flex";
@@ -2079,10 +2115,80 @@ export function handleZip(bytes) {
             otpArea.appendChild(codeEl);
             otpArea.appendChild(timerEl);
             otpArea.appendChild(copyBtn);
+            
+            let recoveryBtn = null;
+            let recoverySection = null;
+            if (profile.recoveryCodes) {
+                recoveryBtn = document.createElement("button");
+                recoveryBtn.className = "button";
+                recoveryBtn.textContent = "🔑 Recovery Codes";
+                recoveryBtn.style.padding = "4px 10px";
+                recoveryBtn.style.fontSize = "12px";
+                otpArea.appendChild(recoveryBtn);
+
+                recoverySection = document.createElement("div");
+                recoverySection.style.display = "none";
+                recoverySection.style.width = "100%";
+                recoverySection.style.padding = "12px";
+                recoverySection.style.background = "#09090b";
+                recoverySection.style.border = "1px solid #27272a";
+                recoverySection.style.borderRadius = "6px";
+                recoverySection.style.marginTop = "8px";
+                recoverySection.style.boxSizing = "border-box";
+                
+                const recTitle = document.createElement("div");
+                recTitle.style.display = "flex";
+                recTitle.style.justifyContent = "space-between";
+                recTitle.style.alignItems = "center";
+                recTitle.style.marginBottom = "8px";
+                
+                const titleText = document.createElement("span");
+                titleText.textContent = "Recovery Codes";
+                titleText.style.fontSize = "12px";
+                titleText.style.fontWeight = "600";
+                titleText.style.color = "var(--text-secondary)";
+                
+                const recCopyBtn = document.createElement("button");
+                recCopyBtn.className = "button";
+                recCopyBtn.textContent = "📋 Copy Codes";
+                recCopyBtn.style.padding = "2px 8px";
+                recCopyBtn.style.fontSize = "11px";
+                recCopyBtn.onclick = () => {
+                    navigator.clipboard.writeText(profile.recoveryCodes);
+                    recCopyBtn.textContent = "✓ Copied";
+                    setTimeout(() => { recCopyBtn.textContent = "📋 Copy Codes"; }, 1500);
+                };
+                
+                recTitle.appendChild(titleText);
+                recTitle.appendChild(recCopyBtn);
+                
+                const codePre = document.createElement("pre");
+                codePre.textContent = profile.recoveryCodes;
+                codePre.style.margin = "0";
+                codePre.style.fontSize = "12px";
+                codePre.style.fontFamily = "monospace";
+                codePre.style.whiteSpace = "pre-wrap";
+                codePre.style.color = "#a1a1aa";
+                
+                recoverySection.appendChild(recTitle);
+                recoverySection.appendChild(codePre);
+                
+                recoveryBtn.onclick = () => {
+                    const isHidden = recoverySection.style.display === "none";
+                    recoverySection.style.display = isHidden ? "block" : "none";
+                    recoveryBtn.style.borderColor = isHidden ? "var(--accent)" : "";
+                };
+            }
+
             otpArea.appendChild(delBtn);
 
-            row.appendChild(info);
-            row.appendChild(otpArea);
+            headerRow.appendChild(info);
+            headerRow.appendChild(otpArea);
+            
+            row.appendChild(headerRow);
+            if (recoverySection) {
+                row.appendChild(recoverySection);
+            }
             listContainer.appendChild(row);
         }
 
