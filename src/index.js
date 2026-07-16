@@ -1,6 +1,7 @@
 import { unzipSync, zipSync, gzipSync as fflateGzip, gunzipSync as fflateGunzip } from "fflate";
 import { createExtractorFromData } from "node-unrar-js";
 import jsQR from "jsqr";
+import QRCode from "qrcode";
 
 async function handleRar(bytes) {
     const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -1704,8 +1705,86 @@ export function handleZip(bytes) {
             throw new Error("QR content is not a valid otpauth URL or Base32 secret key");
         }
     }
+    
+    function parseRecoveryCodesString(str) {
+        if (!str) return [];
+        const rawTokens = str.split(/[\n\r,;\t]+| {2,}/);
+        const codes = [];
+        for (let token of rawTokens) {
+            token = token.trim();
+            if (!token) continue;
+            const subTokens = token.split(/\s+/);
+            for (let sub of subTokens) {
+                sub = sub.trim();
+                if (sub.length >= 4 && /^[a-z0-9-_]+$/i.test(sub)) {
+                    codes.push(sub);
+                }
+            }
+        }
+        return codes;
+    }
 
-    function showAdd2FAParametersModal(callback) {
+    function showQRModal(label, qrDataUrl, rawUrl) {
+        const modal = document.createElement("div");
+        modal.style.position = "fixed";
+        modal.style.inset = "0";
+        modal.style.background = "rgba(10, 10, 10, 0.85)";
+        modal.style.backdropFilter = "blur(8px)";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+        modal.style.zIndex = "100000";
+
+        const box = document.createElement("div");
+        box.style.background = "#18181b";
+        box.style.border = "1px solid #27272a";
+        box.style.color = "#f4f4f5";
+        box.style.padding = "24px";
+        box.style.borderRadius = "16px";
+        box.style.width = "min(340px, 90%)";
+        box.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.5)";
+        box.style.display = "flex";
+        box.style.flexDirection = "column";
+        box.style.gap = "16px";
+        box.style.textAlign = "center";
+
+        box.innerHTML = `
+            <h3 style="margin: 0; color: var(--accent); font-size: 16px;">📱 Export 2FA QR Code</h3>
+            <div style="font-size: 13px; font-weight: 600; color: #f4f4f5; word-break: break-all;">${label}</div>
+            
+            <div style="background: #ffffff; padding: 12px; border-radius: 12px; display: inline-block; margin: 0 auto; line-height: 0;">
+                <img src="${qrDataUrl}" style="width: 200px; height: 200px; display: block;" alt="2FA QR Code">
+            </div>
+
+            <p style="font-size: 11px; color: #a1a1aa; margin: 0; line-height: 1.4;">
+                Scan this QR code with another authenticator app (e.g. Google Authenticator) on your phone to transfer this profile.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; margin-top: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="font-size: 10px; color: #71717a;">Raw Secret Link:</label>
+                    <button id="btn-copy-qr-url" class="button" style="font-size: 10px; padding: 1px 6px; height: 16px; border-radius: 4px; border-color: #52525b; color: #d4d4d8;">Copy Link</button>
+                </div>
+                <input type="text" readonly value="${rawUrl}" style="padding: 6px 8px; background: #09090b; border: 1px solid #27272a; color: #a1a1aa; border-radius: 6px; outline: none; font-size: 11px; font-family: monospace;">
+            </div>
+
+            <button id="btn-close-qr-modal" class="button" style="width: 100%; margin-top: 4px; padding: 8px; font-weight: 600;">Close</button>
+        `;
+
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+
+        box.querySelector("#btn-close-qr-modal").onclick = () => modal.remove();
+        
+        const copyBtn = box.querySelector("#btn-copy-qr-url");
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(rawUrl);
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => { copyBtn.textContent = "Copy Link"; }, 1500);
+        };
+    }
+
+    function showAdd2FAParametersModal(callback, editProfile = null) {
         const modal = document.createElement("div");
         modal.id = "add-twofa-modal";
         modal.style.position = "fixed";
@@ -1730,7 +1809,7 @@ export function handleZip(bytes) {
         box.style.gap = "16px";
 
         box.innerHTML = `
-            <h3 style="margin: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">🔐 Add 2FA Profile</h3>
+            <h3 style="margin: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">${editProfile ? "📝 Edit 2FA Profile" : "🔐 Add 2FA Profile"}</h3>
             
             <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label style="font-size: 12px; color: #a1a1aa;">Profile Label:</label>
@@ -1791,6 +1870,12 @@ export function handleZip(bytes) {
         const recoveryFileInput = box.querySelector("#input-twofa-recovery-file");
         const saveBtn = box.querySelector("#btn-twofa-save");
         const cancelBtn = box.querySelector("#btn-twofa-cancel");
+
+        if (editProfile) {
+            labelInput.value = editProfile.label || "";
+            secretInput.value = editProfile.secret || "";
+            recoveryInput.value = editProfile.recoveryCodes || "";
+        }
 
         function stopCamera() {
             if (scanInterval) {
@@ -2116,6 +2201,55 @@ export function handleZip(bytes) {
             otpArea.appendChild(timerEl);
             otpArea.appendChild(copyBtn);
             
+            const editBtn = document.createElement("button");
+            editBtn.className = "button";
+            editBtn.textContent = "📝 Edit";
+            editBtn.style.padding = "4px 10px";
+            editBtn.style.fontSize = "12px";
+            editBtn.onclick = () => {
+                showAdd2FAParametersModal(async (result) => {
+                    if (!result) return;
+                    try {
+                        await generateTOTP(result.secret);
+                        const current = await load2FAProfiles();
+                        current[i] = {
+                            label: result.label,
+                            secret: result.secret,
+                            recoveryCodes: result.recoveryCodes || ""
+                        };
+                        await save2FAProfiles(current);
+                        await render2FAProfilesList();
+                    } catch (err) {
+                        alert("Invalid Base32 secret key: " + err.message);
+                    }
+                }, profile);
+            };
+            otpArea.appendChild(editBtn);
+
+            const exportQrBtn = document.createElement("button");
+            exportQrBtn.className = "button";
+            exportQrBtn.textContent = "📱 Export QR";
+            exportQrBtn.style.padding = "4px 10px";
+            exportQrBtn.style.fontSize = "12px";
+            exportQrBtn.onclick = async () => {
+                const label = encodeURIComponent(profile.label);
+                const secret = encodeURIComponent(profile.secret);
+                let issuer = "";
+                if (profile.label.includes(":")) {
+                    issuer = profile.label.split(":")[0].trim();
+                } else {
+                    issuer = profile.label.trim();
+                }
+                const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
+                try {
+                    const qrDataUrl = await QRCode.toDataURL(otpauthUrl, { width: 280, margin: 2 });
+                    showQRModal(profile.label, qrDataUrl, otpauthUrl);
+                } catch (err) {
+                    alert("Failed to generate QR Code: " + err.message);
+                }
+            };
+            otpArea.appendChild(exportQrBtn);
+            
             let recoveryBtn = null;
             let recoverySection = null;
             if (profile.recoveryCodes) {
@@ -2136,17 +2270,55 @@ export function handleZip(bytes) {
                 recoverySection.style.marginTop = "8px";
                 recoverySection.style.boxSizing = "border-box";
                 
+                const parsedCodes = parseRecoveryCodesString(profile.recoveryCodes);
+                
                 const recTitle = document.createElement("div");
                 recTitle.style.display = "flex";
                 recTitle.style.justifyContent = "space-between";
                 recTitle.style.alignItems = "center";
                 recTitle.style.marginBottom = "8px";
+                recTitle.style.gap = "8px";
+                recTitle.style.flexWrap = "wrap";
                 
                 const titleText = document.createElement("span");
-                titleText.textContent = "Recovery Codes";
+                titleText.textContent = `Recovery Codes (${parsedCodes.length} remaining)`;
                 titleText.style.fontSize = "12px";
                 titleText.style.fontWeight = "600";
                 titleText.style.color = "var(--text-secondary)";
+                
+                const recControls = document.createElement("div");
+                recControls.style.display = "flex";
+                recControls.style.gap = "8px";
+                
+                const useCodeBtn = document.createElement("button");
+                useCodeBtn.className = "button";
+                useCodeBtn.textContent = "🎟️ Use One Code";
+                useCodeBtn.style.padding = "2px 8px";
+                useCodeBtn.style.fontSize = "11px";
+                useCodeBtn.style.borderColor = "var(--accent)";
+                useCodeBtn.style.color = "var(--accent)";
+                useCodeBtn.disabled = parsedCodes.length === 0;
+                useCodeBtn.onclick = async () => {
+                    const codesList = parseRecoveryCodesString(profile.recoveryCodes);
+                    if (codesList.length === 0) {
+                        alert("No recovery codes remaining.");
+                        return;
+                    }
+                    const consumed = codesList[0];
+                    await navigator.clipboard.writeText(consumed);
+                    
+                    let newStr = profile.recoveryCodes;
+                    const escaped = consumed.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    const regex = new RegExp(`\\b${escaped}\\b\\s*[,;\\-\\n\\r]*`);
+                    newStr = newStr.replace(regex, "").trim();
+                    
+                    const current = await load2FAProfiles();
+                    current[i].recoveryCodes = newStr;
+                    await save2FAProfiles(current);
+                    await render2FAProfilesList();
+                    
+                    alert(`Recovery code "${consumed}" copied to clipboard and removed from your list.`);
+                };
                 
                 const recCopyBtn = document.createElement("button");
                 recCopyBtn.className = "button";
@@ -2159,8 +2331,11 @@ export function handleZip(bytes) {
                     setTimeout(() => { recCopyBtn.textContent = "📋 Copy Codes"; }, 1500);
                 };
                 
+                recControls.appendChild(useCodeBtn);
+                recControls.appendChild(recCopyBtn);
+                
                 recTitle.appendChild(titleText);
-                recTitle.appendChild(recCopyBtn);
+                recTitle.appendChild(recControls);
                 
                 const codePre = document.createElement("pre");
                 codePre.textContent = profile.recoveryCodes;
