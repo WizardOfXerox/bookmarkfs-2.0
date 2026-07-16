@@ -819,6 +819,8 @@ body.screenshot-viewer header {
     position: relative !important;
     top: 0 !important;
     min-width: 0 !important;
+    max-width: 980px !important;
+    margin: 0 auto !important;
     width: 100% !important;
     height: 50px !important;
     line-height: 50px !important;
@@ -827,6 +829,9 @@ body.screenshot-viewer header {
     justify-content: space-between !important;
     align-items: center !important;
     box-sizing: border-box !important;
+    background: transparent !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
 }
 body.screenshot-viewer header h1 {
     display: block !important;
@@ -839,6 +844,17 @@ body.screenshot-viewer header h1 {
         display: none !important;
     }
 }
+header .btn-editor {
+    background-image: url(images/icon-edit.svg) !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    width: 55px !important;
+    height: 50px !important;
+}
+header .btn-editor .txt {
+    display: none !important;
+}
+body.light-mode header .btn-editor,
 body.light-mode header .btn-history,
 body.light-mode header .btn-settings,
 body.light-mode header .btn-trash,
@@ -869,7 +885,13 @@ body.screenshot-viewer header .btn-editor .txt {
 body.screenshot-viewer #wrap {
     padding-top: 0 !important;
 }
-body.screenshot-viewer #content, body.screenshot-viewer #image {
+body.screenshot-viewer #content {
+    min-width: 0 !important;
+    max-width: 980px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+}
+body.screenshot-viewer #image {
     min-width: 0 !important;
     width: 100% !important;
 }
