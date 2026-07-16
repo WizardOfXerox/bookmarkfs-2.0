@@ -1114,3 +1114,93 @@ body.options #perm-toggle strong {
 body.options #perm-toggle .arrow {
     color: var(--accent) !important;
 }
+
+/* --- Viewport and Theme Fixes --- */
+html, body {
+    min-height: 100vh;
+}
+html.light-mode {
+    background-color: #f3f4f6 !important;
+}
+
+/* --- 2FA Premium Cards --- */
+.twofa-profile-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    gap: 16px !important;
+    flex-wrap: wrap !important;
+    transition: transform 0.2s, box-shadow 0.2s !important;
+    text-align: left !important; /* Counteract parent <center> text-alignment! */
+}
+.twofa-profile-card:hover {
+    box-shadow: var(--shadow) !important;
+    border-color: var(--border-accent) !important;
+}
+.twofa-card-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    min-width: 140px !important;
+    text-align: left !important;
+}
+.twofa-card-label {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+}
+.twofa-card-username {
+    font-size: 12px !important;
+    color: var(--text-secondary) !important;
+}
+.twofa-card-otp {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+.twofa-card-code {
+    font-family: var(--font-mono) !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    color: var(--accent) !important;
+}
+.twofa-card-timer {
+    font-size: 11px !important;
+    color: var(--text-secondary) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid var(--border) !important;
+}
+body.light-mode .twofa-card-timer {
+    background: rgba(0, 0, 0, 0.03) !important;
+}
+.twofa-card-actions {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+}
+
+/* Layout response based on sidebar width */
+@media (max-width: 600px) {
+    .twofa-profile-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+    .twofa-card-otp {
+        justify-content: space-between !important;
+        border-bottom: 1px solid var(--border) !important;
+        padding-bottom: 10px !important;
+    }
+    .twofa-card-actions {
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+}
