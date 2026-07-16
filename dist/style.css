@@ -707,17 +707,19 @@ html.page-image header .right:before {
     background-color: var(--bg-card) !important;
 }
 header .btn-editor .txt {
-    background-color: var(--bg-button) !important;
+    background-color: transparent !important;
     color: var(--accent) !important;
-    border: 1px solid var(--border) !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
 }
 header .btn-editor:hover .txt {
-    background-color: var(--accent) !important;
-    color: var(--bg-main) !important;
-    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+    text-decoration: underline !important;
 }
 header .btn-nav {
-    background-color: var(--bg-button) !important;
+    background-color: transparent !important;
 }
 
 /* Big Cards and Containers */
@@ -822,12 +824,27 @@ body.screenshot-viewer header {
     line-height: 50px !important;
     padding: 0 8px !important;
     display: flex !important;
-    justify-content: flex-end !important;
+    justify-content: space-between !important;
     align-items: center !important;
     box-sizing: border-box !important;
 }
 body.screenshot-viewer header h1 {
-    display: none !important;
+    display: block !important;
+    font-size: 18px !important;
+    line-height: 50px !important;
+    margin: 0 !important;
+}
+@media (max-width: 600px) {
+    body.screenshot-viewer header h1 {
+        display: none !important;
+    }
+}
+body.light-mode header .btn-history,
+body.light-mode header .btn-settings,
+body.light-mode header .btn-trash,
+body.light-mode header .btn-download,
+body.light-mode header .btn-downloadpdf {
+    filter: invert(1) brightness(0.2) !important;
 }
 body.screenshot-viewer header .right {
     display: flex !important;
