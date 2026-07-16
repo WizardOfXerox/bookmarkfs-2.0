@@ -3084,14 +3084,16 @@ export function handleZip(bytes) {
 
     function ensureUI() {
         const center = document.querySelector("center") || document.body;
+        const urlParams = new URLSearchParams(window.location.search);
+        const isStartupTwofa = urlParams.get("panel") === "twofa";
 
         if (!qs("#panel-nav-bar")) {
             const nav = document.createElement("div");
             nav.id = "panel-nav-bar";
             nav.innerHTML = `
                 <div class="nav-links">
-                    <a href="index.html" class="nav-btn active" data-panel="files">📁 Files</a>
-                    <a href="#" class="nav-btn" id="nav-2fa-btn" data-panel="twofa">🔐 2FA</a>
+                    <a href="index.html" class="nav-btn ${isStartupTwofa ? "" : "active"}" data-panel="files">📁 Files</a>
+                    <a href="#" class="nav-btn ${isStartupTwofa ? "active" : ""}" id="nav-2fa-btn" data-panel="twofa">🔐 2FA</a>
                     <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
                     <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
                     <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
@@ -3178,6 +3180,9 @@ export function handleZip(bytes) {
             const filesView = document.createElement("div");
             filesView.id = "files-panel-view";
             filesView.style.width = "100%";
+            if (isStartupTwofa) {
+                filesView.style.display = "none";
+            }
             center.appendChild(filesView);
 
             const table = qs("#table");
@@ -3259,7 +3264,7 @@ export function handleZip(bytes) {
             const bar = document.createElement("div");
             bar.id = "controls-bar";
             bar.style.margin = "12px 0";
-            bar.style.display = "flex";
+            bar.style.display = isStartupTwofa ? "none" : "flex";
             bar.style.gap = "8px";
             bar.style.flexWrap = "wrap";
             bar.style.justifyContent = "center";
