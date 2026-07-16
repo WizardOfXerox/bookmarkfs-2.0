@@ -820,6 +820,7 @@ body.screenshot-viewer header {
 }
 body.screenshot-viewer .history-title-container {
     display: flex !important;
+    flex-wrap: wrap !important;
     justify-content: space-between !important;
     align-items: center !important;
     padding-top: 16px !important;
@@ -828,6 +829,11 @@ body.screenshot-viewer .history-title-container {
 body.screenshot-viewer .history-title-container .h2-wrap {
     border-bottom: none !important;
     padding-bottom: 0 !important;
+}
+body.screenshot-viewer .history-title-container .controls {
+    width: 100% !important;
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
 }
 .header-card-buttons {
     display: flex !important;
@@ -841,6 +847,16 @@ body.screenshot-viewer .history-title-container .h2-wrap {
     display: block !important;
     margin: 0 !important;
     padding: 0 !important;
+}
+.header-card-buttons .global-btn,
+.header-card-buttons .img-btn-editor,
+.header-card-buttons .img-btn {
+    display: none !important;
+}
+.header-card-buttons .global-btn.show,
+.header-card-buttons .img-btn-editor.show,
+.header-card-buttons .img-btn.show {
+    display: block !important;
 }
 .header-card-buttons .btn {
     width: 32px !important;
