@@ -2201,6 +2201,16 @@ export function handleZip(bytes) {
             otpArea.appendChild(timerEl);
             otpArea.appendChild(copyBtn);
             
+            const actionsRow = document.createElement("div");
+            actionsRow.style.display = "flex";
+            actionsRow.style.gap = "8px";
+            actionsRow.style.flexWrap = "wrap";
+            actionsRow.style.width = "100%";
+            actionsRow.style.marginTop = "8px";
+            actionsRow.style.borderTop = "1px solid var(--border)";
+            actionsRow.style.paddingTop = "8px";
+            actionsRow.style.alignItems = "center";
+
             const editBtn = document.createElement("button");
             editBtn.className = "button";
             editBtn.textContent = "📝 Edit";
@@ -2224,7 +2234,7 @@ export function handleZip(bytes) {
                     }
                 }, profile);
             };
-            otpArea.appendChild(editBtn);
+            actionsRow.appendChild(editBtn);
 
             const exportQrBtn = document.createElement("button");
             exportQrBtn.className = "button";
@@ -2248,7 +2258,7 @@ export function handleZip(bytes) {
                     alert("Failed to generate QR Code: " + err.message);
                 }
             };
-            otpArea.appendChild(exportQrBtn);
+            actionsRow.appendChild(exportQrBtn);
             
             let recoveryBtn = null;
             let recoverySection = null;
@@ -2258,7 +2268,7 @@ export function handleZip(bytes) {
                 recoveryBtn.textContent = "🔑 Recovery Codes";
                 recoveryBtn.style.padding = "4px 10px";
                 recoveryBtn.style.fontSize = "12px";
-                otpArea.appendChild(recoveryBtn);
+                actionsRow.appendChild(recoveryBtn);
 
                 recoverySection = document.createElement("div");
                 recoverySection.style.display = "none";
@@ -2355,12 +2365,14 @@ export function handleZip(bytes) {
                 };
             }
 
-            otpArea.appendChild(delBtn);
+            delBtn.style.marginLeft = "auto";
+            actionsRow.appendChild(delBtn);
 
             headerRow.appendChild(info);
             headerRow.appendChild(otpArea);
             
             row.appendChild(headerRow);
+            row.appendChild(actionsRow);
             if (recoverySection) {
                 row.appendChild(recoverySection);
             }
