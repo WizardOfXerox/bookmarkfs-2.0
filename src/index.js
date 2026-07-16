@@ -1727,6 +1727,7 @@ export function handleZip(bytes) {
 
     function showQRModal(label, qrDataUrl, rawUrl) {
         const modal = document.createElement("div");
+        modal.className = "twofa-modal";
         modal.style.position = "fixed";
         modal.style.inset = "0";
         modal.style.background = "rgba(10, 10, 10, 0.85)";
@@ -1737,6 +1738,7 @@ export function handleZip(bytes) {
         modal.style.zIndex = "100000";
 
         const box = document.createElement("div");
+        box.className = "twofa-modal-box";
         box.style.background = "#18181b";
         box.style.border = "1px solid #27272a";
         box.style.color = "#f4f4f5";
@@ -1788,6 +1790,7 @@ export function handleZip(bytes) {
     function showAdd2FAParametersModal(callback, editProfile = null) {
         const modal = document.createElement("div");
         modal.id = "add-twofa-modal";
+        modal.className = "twofa-modal";
         modal.style.position = "fixed";
         modal.style.inset = "0";
         modal.style.background = "rgba(10, 10, 10, 0.85)";
@@ -1798,6 +1801,7 @@ export function handleZip(bytes) {
         modal.style.zIndex = "100000";
 
         const box = document.createElement("div");
+        box.className = "twofa-modal-box";
         box.style.background = "#18181b";
         box.style.border = "1px solid #27272a";
         box.style.color = "#f4f4f5";
@@ -6515,6 +6519,35 @@ export function handleZip(bytes) {
       body.light-mode #preview-modal th {
           border-bottom-color: #d1d5db !important;
           color: #059669 !important;
+      }
+
+      /* 2FA modals in light mode */
+      body.light-mode .twofa-modal {
+          background: rgba(200, 200, 200, 0.7) !important;
+      }
+      body.light-mode .twofa-modal-box {
+          background: #ffffff !important;
+          border-color: #d1d5db !important;
+          color: #1f2937 !important;
+          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15) !important;
+      }
+      body.light-mode .twofa-modal-box h3 {
+          color: var(--accent) !important;
+      }
+      body.light-mode .twofa-modal-box label {
+          color: #6b7280 !important;
+      }
+      body.light-mode .twofa-modal-box input[type="text"],
+      body.light-mode .twofa-modal-box textarea {
+          background: #f9fafb !important;
+          border-color: #d1d5db !important;
+          color: #1f2937 !important;
+      }
+      body.light-mode .twofa-modal-box p {
+          color: #6b7280 !important;
+      }
+      body.light-mode .twofa-modal-box div[style*="font-weight: 600"] {
+          color: #1f2937 !important;
       }
     `;
         const s = document.createElement("style");
