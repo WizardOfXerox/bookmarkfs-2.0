@@ -9,4 +9,6 @@ bundle.js
 bundle.js.map
 test.js
 
-unused/
+unused/
+*.pem
+*.crx
