@@ -816,71 +816,68 @@ body.screenshot-viewer, body.screenshot-editor {
     min-width: 0 !important;
 }
 body.screenshot-viewer header {
-    position: relative !important;
-    top: 0 !important;
-    min-width: 0 !important;
-    max-width: 980px !important;
-    margin: 0 auto !important;
-    width: 100% !important;
-    height: 50px !important;
-    line-height: 50px !important;
-    padding: 0 8px !important;
+    display: none !important;
+}
+body.screenshot-viewer .history-title-container {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    box-sizing: border-box !important;
-    background: transparent !important;
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+}
+body.screenshot-viewer .history-title-container .h2-wrap {
     border-bottom: none !important;
-    box-shadow: none !important;
+    padding-bottom: 0 !important;
 }
-body.screenshot-viewer header h1 {
+.header-card-buttons {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    border-left: 1px solid var(--border) !important;
+    padding-left: 16px !important;
+    height: 32px !important;
+}
+.header-card-buttons #btn-editor-wrap {
     display: block !important;
-    font-size: 18px !important;
-    line-height: 50px !important;
     margin: 0 !important;
+    padding: 0 !important;
 }
-@media (max-width: 600px) {
-    body.screenshot-viewer header h1 {
-        display: none !important;
-    }
-}
-header .btn-editor {
-    background-image: url(images/icon-edit.svg) !important;
+.header-card-buttons .btn {
+    width: 32px !important;
+    height: 32px !important;
+    display: block !important;
+    background-size: 20px 20px !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    width: 55px !important;
-    height: 50px !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: pointer !important;
 }
-header .btn-editor .txt {
+.header-card-buttons #btn-editor {
+    background-image: url(images/icon-edit.svg) !important;
+}
+.header-card-buttons #btn-editor .txt {
     display: none !important;
 }
-body.light-mode header .btn-editor,
-body.light-mode header .btn-history,
-body.light-mode header .btn-settings,
-body.light-mode header .btn-trash,
-body.light-mode header .btn-download,
-body.light-mode header .btn-downloadpdf {
+.header-card-buttons #btn-history {
+    background-image: url(images/icon-files.svg) !important;
+}
+.header-card-buttons #btn-settings {
+    background-image: url(images/icon-settings.svg) !important;
+}
+body.light-mode .header-card-buttons .btn {
     filter: invert(1) brightness(0.2) !important;
 }
-body.screenshot-viewer header .right {
-    display: flex !important;
-    align-items: center !important;
-    gap: 4px !important;
+body.light-mode .header-card-buttons .btn:hover {
+    filter: invert(1) brightness(0.5) !important;
 }
-body.screenshot-viewer header .btn {
-    height: 50px !important;
-    margin-left: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+body:not(.light-mode) .header-card-buttons .btn {
+    filter: none !important;
 }
-body.screenshot-viewer #btn-editor-wrap {
-    display: flex !important;
-    align-items: center !important;
-}
-body.screenshot-viewer header .btn-editor .txt {
-    height: 32px !important;
-    line-height: 32px !important;
+body:not(.light-mode) .header-card-buttons .btn:hover {
+    opacity: 0.8 !important;
 }
 body.screenshot-viewer #wrap {
     padding-top: 0 !important;
