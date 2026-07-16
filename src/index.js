@@ -6274,10 +6274,7 @@ export function handleZip(bytes) {
         ensureUI();
 
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get("panel") === "twofa") {
-            const btn = qs("#nav-2fa-btn");
-            if (btn) btn.click();
-        }
+        const startPanel = urlParams.get("panel");
 
         if (chrome.sidePanel && chrome.sidePanel.setOptions) {
             chrome.sidePanel.setOptions({ path: "dist/index.html" }).catch(() => {});
@@ -6346,7 +6343,19 @@ export function handleZip(bytes) {
         setupDragDrop();
 
         // initial render
-        await loadFilesToTable(true);
+        if (startPanel === "twofa") {
+            const root = await fsRoot();
+            const rootChildren = await chrome.bookmarks.getChildren(root.id);
+            const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
+                .map(c => FileObj(c));
+            cachedMetas = await Promise.all(files.map(async f => {
+                try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
+            }));
+            const btn = qs("#nav-2fa-btn");
+            if (btn) btn.click();
+        } else {
+            await loadFilesToTable(true);
+        }
         applySettings(); // apply saved settings immediately
         runAutoBackup();
 
