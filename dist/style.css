@@ -1407,7 +1407,13 @@ body.light-mode .dropdown-content .nav-btn.active {
    ========================================================================== */
 @media (max-width: 900px) {
     /* Reset screenshot min-width constraints in sidebar mode */
-    body, html, header, #content {
+    html, header, #content {
+        min-width: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 0 !important;
+    }
+    body {
         min-width: 0 !important;
         width: 100% !important;
         padding: 8px !important;
