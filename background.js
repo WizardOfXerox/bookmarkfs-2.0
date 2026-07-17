@@ -400,6 +400,9 @@ async function restoreLatestSessionOnStartup() {
             return;
         }
 
+        // Delay execution slightly on startup to let Chrome initialize windows
+        await new Promise(resolve => setTimeout(resolve, 1200));
+
         console.log("Auto-restore is enabled. Querying bookmarks for latest session...");
         const root = await fsRoot();
         const tree = await chrome.bookmarks.getSubTree(root.id);
@@ -482,29 +485,62 @@ async function restoreLatestSessionOnStartup() {
             // Guard to sync with sessions.js tab load timestamp
             chrome.storage.local.set({ last_auto_restore_timestamp: Date.now() });
 
+            // Robust window helper to query or create
             let windowId = null;
             try {
-                const win = await chrome.windows.getCurrent();
-                windowId = win.id;
-            } catch (winErr) {
+                const win = await chrome.windows.getLastFocused();
+                if (win && win.id && win.id !== chrome.windows.WINDOW_ID_NONE) {
+                    windowId = win.id;
+                }
+            } catch (e) {}
+
+            if (!windowId) {
                 try {
-                    const allWins = await chrome.windows.getAll();
-                    if (allWins.length > 0) {
-                        windowId = allWins[0].id;
-                    } else {
-                        const newWin = await chrome.windows.create();
-                        windowId = newWin.id;
+                    const wins = await chrome.windows.getAll();
+                    if (wins && wins.length > 0) {
+                        windowId = wins[0].id;
                     }
-                } catch (winErr2) {
-                    console.error("Failed to query or create window for session restore", winErr2);
+                } catch (e) {}
+            }
+
+            if (!windowId) {
+                try {
+                    const newWin = await chrome.windows.create({ focused: true });
+                    windowId = newWin.id;
+                } catch (e) {
+                    console.error("Failed to create window on startup", e);
                 }
             }
 
+            // Reuse initial blank tab if one exists
+            let isFirstTab = true;
+            let initialTabs = [];
+            try {
+                if (windowId !== null) {
+                    initialTabs = await chrome.tabs.query({ windowId });
+                }
+            } catch (e) {}
+
             for (const t of latest.tabs) {
                 if (t.url) {
-                    const opts = { url: t.url, active: false };
-                    if (windowId !== null) opts.windowId = windowId;
-                    await chrome.tabs.create(opts);
+                    if (isFirstTab && initialTabs.length === 1 && 
+                        (initialTabs[0].url === "chrome://newtab/" || 
+                         initialTabs[0].url === "about:blank" || 
+                         initialTabs[0].url.startsWith("chrome://"))) {
+                        try {
+                            await chrome.tabs.update(initialTabs[0].id, { url: t.url });
+                        } catch (e) {
+                            // Fallback create
+                            const opts = { url: t.url, active: false };
+                            if (windowId !== null) opts.windowId = windowId;
+                            await chrome.tabs.create(opts);
+                        }
+                        isFirstTab = false;
+                    } else {
+                        const opts = { url: t.url, active: false };
+                        if (windowId !== null) opts.windowId = windowId;
+                        await chrome.tabs.create(opts);
+                    }
                 }
             }
             console.log(`Auto-restored ${latest.tabs.length} tabs on browser startup.`);

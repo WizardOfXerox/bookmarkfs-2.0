@@ -31,7 +31,14 @@
     const btnRestore = document.getElementById("btn-restore-all");
     const btnWin = document.getElementById("btn-open-win");
     const btnGroup = document.getElementById("btn-open-group");
+    const btnAppend = document.getElementById("btn-append-tab");
     const btnDelete = document.getElementById("btn-delete-session");
+    const btnRename = document.getElementById("btn-rename-session");
+    
+    const searchInput = document.getElementById("workspace-search-input");
+    const btnExport = document.getElementById("btn-export-all-sessions");
+    const btnImport = document.getElementById("btn-import-sessions");
+    const importFileInput = document.getElementById("import-sessions-file");
 
     let savedSessions = []; // list of session files { id, title, meta, tabs }
     let selectedSessionId = null;
@@ -300,7 +307,15 @@
             }
 
             // Render workspaces items
+            const query = (searchInput ? searchInput.value : "").trim().toLowerCase();
             savedSessions.forEach(session => {
+                const matchesTitle = session.title.toLowerCase().includes(query);
+                const matchesTabs = session.tabs.some(t => 
+                    (t.title && t.title.toLowerCase().includes(query)) || 
+                    (t.url && t.url.toLowerCase().includes(query))
+                );
+                if (query && !matchesTitle && !matchesTabs) return;
+
                 const item = document.createElement("div");
                 item.className = `workspace-item ${session.id === selectedSessionId ? 'active' : ''}`;
                 
@@ -370,12 +385,13 @@
 
     function renderEmptyWorkspaceDetails() {
         if (selectedTitle) selectedTitle.textContent = "Select a Workspace";
+        if (btnRename) btnRename.style.display = "none";
         if (tabsContainer) tabsContainer.innerHTML = "<p style='color:var(--text-secondary);margin:40px auto;'>No saved workspaces available. Take a snapshot to create one!</p>";
         setToolbarState(false);
     }
 
     function setToolbarState(enabled) {
-        const btns = [btnRestore, btnWin, btnGroup, btnDelete];
+        const btns = [btnRestore, btnWin, btnGroup, btnAppend, btnDelete];
         btns.forEach(b => {
             if (b) b.disabled = !enabled;
         });
@@ -390,6 +406,7 @@
 
         setToolbarState(true);
         if (selectedTitle) selectedTitle.textContent = session.title;
+        if (btnRename) btnRename.style.display = "inline-block";
         if (!tabsContainer) return;
         tabsContainer.innerHTML = "";
 
@@ -508,6 +525,125 @@
                 selectedSessionId = null;
                 refreshWorkspaces();
             }
+        };
+    }
+
+    if (btnRename) {
+        btnRename.onclick = async () => {
+            const session = savedSessions.find(s => s.id === selectedSessionId);
+            if (!session) return;
+            const newName = prompt(`Rename workspace "${session.title}" to:`, session.title);
+            if (newName && newName.trim() && newName.trim() !== session.title) {
+                try {
+                    await chrome.bookmarks.update(session.id, { title: newName.trim() });
+                    // Keep the selection after reload
+                    await refreshWorkspaces();
+                } catch (err) {
+                    alert("Rename failed: " + err.message);
+                }
+            }
+        };
+    }
+
+    if (btnAppend) {
+        btnAppend.onclick = async () => {
+            const session = savedSessions.find(s => s.id === selectedSessionId);
+            if (!session) return;
+            try {
+                const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (activeTabs && activeTabs.length > 0) {
+                    const tab = activeTabs[0];
+                    const newTab = { title: tab.title, url: tab.url };
+                    
+                    if (session.tabs.some(t => t.url === newTab.url)) {
+                        if (!confirm(`Tab "${newTab.title}" already exists in this session. Append anyway?`)) {
+                            return;
+                        }
+                    }
+                    
+                    session.tabs.push(newTab);
+                    await updateSessionData(session.id, session.tabs);
+                    await refreshWorkspaces();
+                    alert(`Appended "${newTab.title}" to "${session.title}"!`);
+                } else {
+                    alert("No active tab found in the current window.");
+                }
+            } catch (err) {
+                alert("Failed to append tab: " + err.message);
+            }
+        };
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+            // Re-render workspaces with the updated query filter
+            refreshWorkspaces();
+        });
+    }
+
+    if (btnExport) {
+        btnExport.onclick = async () => {
+            try {
+                if (savedSessions.length === 0) {
+                    alert("No saved workspaces to backup.");
+                    return;
+                }
+                const exportData = savedSessions.map(s => ({
+                    title: s.title,
+                    tabs: s.tabs,
+                    dateISO: s.meta.dateISO
+                }));
+                const json = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([json], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                const dateStr = new Date().toISOString().slice(0, 10);
+                a.download = `bookmarkfs-sessions-backup-${dateStr}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                alert("Export backup failed: " + err.message);
+            }
+        };
+    }
+
+    if (btnImport) {
+        btnImport.onclick = () => {
+            if (importFileInput) importFileInput.click();
+        };
+    }
+
+    if (importFileInput) {
+        importFileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    if (!Array.isArray(data)) {
+                        throw new Error("Backup file must contain an array of sessions.");
+                    }
+                    
+                    let importedCount = 0;
+                    for (const session of data) {
+                        if (session.title && Array.isArray(session.tabs)) {
+                            const bytes = new TextEncoder().encode(JSON.stringify(session.tabs, null, 2));
+                            await storeSession(session.title, bytes);
+                            importedCount++;
+                        }
+                    }
+                    alert(`Successfully imported ${importedCount} workspaces!`);
+                    refreshWorkspaces();
+                } catch (err) {
+                    alert("Failed to import backup: " + err.message);
+                }
+                importFileInput.value = "";
+            };
+            reader.readAsText(file);
         };
     }
 

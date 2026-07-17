@@ -369,19 +369,29 @@
         <!-- Sidebar Workspace List -->
         <div class="workspace-sidebar">
             <h3 class="sidebar-title">🗂️ Saved Workspaces</h3>
+            <input type="text" id="workspace-search-input" placeholder="🔍 Search workspaces..." style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: var(--text-primary); font-size: 13px; box-sizing: border-box; margin-bottom: 8px;">
             <div id="workspace-list-container" class="workspace-list">
                 <!-- Populated dynamically -->
+            </div>
+            <div style="margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
+                <button id="btn-export-all-sessions" class="button toolbar-btn" style="flex: 1; font-size: 11px; padding: 6px;" title="Export all workspaces to a JSON file">📥 Backup</button>
+                <button id="btn-import-sessions" class="button toolbar-btn" style="flex: 1; font-size: 11px; padding: 6px;" title="Import workspaces from a JSON backup">📤 Restore</button>
+                <input type="file" id="import-sessions-file" accept=".json" style="display: none;">
             </div>
         </div>
 
         <!-- Middle Active Selected Workspace Tabs -->
         <div class="workspace-main">
             <div class="main-header">
-                <h2 id="selected-workspace-title" class="selected-title">Select a Workspace</h2>
+                <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
+                    <h2 id="selected-workspace-title" class="selected-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">Select a Workspace</h2>
+                    <button id="btn-rename-session" class="button toolbar-btn" style="padding: 4px 8px; font-size: 11px; background: transparent; border: 1px solid var(--border); display: none;" title="Rename Workspace">✏️ Rename</button>
+                </div>
                 <div class="workspace-toolbar">
                     <button id="btn-restore-all" class="button toolbar-btn">🚀 Restore</button>
                     <button id="btn-open-win" class="button toolbar-btn">🗔 Win</button>
                     <button id="btn-open-group" class="button toolbar-btn">🏷️ Group</button>
+                    <button id="btn-append-tab" class="button toolbar-btn">➕ Append Tab</button>
                     <button id="btn-delete-session" class="button toolbar-btn" style="background-color:#7f1d1d;">🗑️ Delete</button>
                 </div>
             </div>
