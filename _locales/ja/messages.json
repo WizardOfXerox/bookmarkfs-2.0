@@ -12,8 +12,8 @@
     "description": "No thanks"
   },
   "goPremiumHeader": {
-    "message": "Full Page Screen Capture Premiumで、あなたのスクリーンショットを一つ上のレベルへ",
-    "description": "Take your screenshots to the next level with Full Page Screen Capture Premium"
+    "message": "BookmarkFS Premiumで、あなたのスクリーンショットを一つ上のレベルへ",
+    "description": "Take your screenshots to the next level with BookmarkFS Premium"
   },
   "goPremiumSubHeader": {
     "message": "アプリケーション内の進化したスクリーンショット編集・注記機能で、あなたの業務フローをスピードアップしましょう",
@@ -135,9 +135,9 @@
     "message": "[色]",
     "description": "[aws:2019-09-22 22:35:15] Color"
   },
-  "_ConfigureyoursettingsfortheFullPageScreenCaptureextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
+  "_ConfigureyoursettingsfortheBookmarkFSextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
     "message": "全画面スクリーンキャプチャ拡張機能の設定を構成します。 今後のアップデートにご期待ください。 ベータ版の設定は今後変更される可能性があります。",
-    "description": "[aws:2019-09-22 22:35:15] Configure your settings for the Full Page Screen Capture extension. Stay tuned for further updates. Beta settings may change in the future."
+    "description": "[aws:2019-09-22 22:35:15] Configure your settings for the BookmarkFS extension. Stay tuned for further updates. Beta settings may change in the future."
   },
   "_Continueediting": {
     "message": "編集を続行",
@@ -587,9 +587,9 @@
     "message": "テキスト",
     "description": "[aws:2019-09-22 22:36:31] Text"
   },
-  "_ThankyouforsupportingFullPageScreenCapture": {
+  "_ThankyouforsupportingBookmarkFS": {
     "message": "フルページスクリーンキャプチャをサポートしていただきありがとうございます",
-    "description": "[aws:2019-09-22 22:36:32] Thank you for supporting Full Page Screen Capture"
+    "description": "[aws:2019-09-22 22:36:32] Thank you for supporting BookmarkFS"
   },
   "_Thebestandsafestwaytocaptureascreenshotofanentirewebpage": {
     "message": "ウェブページ全体のスクリーンショットをキャプチャするための最良かつ安全な方法。",
@@ -891,17 +891,13 @@
     "message": "このサイトは <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>内にコンテンツが埋め込まれているようです。",
     "description": "[aws:2019-09-23 19:22:01] This site appears to have embedded content within an <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>."
   },
-  "_ThistestversionhasexpiredPleasereachouttogetanupdateorswitchovertotheproperextensionintheahrefhttpschromegooglecomwebstoredetailfullpagescreencapturefdpohaocaechififmbbbbbknoalclaclhlenUStargetblankrelnoopenernoreferrerChromeWebStorea": {
-    "message": "このテストバージョンの有効期限が切れています。 <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome ウェブストア</a>でアップデートを入手するか、適切な拡張機能に切り替えるために連絡してください。",
-    "description": "[aws:2019-09-23 19:22:02] This test version has expired. Please reach out to get an update or switch over to the proper extension in the <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome Web Store</a>."
-  },
   "_WarningtheextensionisnotdesignedtohandleextremelylargecapturesItmightfailtocompleteacaptureofthispage": {
     "message": "警告:拡張機能は、非常に大きなキャプチャを処理するように設計されていません。 このページのキャプチャを完了できない可能性があります。",
     "description": "[aws:2019-09-23 19:22:03] Warning: the extension is not designed to handle extremely large captures. It might fail to complete a capture of this page."
   },
-  "_WelcometotheFullPageScreenCaptureextension": {
+  "_WelcometotheBookmarkFSextension": {
     "message": "全画面スクリーンキャプチャ拡張機能へようこそ。",
-    "description": "[aws:2019-09-23 19:22:04] Welcome to the Full Page Screen Capture extension."
+    "description": "[aws:2019-09-23 19:22:04] Welcome to the BookmarkFS extension."
   },
   "_YoucanrunthisonanywebpageexceptforoneswherethebrowserrestrictsextensionsfromrunningscriptsThisincludestheChromewebstorebrowsersettingspagesandotherextensions": {
     "message": "これは、ブラウザが拡張機能がスクリプトの実行を制限しているものを除いて、任意のWebページで実行できます。 これには、Chrome ウェブストア、ブラウザの設定ページ、その他の拡張機能が含まれます。",

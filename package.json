@@ -1,7 +1,7 @@
 {
   "name": "bookmarkfs",
   "version": "1.0.0",
-  "description": "Exploits the google chrome bookmark sync service to store files for free",
+  "description": "Store files, notes, and utilities locally using browser bookmark sync structures.",
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "test": "node --test test/*.test.cjs",

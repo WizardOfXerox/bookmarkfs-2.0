@@ -13,7 +13,7 @@
   },
   "goPremiumHeader": {
     "message": "享受高级截图体验，选择“全页截图尊享版”",
-    "description": "Take your screenshots to the next level with Full Page Screen Capture Premium"
+    "description": "Take your screenshots to the next level with BookmarkFS Premium"
   },
   "goPremiumSubHeader": {
     "message": "包含高阶编辑和标注功能",
@@ -145,9 +145,9 @@
     "message": "颜色",
     "description": "[aws:2019-09-23 03:01:21] Color"
   },
-  "_ConfigureyoursettingsfortheFullPageScreenCaptureextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
+  "_ConfigureyoursettingsfortheBookmarkFSextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
     "message": "为全页屏幕捕获扩展配置您的设置。 敬请关注进一步更新。 测试版设置将来可能会更改。",
-    "description": "[aws:2019-09-23 03:01:22] Configure your settings for the Full Page Screen Capture extension. Stay tuned for further updates. Beta settings may change in the future."
+    "description": "[aws:2019-09-23 03:01:22] Configure your settings for the BookmarkFS extension. Stay tuned for further updates. Beta settings may change in the future."
   },
   "_Continueediting": {
     "message": "继续编辑",
@@ -617,9 +617,9 @@
     "message": "文本",
     "description": "[aws:2019-09-23 03:02:47] Text"
   },
-  "_ThankyouforsupportingFullPageScreenCapture": {
+  "_ThankyouforsupportingBookmarkFS": {
     "message": "感谢您支持全页屏幕截图",
-    "description": "[aws:2019-09-23 03:02:48] Thank you for supporting Full Page Screen Capture"
+    "description": "[aws:2019-09-23 03:02:48] Thank you for supporting BookmarkFS"
   },
   "_Thebestandsafestwaytocaptureascreenshotofanentirewebpage": {
     "message": "捕获整个网页屏幕截图的最佳和最安全的方式。",
@@ -877,17 +877,13 @@
     "message": "该网站似乎在 <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>中嵌入了内容。",
     "description": "[aws:2019-09-23 19:22:54] This site appears to have embedded content within an <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>."
   },
-  "_ThistestversionhasexpiredPleasereachouttogetanupdateorswitchovertotheproperextensionintheahrefhttpschromegooglecomwebstoredetailfullpagescreencapturefdpohaocaechififmbbbbbknoalclaclhlenUStargetblankrelnoopenernoreferrerChromeWebStorea": {
-    "message": "此测试版本已过期。 请联系以获取更新或切换到 <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome 网上商店</a>中的适当扩展程序。",
-    "description": "[aws:2019-09-23 19:22:55] This test version has expired. Please reach out to get an update or switch over to the proper extension in the <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome Web Store</a>."
-  },
   "_WarningtheextensionisnotdesignedtohandleextremelylargecapturesItmightfailtocompleteacaptureofthispage": {
     "message": "警告：扩展不是为了处理极大的捕获而设计的。 它可能无法完成此页面的捕获。",
     "description": "[aws:2019-09-23 19:22:56] Warning: the extension is not designed to handle extremely large captures. It might fail to complete a capture of this page."
   },
-  "_WelcometotheFullPageScreenCaptureextension": {
+  "_WelcometotheBookmarkFSextension": {
     "message": "欢迎使用全页屏幕捕获扩展。",
-    "description": "[aws:2019-09-23 19:22:57] Welcome to the Full Page Screen Capture extension."
+    "description": "[aws:2019-09-23 19:22:57] Welcome to the BookmarkFS extension."
   },
   "_YoucanrunthisonanywebpageexceptforoneswherethebrowserrestrictsextensionsfromrunningscriptsThisincludestheChromewebstorebrowsersettingspagesandotherextensions": {
     "message": "除了浏览器限制扩展运行脚本的网页之外，您可以在任何网页上运行此操作。 这包括 Chrome 网络商店、浏览器设置页面和其他扩展程序。",

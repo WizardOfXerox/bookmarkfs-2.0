@@ -133,9 +133,9 @@
     "message": "Couleur",
     "description": "[aws:2019-09-23 19:30:42] Color"
   },
-  "_ConfigureyoursettingsfortheFullPageScreenCaptureextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
+  "_ConfigureyoursettingsfortheBookmarkFSextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
     "message": "Configurez vos paramètres pour l'extension Capture d'écran pleine page. Restez à l'affût pour d'autres mises à jour. Les paramètres bêta peuvent changer à l'avenir.",
-    "description": "[aws:2019-09-23 19:30:43] Configure your settings for the Full Page Screen Capture extension. Stay tuned for further updates. Beta settings may change in the future."
+    "description": "[aws:2019-09-23 19:30:43] Configure your settings for the BookmarkFS extension. Stay tuned for further updates. Beta settings may change in the future."
   },
   "_Continueediting": {
     "message": "Poursuivre l'édition",
@@ -653,9 +653,9 @@
     "message": "Texte",
     "description": "[aws:2019-09-23 19:32:29] Text"
   },
-  "_ThankyouforsupportingFullPageScreenCapture": {
+  "_ThankyouforsupportingBookmarkFS": {
     "message": "Merci d'avoir pris en charge la capture d'écran pleine page",
-    "description": "[aws:2019-09-23 19:32:31] Thank you for supporting Full Page Screen Capture"
+    "description": "[aws:2019-09-23 19:32:31] Thank you for supporting BookmarkFS"
   },
   "_Thebestandsafestwaytocaptureascreenshotofanentirewebpage": {
     "message": "Le moyen le plus sûr et le plus sûr de capturer une capture d'écran d'une page web entière.",
@@ -727,10 +727,6 @@
     "message": "Ce site semble avoir du contenu incorporé dans un <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>.",
     "description": "[aws:2019-09-23 19:32:45] This site appears to have embedded content within an <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>."
   },
-  "_ThistestversionhasexpiredPleasereachouttogetanupdateorswitchovertotheproperextensionintheahrefhttpschromegooglecomwebstoredetailfullpagescreencapturefdpohaocaechififmbbbbbknoalclaclhlenUStargetblankrelnoopenernoreferrerChromeWebStorea": {
-    "message": "Cette version de test a expiré. Veuillez contacter pour obtenir une mise à jour ou passer à l'extension appropriée dans le <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome Web Store</a>.",
-    "description": "[aws:2019-09-23 19:32:46] This test version has expired. Please reach out to get an update or switch over to the proper extension in the <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome Web Store</a>."
-  },
   "_Togglecrop": {
     "message": "Basculer le recadrage",
     "description": "[aws:2019-09-23 19:32:46] Toggle crop"
@@ -795,9 +791,9 @@
     "message": "Bienvenue dans l'éditeur de page complète !",
     "description": "[aws:2019-09-23 19:32:58] Welcome to the Full Page Editor!"
   },
-  "_WelcometotheFullPageScreenCaptureextension": {
+  "_WelcometotheBookmarkFSextension": {
     "message": "Bienvenue dans l'extension Capture d'écran pleine page.",
-    "description": "[aws:2019-09-23 19:32:58] Welcome to the Full Page Screen Capture extension."
+    "description": "[aws:2019-09-23 19:32:58] Welcome to the BookmarkFS extension."
   },
   "_WelcometotheofficialFullPageEditor": {
     "message": "Bienvenue sur le Full Page Editor officiel !",

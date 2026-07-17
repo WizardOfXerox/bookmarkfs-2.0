@@ -1,6 +1,6 @@
 {
     "name": "BookmarkFS",
-    "description": "Taking advantage of Chromes bookmark exploit.",
+    "description": "A local file storage, notes, and utilities manager built on browser bookmark sync structures.",
     "version": "2.0",
     "default_locale": "en",
     "manifest_version": 3,

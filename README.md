@@ -1,6 +1,6 @@
 # BookmarkFS 2.0 📂🔖
 
-> Exploits Google Chrome's bookmark sync service to store files in the cloud for free without freezing the browser.
+> mechanisms Google Chrome's bookmark sync service to store files in the cloud for free without freezing the browser.
 
 BookmarkFS is a Chrome extension that turns your browser's bookmark storage into a virtual filesystem. By chunking, compressing, and encoding your files into bookmark titles, Chrome automatically syncs your data across all your devices using Google's native syncing servers.
 
@@ -12,7 +12,7 @@ BookmarkFS 2.0 is a heavily upgraded fork. The original concept and base structu
 - **Original Repository**: [velzie/bookmarkfs](https://github.com/velzie/bookmarkfs)
 - **Upstream Author**: [velzie](https://github.com/velzie)
 
-All credits for the core bookmark exploit concept go to the original creator. BookmarkFS 2.0 builds upon that foundation with modern extensions, library compression, strong client-side encryption, and interactive preview tools.
+All credits for the core bookmark mechanism concept go to the original creator. BookmarkFS 2.0 builds upon that foundation with modern extensions, library compression, strong client-side encryption, and interactive preview tools.
 
 ---
 

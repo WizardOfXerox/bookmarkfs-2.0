@@ -13,7 +13,7 @@
   },
   "goPremiumHeader": {
     "message": "Lleve sus capturas de pantalla al siguiente nivel con “Full Page Capture Premium”",
-    "description": "Take your screenshots to the next level with Full Page Screen Capture Premium"
+    "description": "Take your screenshots to the next level with BookmarkFS Premium"
   },
   "goPremiumSubHeader": {
     "message": "Incluyendo la opción de editar imágenes y añadir textos a sus capturas de pantalla.",
@@ -135,9 +135,9 @@
     "message": "Color",
     "description": "[aws:2019-09-22 20:27:42] Color"
   },
-  "_ConfigureyoursettingsfortheFullPageScreenCaptureextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
+  "_ConfigureyoursettingsfortheBookmarkFSextensionStaytunedforfurtherupdatesBetasettingsmaychangeinthefuture": {
     "message": "Configure los ajustes de la extensión Captura de pantalla de página completa. Estén atentos para más actualizaciones. La configuración de la beta puede cambiar en el futuro.",
-    "description": "[aws:2019-09-22 20:27:43] Configure your settings for the Full Page Screen Capture extension. Stay tuned for further updates. Beta settings may change in the future."
+    "description": "[aws:2019-09-22 20:27:43] Configure your settings for the BookmarkFS extension. Stay tuned for further updates. Beta settings may change in the future."
   },
   "_Continueediting": {
     "message": "Continuar editando",
@@ -587,9 +587,9 @@
     "message": "Texto",
     "description": "[aws:2019-09-22 20:29:00] Text"
   },
-  "_ThankyouforsupportingFullPageScreenCapture": {
+  "_ThankyouforsupportingBookmarkFS": {
     "message": "Gracias por apoyar la captura de pantalla de página completa",
-    "description": "[aws:2019-09-22 20:29:00] Thank you for supporting Full Page Screen Capture"
+    "description": "[aws:2019-09-22 20:29:00] Thank you for supporting BookmarkFS"
   },
   "_Thebestandsafestwaytocaptureascreenshotofanentirewebpage": {
     "message": "La mejor y más segura manera de capturar una captura de pantalla de una página web completa.",
@@ -891,17 +891,13 @@
     "message": "Este sitio parece tener contenido incrustado dentro de un <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>.",
     "description": "[aws:2019-09-23 18:50:32] This site appears to have embedded content within an <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe\">iframe</a>."
   },
-  "_ThistestversionhasexpiredPleasereachouttogetanupdateorswitchovertotheproperextensionintheahrefhttpschromegooglecomwebstoredetailfullpagescreencapturefdpohaocaechififmbbbbbknoalclaclhlenUStargetblankrelnoopenernoreferrerChromeWebStorea": {
-    "message": "Esta versión de prueba ha caducado. Ponte en contacto para obtener una actualización o cambia a la extensión adecuada en <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome Web Store</a>.",
-    "description": "[aws:2019-09-23 18:50:33] This test version has expired. Please reach out to get an update or switch over to the proper extension in the <a href=\"https://chrome.google.com/webstore/detail/full-page-screen-capture/fdpohaocaechififmbbbbbknoalclacl?hl=en-US\" target=\"_blank\" rel=\"noopener noreferrer\"> Chrome Web Store</a>."
-  },
   "_WarningtheextensionisnotdesignedtohandleextremelylargecapturesItmightfailtocompleteacaptureofthispage": {
     "message": "Advertencia: la extensión no está diseñada para manejar capturas extremadamente grandes. Es posible que no se complete una captura de esta página.",
     "description": "[aws:2019-09-23 18:50:35] Warning: the extension is not designed to handle extremely large captures. It might fail to complete a capture of this page."
   },
-  "_WelcometotheFullPageScreenCaptureextension": {
+  "_WelcometotheBookmarkFSextension": {
     "message": "Bienvenido a la extensión de captura de pantalla de página completa.",
-    "description": "[aws:2019-09-23 18:50:36] Welcome to the Full Page Screen Capture extension."
+    "description": "[aws:2019-09-23 18:50:36] Welcome to the BookmarkFS extension."
   },
   "_YoucanrunthisonanywebpageexceptforoneswherethebrowserrestrictsextensionsfromrunningscriptsThisincludestheChromewebstorebrowsersettingspagesandotherextensions": {
     "message": "Puede ejecutar esto en cualquier página web, excepto aquellas en las que el navegador restringe que las extensiones ejecuten scripts. Esto incluye la tienda web de Chrome, las páginas de configuración del navegador y otras extensiones.",

@@ -5805,9 +5805,9 @@ var t =
           store: "Chrome Web Store",
           store_short: "web store",
           store_url:
-            "https://chromewebstore.google.com/detail/bookmarkfs-full-page-scre/fdpohaocaechififmbbbbbknoalclacl",
+            "https://chromewebstore.google.com/detail/bookmarkfs-full-page-scre/placeholder-extension-id",
           store_reviews_url:
-            "https://chromewebstore.google.com/detail/bookmarkfs-full-page-scre/fdpohaocaechififmbbbbbknoalclacl/reviews",
+            "https://chromewebstore.google.com/detail/bookmarkfs-full-page-scre/placeholder-extension-id/reviews",
           browser_protocol: "chrome://",
         },
         [i]: {
