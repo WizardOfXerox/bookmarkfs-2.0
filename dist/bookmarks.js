@@ -716,13 +716,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const faviconUrl = `https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=32`;
             const displayUrl = new URL(bookmark.url).hostname;
+            const dateAddedStr = bookmark.dateAdded ? new Date(bookmark.dateAdded).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }) : '';
+            const metaStr = dateAddedStr ? `${displayUrl} • Added ${dateAddedStr}` : displayUrl;
             
             return `
                 <a class="bookmark" href="${bookmark.url}" target="_blank" data-bookmark-id="${bookmark.id}" draggable="true">
                                         <img src="${faviconUrl}" alt="">
                     <div class="bookmark-content">
                         <h3>${escapeHtml(bookmark.title) || 'Untitled'}</h3>
-                        <div class="url">${displayUrl}</div>
+                        <div class="url">${metaStr}</div>
                     </div>
                     <div class="bookmark-actions">
                         <button class="bookmark-action edit" title="Edit bookmark">
