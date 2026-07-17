@@ -14,28 +14,28 @@
     <script src="/screenshot-theme.js"></script>
     <div id="panel-nav-bar">
         <div class="nav-links">
-            <a href="index.html" class="nav-btn">📁 <span>Files</span></a>
-            <a href="bookmarks.html" class="nav-btn active">🔖 <span>Bookmarks</span></a>
-            <a href="sessions.html" class="nav-btn">🪟 <span>Sessions</span></a>
-            <a href="web.html" class="nav-btn">🌐 <span>Web</span></a>
-            <a href="notes.html" class="nav-btn">📝 <span>Notes</span></a>
-            <a href="/dist/capture.html" class="nav-btn">📸 <span>Screenshot</span></a>
-            <a href="index.html?panel=twofa" class="nav-btn">🔐 <span>2FA</span></a>
+            <a href="index.html" class="nav-btn" title="Files">📁 <span>Files</span></a>
+            <a href="bookmarks.html" class="nav-btn active" title="Bookmarks">🔖 <span>Bookmarks</span></a>
+            <a href="sessions.html" class="nav-btn" title="Sessions">🪟 <span>Sessions</span></a>
+            <a href="web.html" class="nav-btn" title="Web">🌐 <span>Web</span></a>
+            <a href="notes.html" class="nav-btn" title="Notes">📝 <span>Notes</span></a>
+            <a href="/dist/capture.html" class="nav-btn" title="Screenshot">📸 <span>Screenshot</span></a>
+            <a href="index.html?panel=twofa" class="nav-btn" title="2FA Keys">🔐 <span>2FA</span></a>
             
             <div class="nav-dropdown" style="position: relative; display: inline-block;">
-                <button class="nav-btn dropdown-trigger">🛠️ <span>Tools ▾</span></button>
+                <button class="nav-btn dropdown-trigger" title="Tools">🛠️ <span>Tools ▾</span></button>
                 <div class="dropdown-content">
-                    <a href="index.html?panel=qrscanner" class="nav-btn">🔍 <span>QR Scanner</span></a>
-                    <a href="index.html?panel=passwords" class="nav-btn">🔑 <span>Passwords</span></a>
-                    <a href="ua.html" class="nav-btn">🕵️ <span>UA</span></a>
-                    <a href="index.html?panel=calc" class="nav-btn">🧮 <span>Calc</span></a>
-                    <a href="index.html?panel=clock" class="nav-btn">⏰ <span>Clock</span></a>
-                    <a href="index.html?panel=regex" class="nav-btn">🔍 <span>Regex</span></a>
-                    <a href="index.html?panel=color" class="nav-btn">🎨 <span>Color</span></a>
-                    <a href="index.html?panel=api" class="nav-btn">📦 <span>API</span></a>
-                    <a href="index.html?panel=privacy" class="nav-btn">🛡️ <span>Privacy</span></a>
-                    <a href="index.html?panel=rss" class="nav-btn">📡 <span>RSS</span></a>
-                    <a href="index.html?panel=timetracker" class="nav-btn">📊 <span>Time</span></a>
+                    <a href="index.html?panel=qrscanner" class="nav-btn" title="QR Scanner">🔍 <span>QR Scanner</span></a>
+                    <a href="index.html?panel=passwords" class="nav-btn" title="Passwords">🔑 <span>Passwords</span></a>
+                    <a href="ua.html" class="nav-btn" title="User Agent">🕵️ <span>UA</span></a>
+                    <a href="index.html?panel=calc" class="nav-btn" title="Calculator">🧮 <span>Calc</span></a>
+                    <a href="index.html?panel=clock" class="nav-btn" title="Clock">⏰ <span>Clock</span></a>
+                    <a href="index.html?panel=regex" class="nav-btn" title="Regex">🔍 <span>Regex</span></a>
+                    <a href="index.html?panel=color" class="nav-btn" title="Color">🎨 <span>Color</span></a>
+                    <a href="index.html?panel=api" class="nav-btn" title="API">📦 <span>API</span></a>
+                    <a href="index.html?panel=privacy" class="nav-btn" title="Privacy">🛡️ <span>Privacy</span></a>
+                    <a href="index.html?panel=rss" class="nav-btn" title="RSS">📡 <span>RSS</span></a>
+                    <a href="index.html?panel=timetracker" class="nav-btn" title="Time">📊 <span>Time</span></a>
                 </div>
             </div>
         </div>
@@ -56,7 +56,7 @@
                     <path fill-rule="evenodd" clip-rule="evenodd" d="M8.37537 2.13333H7.62471L7.19471 3.85199L6.76337 3.98533C6.51203 4.06278 6.26852 4.16367 6.03604 4.28666L5.63671 4.49799L4.11671 3.58599L3.58604 4.11733L4.49804 5.63733L4.28671 6.03599C4.16348 6.26845 4.06237 6.51196 3.98471 6.76333L3.85204 7.19466L2.13337 7.62466V8.37533L3.85204 8.80533L3.98537 9.23666C4.06226 9.48911 4.16271 9.73155 4.28671 9.96399L4.49804 10.3633L3.58604 11.8833L4.11737 12.414L5.63737 11.502L6.03604 11.7133C6.26848 11.8369 6.51093 11.9376 6.76337 12.0153L7.19471 12.148L7.62471 13.8667H8.37537L8.80537 12.148L9.23671 12.0147C9.48805 11.9372 9.73157 11.8363 9.96404 11.7133L10.3634 11.502L11.8834 12.414L12.414 11.8827L11.502 10.3627L11.7134 9.96399C11.8369 9.73155 11.9376 9.48911 12.0154 9.23666L12.148 8.80533L13.8667 8.37533V7.62466L12.148 7.19466L12.0147 6.76333C11.9373 6.51198 11.8364 6.26847 11.7134 6.03599L11.502 5.63666L12.414 4.11666L11.8827 3.58599L10.3627 4.49799L9.96404 4.28666C9.73159 4.16344 9.48807 4.06233 9.23671 3.98466L8.80537 3.85199L8.37537 2.13333ZM10.3387 3.57999L11.5607 2.84666C11.6881 2.77024 11.8374 2.73857 11.9849 2.75669C12.1324 2.7748 12.2696 2.84167 12.3747 2.94666L13.0534 3.62533C13.1584 3.73046 13.2252 3.86766 13.2433 4.01513C13.2615 4.16261 13.2298 4.31191 13.1534 4.43933L12.42 5.66133C12.5667 5.93688 12.6867 6.22577 12.78 6.52799L14.162 6.87399C14.3062 6.91011 14.4342 6.99336 14.5256 7.11052C14.617 7.22769 14.6667 7.37204 14.6667 7.52066V8.47933C14.6667 8.62795 14.617 8.7723 14.5256 8.88947C14.4342 9.00663 14.3062 9.08988 14.162 9.12599L12.78 9.47199C12.6867 9.77422 12.5667 10.0631 12.42 10.3387L13.1534 11.5607C13.2298 11.6881 13.2615 11.8374 13.2433 11.9849C13.2252 12.1323 13.1584 12.2695 13.0534 12.3747L12.3747 13.0533C12.2696 13.1583 12.1324 13.2252 11.9849 13.2433C11.8374 13.2614 11.6881 13.2298 11.5607 13.1533L10.3387 12.42C10.0632 12.5667 9.77426 12.6867 9.47204 12.78L9.12604 14.162C9.08993 14.3062 9.00667 14.4341 8.88951 14.5256C8.77235 14.617 8.62799 14.6667 8.47937 14.6667H7.52071C7.37209 14.6667 7.22773 14.617 7.11057 14.5256C6.99341 14.4341 6.91015 14.3062 6.87404 14.162L6.52804 12.78C6.2285 12.6874 5.93834 12.5669 5.66137 12.42L4.43937 13.1533C4.31195 13.2298 4.16265 13.2614 4.01518 13.2433C3.8677 13.2252 3.73051 13.1583 3.62537 13.0533L2.94671 12.3747C2.84171 12.2695 2.77485 12.1323 2.75673 11.9849C2.73861 11.8374 2.77028 11.6881 2.84671 11.5607L3.58004 10.3387C3.43313 10.0617 3.3126 9.77153 3.22004 9.47199L1.83804 9.12599C1.69399 9.08991 1.56611 9.00676 1.47468 8.88973C1.38326 8.7727 1.33353 8.6285 1.33337 8.47999V7.52133C1.33338 7.37271 1.38304 7.22835 1.47448 7.11119C1.56591 6.99403 1.69388 6.91078 1.83804 6.87466L3.22004 6.52866C3.31337 6.22644 3.43337 5.93755 3.58004 5.66199L2.84671 4.43999C2.77028 4.31257 2.73861 4.16327 2.75673 4.0158C2.77485 3.86832 2.84171 3.73113 2.94671 3.62599L3.62537 2.94666C3.73051 2.84167 3.8677 2.7748 4.01518 2.75669C4.16265 2.73857 4.31195 2.77024 4.43937 2.84666L5.66137 3.57999C5.93693 3.43333 6.22582 3.31333 6.52804 3.21999L6.87404 1.83799C6.91013 1.69394 6.99328 1.56606 7.11031 1.47464C7.22733 1.38321 7.37154 1.33348 7.52004 1.33333H8.47871C8.62733 1.33333 8.77168 1.383 8.88885 1.47443C9.00601 1.56587 9.08926 1.69383 9.12537 1.83799L9.47137 3.21999C9.7736 3.31333 10.0625 3.43333 10.338 3.57999H10.3387ZM8.00004 9.86666C8.49511 9.86666 8.96991 9.67 9.31997 9.31993C9.67004 8.96986 9.86671 8.49507 9.86671 7.99999C9.86671 7.50492 9.67004 7.03013 9.31997 6.68006C8.96991 6.32999 8.49511 6.13333 8.00004 6.13333C7.50497 6.13333 7.03018 6.32999 6.68011 6.68006C6.33004 7.03013 6.13337 7.50492 6.13337 7.99999C6.13337 8.49507 6.33004 8.96986 6.68011 9.31993C7.03018 9.67 7.50497 9.86666 8.00004 9.86666ZM8.00004 10.6667C7.2928 10.6667 6.61452 10.3857 6.11442 9.88561C5.61433 9.38552 5.33337 8.70724 5.33337 7.99999C5.33337 7.29275 5.61433 6.61447 6.11442 6.11438C6.61452 5.61428 7.2928 5.33333 8.00004 5.33333C8.70728 5.33333 9.38556 5.61428 9.88566 6.11438C10.3858 6.61447 10.6667 7.29275 10.6667 7.99999C10.6667 8.70724 10.3858 9.38552 9.88566 9.88561C9.38556 10.3857 8.70728 10.6667 8.00004 10.6667Z"/>
                 </svg>
             </button>
-            <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+            <button id="global-theme-toggle" class="nav-btn" title="Toggle Theme" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
         </div>
     </div>
     <!-- Settings Modal -->

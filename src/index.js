@@ -6116,33 +6116,33 @@ export function handleZip(bytes) {
 
             nav.innerHTML = `
                 <div class="nav-links">
-                    <a href="index.html" class="nav-btn ${startPanel === "files" ? "active" : ""}" data-panel="files">📁 <span>Files</span></a>
-                    <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 <span>Bookmarks</span></a>
-                    <a href="sessions.html" class="nav-btn" data-panel="sessions">🪟 <span>Sessions</span></a>
-                    <a href="web.html" class="nav-btn" data-panel="web">🌐 <span>Web</span></a>
-                    <a href="notes.html" class="nav-btn" data-panel="notes">📝 <span>Notes</span></a>
-                    <a href="/dist/capture.html" class="nav-btn" data-panel="screenshot">📸 <span>Screenshot</span></a>
-                    <a href="#" class="nav-btn ${startPanel === "twofa" ? "active" : ""}" id="nav-2fa-btn" data-panel="twofa">🔐 <span>2FA</span></a>
+                    <a href="index.html" class="nav-btn ${startPanel === "files" ? "active" : ""}" data-panel="files" title="Files">📁 <span>Files</span></a>
+                    <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks" title="Bookmarks">🔖 <span>Bookmarks</span></a>
+                    <a href="sessions.html" class="nav-btn" data-panel="sessions" title="Sessions">🪟 <span>Sessions</span></a>
+                    <a href="web.html" class="nav-btn" data-panel="web" title="Web">🌐 <span>Web</span></a>
+                    <a href="notes.html" class="nav-btn" data-panel="notes" title="Notes">📝 <span>Notes</span></a>
+                    <a href="/dist/capture.html" class="nav-btn" data-panel="screenshot" title="Screenshot">📸 <span>Screenshot</span></a>
+                    <a href="#" class="nav-btn ${startPanel === "twofa" ? "active" : ""}" id="nav-2fa-btn" data-panel="twofa" title="2FA Keys">🔐 <span>2FA</span></a>
                     
                     <div class="nav-dropdown" style="position: relative; display: inline-block;">
-                        <button class="nav-btn dropdown-trigger ${isDropdownActive ? "active" : ""}">🛠️ <span>Tools ▾</span></button>
+                        <button class="nav-btn dropdown-trigger ${isDropdownActive ? "active" : ""}" title="Tools">🛠️ <span>Tools ▾</span></button>
                         <div class="dropdown-content">
-                            <a href="#" class="nav-btn ${startPanel === "qrscanner" ? "active" : ""}" data-panel="qrscanner">🔍 <span>QR Scanner</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "passwords" ? "active" : ""}" data-panel="passwords">🔑 <span>Passwords</span></a>
-                            <a href="ua.html" class="nav-btn" data-panel="ua">🕵️ <span>UA</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "calc" ? "active" : ""}" data-panel="calc">🧮 <span>Calc</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "clock" ? "active" : ""}" data-panel="clock">⏰ <span>Clock</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "regex" ? "active" : ""}" data-panel="regex">🔍 <span>Regex</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "color" ? "active" : ""}" data-panel="color">🎨 <span>Color</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "api" ? "active" : ""}" data-panel="api">📦 <span>API</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "privacy" ? "active" : ""}" data-panel="privacy">🛡️ <span>Privacy</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "rss" ? "active" : ""}" data-panel="rss">📡 <span>RSS</span></a>
-                            <a href="#" class="nav-btn ${startPanel === "timetracker" ? "active" : ""}" data-panel="timetracker">📊 <span>Time</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "qrscanner" ? "active" : ""}" data-panel="qrscanner" title="QR Scanner">🔍 <span>QR Scanner</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "passwords" ? "active" : ""}" data-panel="passwords" title="Passwords">🔑 <span>Passwords</span></a>
+                            <a href="ua.html" class="nav-btn" data-panel="ua" title="User Agent">🕵️ <span>UA</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "calc" ? "active" : ""}" data-panel="calc" title="Calculator">🧮 <span>Calc</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "clock" ? "active" : ""}" data-panel="clock" title="Clock">⏰ <span>Clock</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "regex" ? "active" : ""}" data-panel="regex" title="Regex">🔍 <span>Regex</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "color" ? "active" : ""}" data-panel="color" title="Color">🎨 <span>Color</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "api" ? "active" : ""}" data-panel="api" title="API">📦 <span>API</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "privacy" ? "active" : ""}" data-panel="privacy" title="Privacy">🛡️ <span>Privacy</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "rss" ? "active" : ""}" data-panel="rss" title="RSS">📡 <span>RSS</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "timetracker" ? "active" : ""}" data-panel="timetracker" title="Time">📊 <span>Time</span></a>
                         </div>
                     </div>
                 </div>
                 <div class="nav-controls">
-                    <button id="global-theme-toggle" class="nav-btn" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
+                    <button id="global-theme-toggle" class="nav-btn" title="Toggle Theme" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
                 </div>
             `;
             document.body.insertBefore(nav, document.body.firstChild);
