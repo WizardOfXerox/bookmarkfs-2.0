@@ -490,14 +490,24 @@
             let activeIndex = session.tabs.findIndex(t => t.active);
             if (activeIndex === -1) activeIndex = 0;
 
+            const promises = [];
             for (let i = 0; i < session.tabs.length; i++) {
                 const t = session.tabs[i];
                 if (t.url) {
                     const isActive = i === activeIndex;
                     const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
-                    await chrome.tabs.create({ url: url, active: isActive });
+                    promises.push(
+                        chrome.tabs.create({ url: url, active: isActive }).then(async (createdTab) => {
+                            if (isActive && createdTab && createdTab.id) {
+                                try {
+                                    await chrome.tabs.update(createdTab.id, { active: true });
+                                } catch (e) {}
+                            }
+                        })
+                    );
                 }
             }
+            await Promise.all(promises);
         };
     }
 
@@ -514,6 +524,7 @@
                 const initialTabs = await chrome.tabs.query({ windowId: newWin.id });
                 const initialTabId = initialTabs[0] ? initialTabs[0].id : null;
 
+                const promises = [];
                 let reusedBlank = false;
                 for (let i = 0; i < session.tabs.length; i++) {
                     const t = session.tabs[i];
@@ -521,16 +532,29 @@
                         const isActive = i === activeIndex;
                         const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
                         
-                        if (initialTabId && !reusedBlank && isActive) {
-                            await chrome.tabs.update(initialTabId, { url: url, active: true });
+                        if (initialTabId && !reusedBlank && i === 0) {
+                            promises.push(
+                                chrome.tabs.update(initialTabId, { url: url }).catch(e => {
+                                    return chrome.tabs.create({ windowId: newWin.id, url: url, active: isActive });
+                                })
+                            );
                             reusedBlank = true;
                         } else {
-                            await chrome.tabs.create({ windowId: newWin.id, url: url, active: isActive });
+                            promises.push(
+                                chrome.tabs.create({ windowId: newWin.id, url: url, active: isActive }).then(async (createdTab) => {
+                                    if (isActive && createdTab && createdTab.id) {
+                                        try {
+                                            await chrome.tabs.update(createdTab.id, { active: true });
+                                        } catch (e) {}
+                                    }
+                                })
+                            );
                         }
                     }
                 }
+                await Promise.all(promises);
 
-                // If the blank tab was never updated, close it to avoid extra tabs
+                // If index 0 was NOT active and wasn't updated, let's close the blank tab
                 if (initialTabId && !reusedBlank && session.tabs.length > 0) {
                     await chrome.tabs.remove(initialTabId);
                 }
@@ -547,16 +571,25 @@
             let activeIndex = session.tabs.findIndex(t => t.active);
             if (activeIndex === -1) activeIndex = 0;
 
-            const tabIds = [];
+            const promises = [];
             for (let i = 0; i < session.tabs.length; i++) {
                 const t = session.tabs[i];
                 if (t.url) {
                     const isActive = i === activeIndex;
                     const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
-                    const created = await chrome.tabs.create({ url: url, active: isActive });
-                    tabIds.push(created.id);
+                    promises.push(
+                        chrome.tabs.create({ url: url, active: isActive }).then(async (createdTab) => {
+                            if (isActive && createdTab && createdTab.id) {
+                                try {
+                                    await chrome.tabs.update(createdTab.id, { active: true });
+                                } catch (e) {}
+                            }
+                            return createdTab ? createdTab.id : null;
+                        })
+                    );
                 }
             }
+            const tabIds = (await Promise.all(promises)).filter(Boolean);
             if (tabIds.length > 0) {
                 const gid = await chrome.tabs.group({ tabIds });
                 if (chrome.tabGroups) {

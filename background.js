@@ -525,36 +525,56 @@ async function restoreLatestSessionOnStartup() {
             } catch (e) {}
 
             let reusedBlankTab = false;
-            if (initialTabs.length === 1 && 
-                (initialTabs[0].url === "chrome://newtab/" || 
-                 initialTabs[0].url === "about:blank" || 
-                 initialTabs[0].url.startsWith("chrome://"))) {
-                reusedBlankTab = true;
+            if (initialTabs.length === 1) {
+                const tabUrl = initialTabs[0].url || "";
+                const tabPendingUrl = initialTabs[0].pendingUrl || "";
+                if (tabUrl === "chrome://newtab/" || 
+                    tabUrl === "about:blank" || 
+                    tabUrl === "" ||
+                    tabPendingUrl === "chrome://newtab/" ||
+                    tabPendingUrl === "about:blank" ||
+                    tabUrl.startsWith("chrome://") ||
+                    tabPendingUrl.startsWith("chrome://")) {
+                    reusedBlankTab = true;
+                }
             }
 
+            const promises = [];
             for (let i = 0; i < latest.tabs.length; i++) {
                 const t = latest.tabs[i];
                 if (t.url) {
                     const isActive = i === activeIndex;
                     const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
                     
-                    if (reusedBlankTab && isActive) {
-                        try {
-                            await chrome.tabs.update(initialTabs[0].id, { url: url, active: true });
-                            reusedBlankTab = false;
-                            continue;
-                        } catch (e) {
-                            // Fallback
-                        }
+                    if (reusedBlankTab && i === 0) {
+                        promises.push(
+                            chrome.tabs.update(initialTabs[0].id, { url: url }).catch(e => {
+                                const opts = { url: url, active: isActive };
+                                if (windowId !== null) opts.windowId = windowId;
+                                return chrome.tabs.create(opts);
+                            })
+                        );
+                        reusedBlankTab = false;
+                        continue;
                     }
 
                     const opts = { url: url, active: isActive };
                     if (windowId !== null) opts.windowId = windowId;
-                    await chrome.tabs.create(opts);
+                    promises.push(
+                        chrome.tabs.create(opts).then(async (createdTab) => {
+                            if (isActive && createdTab && createdTab.id) {
+                                try {
+                                    await chrome.tabs.update(createdTab.id, { active: true });
+                                } catch (e) {}
+                            }
+                        })
+                    );
                 }
             }
 
-            // Close initial blank tab if we did not reuse it
+            await Promise.all(promises);
+
+            // Close the blank tab if it was not reused (e.g. if the restored session was empty or failed)
             if (reusedBlankTab && latest.tabs.length > 0 && initialTabs.length === 1) {
                 try {
                     await chrome.tabs.remove(initialTabs[0].id);
