@@ -1416,13 +1416,8 @@ body.light-mode .dropdown-content .nav-btn.active {
     body {
         min-width: 0 !important;
         width: 100% !important;
-        padding: 8px !important;
-        box-sizing: border-box !important;
-    }
-    body.screenshot-viewer,
-    body.screenshot-editor,
-    body.options {
         padding: 0 !important;
+        box-sizing: border-box !important;
     }
     
     #panel-nav-bar {
