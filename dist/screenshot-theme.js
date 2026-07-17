@@ -4,6 +4,8 @@
         const isLight = theme === "light";
         document.documentElement.classList.toggle("light-mode", isLight);
         document.body.classList.toggle("light-mode", isLight);
+        document.body.classList.toggle("dark-mode", !isLight);
+        document.body.classList.add("extension-tab");
         const toggleBtn = document.getElementById("global-theme-toggle");
         if (toggleBtn) {
             toggleBtn.innerHTML = isLight ? "🌙 <span>Dark</span>" : "☀️ <span>Light</span>";
