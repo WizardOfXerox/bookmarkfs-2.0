@@ -707,7 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const displayUrl = new URL(bookmark.url).hostname;
             
             return `
-                <div class="bookmark" data-bookmark-id="${bookmark.id}" draggable="true">
+                <a class="bookmark" href="${bookmark.url}" target="_blank" data-bookmark-id="${bookmark.id}" draggable="true">
                                         <img src="${faviconUrl}" alt="">
                     <div class="bookmark-content">
                         <h3>${escapeHtml(bookmark.title) || 'Untitled'}</h3>
@@ -721,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
-                </div>
+                </a>
             `;
         }).join('');
 
@@ -740,8 +740,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Click to open bookmark
             bookmarkElement.addEventListener('click', (e) => {
                 if (!e.target.closest('.bookmark-action')) {
-                    e.preventDefault();
-                    chrome.tabs.update({ url: bookmark.url });
+                    const isLeftClick = e.button === 0;
+                    const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey || e.altKey;
+                    if (isLeftClick && !hasModifier) {
+                        e.preventDefault();
+                        chrome.tabs.update({ url: bookmark.url });
+                    }
                 }
             });
             
