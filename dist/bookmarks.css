@@ -519,6 +519,13 @@ header h1 {
     text-overflow: ellipsis;
 }
 
+.bookmark .date {
+    font-size: 11px;
+    color: var(--text-color);
+    opacity: 0.45;
+    margin-top: 2px;
+}
+
 .bookmark-actions {
     display: flex;
     gap: 4px;

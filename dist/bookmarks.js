@@ -721,14 +721,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 month: 'short',
                 day: 'numeric'
             }) : '';
-            const metaStr = dateAddedStr ? `${displayUrl} • Added ${dateAddedStr}` : displayUrl;
+            const dateHtml = dateAddedStr ? `<div class="date">Added ${dateAddedStr}</div>` : '';
             
             return `
                 <a class="bookmark" href="${bookmark.url}" target="_blank" data-bookmark-id="${bookmark.id}" draggable="true">
                                         <img src="${faviconUrl}" alt="">
                     <div class="bookmark-content">
                         <h3>${escapeHtml(bookmark.title) || 'Untitled'}</h3>
-                        <div class="url">${metaStr}</div>
+                        <div class="url">${displayUrl}</div>
+                        ${dateHtml}
                     </div>
                     <div class="bookmark-actions">
                         <button class="bookmark-action edit" title="Edit bookmark">
@@ -770,6 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const editBtn = bookmarkElement.querySelector('.edit');
             if (editBtn) {
                 editBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     openEditBookmarkModal(bookmark);
                 });
@@ -779,6 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteBtn = bookmarkElement.querySelector('.delete');
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     if (confirm('Are you sure you want to delete this bookmark?')) {
                         chrome.bookmarks.remove(bookmarkId, () => {
