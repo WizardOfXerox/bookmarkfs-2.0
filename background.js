@@ -512,8 +512,11 @@ async function restoreLatestSessionOnStartup() {
                 }
             }
 
+            // Find active tab index
+            let activeIndex = latest.tabs.findIndex(t => t.active);
+            if (activeIndex === -1) activeIndex = 0;
+
             // Reuse initial blank tab if one exists
-            let isFirstTab = true;
             let initialTabs = [];
             try {
                 if (windowId !== null) {
@@ -521,27 +524,41 @@ async function restoreLatestSessionOnStartup() {
                 }
             } catch (e) {}
 
-            for (const t of latest.tabs) {
+            let reusedBlankTab = false;
+            if (initialTabs.length === 1 && 
+                (initialTabs[0].url === "chrome://newtab/" || 
+                 initialTabs[0].url === "about:blank" || 
+                 initialTabs[0].url.startsWith("chrome://"))) {
+                reusedBlankTab = true;
+            }
+
+            for (let i = 0; i < latest.tabs.length; i++) {
+                const t = latest.tabs[i];
                 if (t.url) {
-                    if (isFirstTab && initialTabs.length === 1 && 
-                        (initialTabs[0].url === "chrome://newtab/" || 
-                         initialTabs[0].url === "about:blank" || 
-                         initialTabs[0].url.startsWith("chrome://"))) {
+                    const isActive = i === activeIndex;
+                    const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
+                    
+                    if (reusedBlankTab && isActive) {
                         try {
-                            await chrome.tabs.update(initialTabs[0].id, { url: t.url });
+                            await chrome.tabs.update(initialTabs[0].id, { url: url, active: true });
+                            reusedBlankTab = false;
+                            continue;
                         } catch (e) {
-                            // Fallback create
-                            const opts = { url: t.url, active: false };
-                            if (windowId !== null) opts.windowId = windowId;
-                            await chrome.tabs.create(opts);
+                            // Fallback
                         }
-                        isFirstTab = false;
-                    } else {
-                        const opts = { url: t.url, active: false };
-                        if (windowId !== null) opts.windowId = windowId;
-                        await chrome.tabs.create(opts);
                     }
+
+                    const opts = { url: url, active: isActive };
+                    if (windowId !== null) opts.windowId = windowId;
+                    await chrome.tabs.create(opts);
                 }
+            }
+
+            // Close initial blank tab if we did not reuse it
+            if (reusedBlankTab && latest.tabs.length > 0 && initialTabs.length === 1) {
+                try {
+                    await chrome.tabs.remove(initialTabs[0].id);
+                } catch (e) {}
             }
             console.log(`Auto-restored ${latest.tabs.length} tabs on browser startup.`);
         }

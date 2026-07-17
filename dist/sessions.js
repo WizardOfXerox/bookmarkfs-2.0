@@ -508,17 +508,34 @@
             let activeIndex = session.tabs.findIndex(t => t.active);
             if (activeIndex === -1) activeIndex = 0;
 
-            const urls = [];
-            for (let i = 0; i < session.tabs.length; i++) {
-                const t = session.tabs[i];
-                if (t.url) {
-                    const isActive = i === activeIndex;
-                    const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
-                    urls.push(url);
+            try {
+                // Create a new window containing a single blank tab initially
+                const newWin = await chrome.windows.create({ focused: true });
+                const initialTabs = await chrome.tabs.query({ windowId: newWin.id });
+                const initialTabId = initialTabs[0] ? initialTabs[0].id : null;
+
+                let reusedBlank = false;
+                for (let i = 0; i < session.tabs.length; i++) {
+                    const t = session.tabs[i];
+                    if (t.url) {
+                        const isActive = i === activeIndex;
+                        const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
+                        
+                        if (initialTabId && !reusedBlank && isActive) {
+                            await chrome.tabs.update(initialTabId, { url: url, active: true });
+                            reusedBlank = true;
+                        } else {
+                            await chrome.tabs.create({ windowId: newWin.id, url: url, active: isActive });
+                        }
+                    }
                 }
-            }
-            if (urls.length > 0) {
-                await chrome.windows.create({ url: urls });
+
+                // If the blank tab was never updated, close it to avoid extra tabs
+                if (initialTabId && !reusedBlank && session.tabs.length > 0) {
+                    await chrome.tabs.remove(initialTabId);
+                }
+            } catch (err) {
+                alert("Failed to restore session to new window: " + err.message);
             }
         };
     }
