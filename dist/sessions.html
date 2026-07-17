@@ -115,6 +115,19 @@
             font-size: 20px;
             font-weight: 700;
         }
+        #btn-rename-session {
+            background-color: transparent !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-secondary) !important;
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+            transition: all 0.2s ease !important;
+        }
+        #btn-rename-session:hover {
+            border-color: var(--accent) !important;
+            color: var(--accent) !important;
+            background-color: rgba(2, 255, 136, 0.05) !important;
+        }
         .workspace-toolbar {
             display: flex;
             gap: 8px;
@@ -276,15 +289,23 @@
                 padding: 12px !important;
                 border-radius: 10px !important;
             }
+            .main-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px !important;
+            }
             .selected-title {
                 font-size: 15px !important;
             }
             .workspace-toolbar {
-                gap: 4px !important;
+                gap: 6px !important;
+                flex-wrap: wrap !important;
+                width: 100% !important;
             }
             .toolbar-btn {
-                padding: 4px 8px !important;
-                font-size: 10px !important;
+                padding: 6px 10px !important;
+                font-size: 11px !important;
+                border-radius: 20px !important;
             }
             .tab-row {
                 padding: 6px 10px !important;
@@ -309,7 +330,7 @@
                 flex-wrap: wrap !important;
                 justify-content: center !important;
                 width: 100% !important;
-                gap: 6px !important;
+                gap: 0 !important;
             }
             .nav-controls {
                 justify-content: center !important;
@@ -319,14 +340,17 @@
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                gap: 4px !important;
-                padding: 6px 10px !important;
-                font-size: 11px !important;
-                border-radius: 6px !important;
+                gap: 0 !important;
+                padding: 8px 12px !important;
+                font-size: 16px !important;
+                border-radius: 20px !important;
                 flex: 1 1 auto !important;
                 text-align: center !important;
                 text-decoration: none !important;
                 white-space: nowrap !important;
+            }
+            .nav-btn span {
+                display: none !important;
             }
         }
     </style>
@@ -335,28 +359,28 @@
     <script src="/screenshot-theme.js"></script>
     <div id="panel-nav-bar">
         <div class="nav-links">
-            <a href="index.html" class="nav-btn">📁 Files</a>
-            <a href="bookmarks.html" class="nav-btn">🔖 Bookmarks</a>
-            <a href="sessions.html" class="nav-btn active">🗂️ Sessions</a>
-            <a href="web.html" class="nav-btn">🌐 Web</a>
-            <a href="notes.html" class="nav-btn">📝 Notes</a>
-            <a href="/dist/capture.html" class="nav-btn">📸 Screenshot</a>
-            <a href="index.html?panel=twofa" class="nav-btn">🔐 2FA</a>
+            <a href="index.html" class="nav-btn">📁 <span>Files</span></a>
+            <a href="bookmarks.html" class="nav-btn">🔖 <span>Bookmarks</span></a>
+            <a href="sessions.html" class="nav-btn active">🗂️ <span>Sessions</span></a>
+            <a href="web.html" class="nav-btn">🌐 <span>Web</span></a>
+            <a href="notes.html" class="nav-btn">📝 <span>Notes</span></a>
+            <a href="/dist/capture.html" class="nav-btn">📸 <span>Screenshot</span></a>
+            <a href="index.html?panel=twofa" class="nav-btn">🔐 <span>2FA</span></a>
             
             <div class="nav-dropdown" style="position: relative; display: inline-block;">
-                <button class="nav-btn dropdown-trigger">🛠️ Tools ▾</button>
+                <button class="nav-btn dropdown-trigger">🛠️ <span>Tools ▾</span></button>
                 <div class="dropdown-content">
-                    <a href="index.html?panel=qrscanner" class="nav-btn">🔍 QR Scanner</a>
-                    <a href="index.html?panel=passwords" class="nav-btn">🔑 Passwords</a>
-                    <a href="ua.html" class="nav-btn">🕵️ UA</a>
-                    <a href="index.html?panel=calc" class="nav-btn">🧮 Calc</a>
-                    <a href="index.html?panel=clock" class="nav-btn">⏰ Clock</a>
-                    <a href="index.html?panel=regex" class="nav-btn">🔍 Regex</a>
-                    <a href="index.html?panel=color" class="nav-btn">🎨 Color</a>
-                    <a href="index.html?panel=api" class="nav-btn">📦 API</a>
-                    <a href="index.html?panel=privacy" class="nav-btn">🛡️ Privacy</a>
-                    <a href="index.html?panel=rss" class="nav-btn">📡 RSS</a>
-                    <a href="index.html?panel=timetracker" class="nav-btn">📊 Time</a>
+                    <a href="index.html?panel=qrscanner" class="nav-btn">🔍 <span>QR Scanner</span></a>
+                    <a href="index.html?panel=passwords" class="nav-btn">🔑 <span>Passwords</span></a>
+                    <a href="ua.html" class="nav-btn">🕵️ <span>UA</span></a>
+                    <a href="index.html?panel=calc" class="nav-btn">🧮 <span>Calc</span></a>
+                    <a href="index.html?panel=clock" class="nav-btn">⏰ <span>Clock</span></a>
+                    <a href="index.html?panel=regex" class="nav-btn">🔍 <span>Regex</span></a>
+                    <a href="index.html?panel=color" class="nav-btn">🎨 <span>Color</span></a>
+                    <a href="index.html?panel=api" class="nav-btn">📦 <span>API</span></a>
+                    <a href="index.html?panel=privacy" class="nav-btn">🛡️ <span>Privacy</span></a>
+                    <a href="index.html?panel=rss" class="nav-btn">📡 <span>RSS</span></a>
+                    <a href="index.html?panel=timetracker" class="nav-btn">📊 <span>Time</span></a>
                 </div>
             </div>
         </div>
@@ -368,7 +392,7 @@
     <div class="sessions-dashboard">
         <!-- Sidebar Workspace List -->
         <div class="workspace-sidebar">
-            <h3 class="sidebar-title">🗂️ Saved Workspaces</h3>
+            <h3 class="sidebar-title">🗂️ <span>Saved Workspaces</span></h3>
             <input type="text" id="workspace-search-input" placeholder="🔍 Search workspaces..." style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: var(--text-primary); font-size: 13px; box-sizing: border-box; margin-bottom: 8px;">
             <div id="workspace-list-container" class="workspace-list">
                 <!-- Populated dynamically -->
@@ -385,14 +409,14 @@
             <div class="main-header">
                 <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
                     <h2 id="selected-workspace-title" class="selected-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">Select a Workspace</h2>
-                    <button id="btn-rename-session" class="button toolbar-btn" style="padding: 4px 8px; font-size: 11px; background: transparent; border: 1px solid var(--border); display: none;" title="Rename Workspace">✏️ Rename</button>
+                    <button id="btn-rename-session" class="button toolbar-btn" style="padding: 4px 8px; font-size: 11px; background: transparent; border: 1px solid var(--border); display: none;" title="Rename Workspace">✏️ <span>Rename</span></button>
                 </div>
                 <div class="workspace-toolbar">
                     <button id="btn-restore-all" class="button toolbar-btn">🚀 Restore</button>
                     <button id="btn-open-win" class="button toolbar-btn">🗔 Win</button>
-                    <button id="btn-open-group" class="button toolbar-btn">🏷️ Group</button>
+                    <button id="btn-open-group" class="button toolbar-btn">🏷️ <span>Group</span></button>
                     <button id="btn-append-tab" class="button toolbar-btn">➕ Append Tab</button>
-                    <button id="btn-delete-session" class="button toolbar-btn" style="background-color:#7f1d1d;">🗑️ Delete</button>
+                    <button id="btn-delete-session" class="button toolbar-btn" style="background-color:#7f1d1d;">🗑️ <span>Delete</span></button>
                 </div>
             </div>
             <div id="workspace-tabs-container" class="workspace-tabs">

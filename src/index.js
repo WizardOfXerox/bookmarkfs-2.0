@@ -488,7 +488,7 @@ export function handleZip(bytes) {
       </fieldset>
 
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
-        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🕵️ User-Agent Switcher</legend>
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🕵️ <span>User</span>-Agent Switcher</legend>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
             <input type="checkbox" id="setting-ua-enabled">
@@ -563,7 +563,7 @@ export function handleZip(bytes) {
       </fieldset>
 
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
-        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🌐 Network / Security Bypass</legend>
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🌐 <span>Network </span>/ Security Bypass</legend>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
             <input type="checkbox" id="setting-csp-bypass">
@@ -587,7 +587,7 @@ export function handleZip(bytes) {
       </fieldset>
 
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
-        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🎨 Appearance & Themes</legend>
+        <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🎨 <span>Appearance </span>& Themes</legend>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <label style="display: flex; justify-content: space-between; align-items: center;">
             <span>Theme Preset:</span>
@@ -610,7 +610,7 @@ export function handleZip(bytes) {
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
         <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">🧹 Storage Cleanup & Diagnostics</legend>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button id="btn-storage-scan" class="button" style="width: 100%;">🔍 Scan Storage Health</button>
+          <button id="btn-storage-scan" class="button" style="width: 100%;">🔍 <span>Scan Storage Health</span></button>
           <div id="storage-scan-results" style="display: none; font-size: 12px; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; flex-direction: column; gap: 6px;">
             <div id="scan-dup-info">Duplicates found: -</div>
             <button id="btn-purge-dups" class="button" style="display: none; padding: 4px 8px; font-size: 11px; background-color: #991b1b !important; color: #fecaca !important; border-color: #991b1b !important;">Purge Duplicates</button>
@@ -885,7 +885,7 @@ export function handleZip(bytes) {
 
         const toggleBtn = document.getElementById("global-theme-toggle");
         if (toggleBtn) {
-            toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+            toggleBtn.innerHTML = isLight ? "🌙 <span>Dark</span>" : "☀️ <span>Light</span>";
         }
 
         // Apply column visibility
@@ -2087,7 +2087,7 @@ export function handleZip(bytes) {
         msgBox.style.gap = "15px";
         msgBox.style.border = "1px solid #27272a";
         msgBox.innerHTML = `
-            <span>📸 Drag a box over the QR code on the page</span>
+            <span>📸 <span>Drag a box over the QR code on the page</span></span>
             <button id="bookmarkfs-crop-cancel" style="background: #ef4444; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; outline: none;">Cancel</button>
         `;
         overlay.appendChild(msgBox);
@@ -2265,7 +2265,7 @@ export function handleZip(bytes) {
         box.style.gap = "16px";
 
         box.innerHTML = `
-            <h3 style="margin: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">${editProfile ? "📝 Edit 2FA Profile" : "🔐 Add 2FA Profile"}</h3>
+            <h3 style="margin: 0; color: var(--accent); display: flex; align-items: center; gap: 8px;">${editProfile ? "📝 <span>Edit 2FA Profile</span>" : "🔐 <span>Add 2FA Profile</span>"}</h3>
             
             <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label style="font-size: 12px; color: #a1a1aa;">Profile Label:</label>
@@ -2279,8 +2279,8 @@ export function handleZip(bytes) {
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <button id="btn-twofa-cam-scan" class="button" style="font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
-                <button id="btn-twofa-screen-scan" class="button" style="font-size: 12px; padding: 6px 12px;">🖥️ Screen Scan</button>
-                <button id="btn-twofa-screenshot-crop" class="button" style="font-size: 12px; padding: 6px 12px; grid-column: span 2; border-color: var(--accent) !important; color: var(--accent) !important;">📸 Screenshot Crop (Select QR)</button>
+                <button id="btn-twofa-screen-scan" class="button" style="font-size: 12px; padding: 6px 12px;">🖥️ <span>Screen Scan</span></button>
+                <button id="btn-twofa-screenshot-crop" class="button" style="font-size: 12px; padding: 6px 12px; grid-column: span 2; border-color: var(--accent) !important; color: var(--accent) !important;">📸 <span>Screenshot Crop </span>(Select QR)</button>
                 <label class="button" style="font-size: 12px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0;">
                     🖼 Upload QR
                     <input type="file" id="input-twofa-qr-file" accept="image/*" style="display: none;">
@@ -2293,7 +2293,7 @@ export function handleZip(bytes) {
                 <div style="position: absolute; top: 10%; bottom: 10%; left: 10%; right: 10%; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
             </div>
             
-            <button id="btn-twofa-scan-manual" class="button" style="margin-top: 4px; width: 100%; display: none; padding: 6px 12px; font-size: 13px;">🔍 Scan Current Frame</button>
+            <button id="btn-twofa-scan-manual" class="button" style="margin-top: 4px; width: 100%; display: none; padding: 6px 12px; font-size: 13px;">🔍 <span>Scan Current Frame</span></button>
 
             <div style="display: flex; flex-direction: column; gap: 4px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -2814,7 +2814,7 @@ export function handleZip(bytes) {
             if (!isRegistered) {
                 panel.innerHTML = `
                     <div class="big-card" style="padding: 24px; text-align: center;">
-                        <h3>🔑 Create Master Passphrase</h3>
+                        <h3>🔑 <span>Create Master Passphrase</span></h3>
                         <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 16px;">Set up a master passphrase to secure your credentials vault.</p>
                         <input type="password" id="passwords-unlock-input" placeholder="New Master Passphrase" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; margin-bottom: 8px; width: 80%;">
                         <br>
@@ -2857,7 +2857,7 @@ export function handleZip(bytes) {
 
             panel.innerHTML = `
                 <div class="big-card" style="padding: 24px; text-align: center;">
-                    <h3>🔑 Enter Master Passphrase</h3>
+                    <h3>🔑 <span>Enter Master Passphrase</span></h3>
                     <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 16px;">Please authenticate to unlock your password manager.</p>
                     <input type="password" id="passwords-unlock-input" placeholder="Master Passphrase" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; margin-bottom: 12px; width: 80%;">
                     <br>
@@ -2895,7 +2895,7 @@ export function handleZip(bytes) {
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h2 style="margin: 0;">🔑 Passwords</h2>
+                    <h2 style="margin: 0;">🔑 <span>Passwords</span></h2>
                     <div>
                         <button id="btn-add-password" class="button" style="font-size: 12px; padding: 4px 8px;">+ Add</button>
                         <button id="btn-import-passwords" class="button" style="font-size: 12px; padding: 4px 8px; margin-left: 4px;">Import</button>
@@ -3016,7 +3016,7 @@ export function handleZip(bytes) {
             box.style.gap = "12px";
 
             box.innerHTML = `
-                <h3 style="margin: 0; color: var(--accent);">${existing ? "📝 Edit Credentials" : "🔑 Add Credentials"}</h3>
+                <h3 style="margin: 0; color: var(--accent);">${existing ? "📝 <span>Edit Credentials</span>" : "🔑 <span>Add Credentials</span>"}</h3>
                 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label style="font-size: 11px; color: #a1a1aa;">Site Title:</label>
@@ -3033,7 +3033,7 @@ export function handleZip(bytes) {
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <div style="display: flex; justify-content: space-between;">
                         <label style="font-size: 11px; color: #a1a1aa;">Password:</label>
-                        <a href="#" id="pwd-modal-gen-toggle" style="font-size: 11px; color: var(--accent); text-decoration: none;">⚙️ Generate</a>
+                        <a href="#" id="pwd-modal-gen-toggle" style="font-size: 11px; color: var(--accent); text-decoration: none;">⚙️ <span>Generate</span></a>
                     </div>
                     <input type="text" id="pwd-modal-pass" style="padding: 6px 10px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
                 </div>
@@ -3259,13 +3259,13 @@ export function handleZip(bytes) {
         panel.style.display = "block";
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-                <h2 style="margin-top: 0; margin-bottom: 4px; color: var(--accent); display: flex; align-items: center; gap: 8px;">🔍 QR Code Scanner</h2>
+                <h2 style="margin-top: 0; margin-bottom: 4px; color: var(--accent); display: flex; align-items: center; gap: 8px;">🔍 <span>QR Code Scanner</span></h2>
                 <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Scan any QR code or barcode using your camera, screen capture, screenshot crop, clipboard paste, or file upload.</p>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
                     <button id="btn-qrscan-cam" class="button" style="font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
-                    <button id="btn-qrscan-screen" class="button" style="font-size: 12px; padding: 6px 12px;">🖥️ Screen Scan</button>
-                    <button id="btn-qrscan-screenshot" class="button" style="font-size: 12px; padding: 6px 12px; grid-column: span 2; border-color: var(--accent) !important; color: var(--accent) !important; font-weight: 600;">📸 Screenshot Crop (Select QR)</button>
+                    <button id="btn-qrscan-screen" class="button" style="font-size: 12px; padding: 6px 12px;">🖥️ <span>Screen Scan</span></button>
+                    <button id="btn-qrscan-screenshot" class="button" style="font-size: 12px; padding: 6px 12px; grid-column: span 2; border-color: var(--accent) !important; color: var(--accent) !important; font-weight: 600;">📸 <span>Screenshot Crop </span>(Select QR)</button>
                     <label class="button" style="font-size: 12px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0;">
                         🖼 Upload QR File
                         <input type="file" id="input-qrscan-file" accept="image/*" style="display: none;">
@@ -3278,7 +3278,7 @@ export function handleZip(bytes) {
                     <div style="position: absolute; top: 10%; bottom: 10%; left: 10%; right: 10%; border: 2px dashed var(--accent); opacity: 0.7; pointer-events: none; border-radius: 8px;"></div>
                 </div>
                 
-                <button id="btn-qrscan-scan-manual" class="button" style="margin-top: 4px; width: 100%; display: none; padding: 6px 12px; font-size: 13px;">🔍 Scan Current Frame</button>
+                <button id="btn-qrscan-scan-manual" class="button" style="margin-top: 4px; width: 100%; display: none; padding: 6px 12px; font-size: 13px;">🔍 <span>Scan Current Frame</span></button>
 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label style="font-size: 12px; font-weight: 600; color: #a1a1aa;">Scanned Output:</label>
@@ -3659,7 +3659,7 @@ export function handleZip(bytes) {
         panel.style.display = "block";
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px;">
-                <h2 style="margin-top: 0; margin-bottom: 12px;">🧮 Calculator & Convert</h2>
+                <h2 style="margin-top: 0; margin-bottom: 12px;">🧮 <span>Calculator </span>& Convert</h2>
                 
                 <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid #27272a; padding-bottom: 6px;">
                     <a href="#" id="calc-tab-basic" style="color: var(--accent); text-decoration: none; font-weight: bold; font-size: 13px;">Calc</a>
@@ -3906,7 +3906,7 @@ export function handleZip(bytes) {
 
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">⏰ Clock & Reminders</h2>
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">⏰ <span>Clock </span>& Reminders</h2>
                 
                 <!-- Tab Controls -->
                 <div style="display: flex; border-bottom: 1px solid #27272a; margin-bottom: 8px;">
@@ -4406,7 +4406,7 @@ export function handleZip(bytes) {
         panel.style.display = "block";
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-                <h2 style="margin: 0; margin-bottom: 4px;">🔍 Regex Tester</h2>
+                <h2 style="margin: 0; margin-bottom: 4px;">🔍 <span>Regex Tester</span></h2>
                 
                 <div style="display: flex; gap: 6px; align-items: center;">
                     <span style="font-family: monospace; font-size: 16px; color: #a1a1aa;">/</span>
@@ -4504,7 +4504,7 @@ export function handleZip(bytes) {
         panel.style.display = "block";
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
-                <h2 style="margin: 0; margin-bottom: 4px;">🎨 Color & Contrast</h2>
+                <h2 style="margin: 0; margin-bottom: 4px;">🎨 <span>Color </span>& Contrast</h2>
                 
                 <div style="display: flex; gap: 12px; align-items: center;">
                     <input type="color" id="color-input-picker" value="#4ade80" style="width: 50px; height: 50px; border: none; padding: 0; background: transparent; cursor: pointer; border-radius: 8px;">
@@ -4645,7 +4645,7 @@ export function handleZip(bytes) {
         panel.style.display = "block";
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-                <h2 style="margin: 0; margin-bottom: 4px;">📦 API Request Tester</h2>
+                <h2 style="margin: 0; margin-bottom: 4px;">📦 <span>API Request Tester</span></h2>
                 
                 <div style="display: flex; gap: 6px;">
                     <select id="api-method" style="padding: 6px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-weight: bold;">
@@ -4735,7 +4735,7 @@ export function handleZip(bytes) {
         panel.style.display = "block";
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-                <h2 style="margin: 0; margin-bottom: 4px;">🛡️ Privacy Report</h2>
+                <h2 style="margin: 0; margin-bottom: 4px;">🛡️ <span>Privacy Report</span></h2>
                 
                 <button id="btn-privacy-scan" class="button" style="padding: 8px; font-weight: bold; width: 100%;">Scan Current Tab</button>
                 
@@ -4753,7 +4753,7 @@ export function handleZip(bytes) {
                         <strong id="privacy-fingerprint" style="color: var(--accent);">None detected</strong>
                     </div>
                     <div style="font-size: 11px; color: #a1a1aa; line-height: 1.4; margin-top: 4px;">
-                        <strong>Tip:</strong> You can spoof your browser agent in the 🕵️ UA panel to mitigate tracking footprint.
+                        <strong>Tip:</strong> You can spoof your browser agent in the 🕵️ <span>UA panel to mitigate tracking footprint</span>.
                     </div>
                 </div>
             </div>
@@ -4814,7 +4814,7 @@ export function handleZip(bytes) {
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <h2 style="margin: 0;">📡 RSS Reader</h2>
+                    <h2 style="margin: 0;">📡 <span>RSS Reader</span></h2>
                     <button id="btn-refresh-rss" class="button" style="font-size: 11px; padding: 4px 8px;">🔄 Refresh</button>
                 </div>
                 
@@ -5020,7 +5020,7 @@ export function handleZip(bytes) {
 
         panel.innerHTML = `
             <div class="big-card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
-                <h2 style="margin: 0; margin-bottom: 4px;">📊 Active Time Tracker</h2>
+                <h2 style="margin: 0; margin-bottom: 4px;">📊 <span>Active Time Tracker</span></h2>
                 <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 4px;">Top domains visited today:</div>
                 <div id="timetracker-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
@@ -5073,7 +5073,7 @@ export function handleZip(bytes) {
             
             panel.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:20px;">
-                    <h2 style="margin:0; color:var(--accent); display:flex; align-items:center; gap:8px;">🔐 2FA Authenticator</h2>
+                    <h2 style="margin:0; color:var(--accent); display:flex; align-items:center; gap:8px;">🔐 <span>2FA Authenticator</span></h2>
                     <button id="btn-add-2fa" class="button" style="padding:6px 16px;">+ Add Profile</button>
                 </div>
                 <div id="twofa-profile-list" style="display:flex; flex-direction:column; gap:12px;"></div>
@@ -6116,28 +6116,28 @@ export function handleZip(bytes) {
 
             nav.innerHTML = `
                 <div class="nav-links">
-                    <a href="index.html" class="nav-btn ${startPanel === "files" ? "active" : ""}" data-panel="files">📁 Files</a>
-                    <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 Bookmarks</a>
-                    <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ Sessions</a>
-                    <a href="web.html" class="nav-btn" data-panel="web">🌐 Web</a>
-                    <a href="notes.html" class="nav-btn" data-panel="notes">📝 Notes</a>
-                    <a href="/dist/capture.html" class="nav-btn" data-panel="screenshot">📸 Screenshot</a>
-                    <a href="#" class="nav-btn ${startPanel === "twofa" ? "active" : ""}" id="nav-2fa-btn" data-panel="twofa">🔐 2FA</a>
+                    <a href="index.html" class="nav-btn ${startPanel === "files" ? "active" : ""}" data-panel="files">📁 <span>Files</span></a>
+                    <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 <span>Bookmarks</span></a>
+                    <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ <span>Sessions</span></a>
+                    <a href="web.html" class="nav-btn" data-panel="web">🌐 <span>Web</span></a>
+                    <a href="notes.html" class="nav-btn" data-panel="notes">📝 <span>Notes</span></a>
+                    <a href="/dist/capture.html" class="nav-btn" data-panel="screenshot">📸 <span>Screenshot</span></a>
+                    <a href="#" class="nav-btn ${startPanel === "twofa" ? "active" : ""}" id="nav-2fa-btn" data-panel="twofa">🔐 <span>2FA</span></a>
                     
                     <div class="nav-dropdown" style="position: relative; display: inline-block;">
-                        <button class="nav-btn dropdown-trigger ${isDropdownActive ? "active" : ""}">🛠️ Tools ▾</button>
+                        <button class="nav-btn dropdown-trigger ${isDropdownActive ? "active" : ""}">🛠️ <span>Tools ▾</span></button>
                         <div class="dropdown-content">
-                            <a href="#" class="nav-btn ${startPanel === "qrscanner" ? "active" : ""}" data-panel="qrscanner">🔍 QR Scanner</a>
-                            <a href="#" class="nav-btn ${startPanel === "passwords" ? "active" : ""}" data-panel="passwords">🔑 Passwords</a>
-                            <a href="ua.html" class="nav-btn" data-panel="ua">🕵️ UA</a>
-                            <a href="#" class="nav-btn ${startPanel === "calc" ? "active" : ""}" data-panel="calc">🧮 Calc</a>
-                            <a href="#" class="nav-btn ${startPanel === "clock" ? "active" : ""}" data-panel="clock">⏰ Clock</a>
-                            <a href="#" class="nav-btn ${startPanel === "regex" ? "active" : ""}" data-panel="regex">🔍 Regex</a>
-                            <a href="#" class="nav-btn ${startPanel === "color" ? "active" : ""}" data-panel="color">🎨 Color</a>
-                            <a href="#" class="nav-btn ${startPanel === "api" ? "active" : ""}" data-panel="api">📦 API</a>
-                            <a href="#" class="nav-btn ${startPanel === "privacy" ? "active" : ""}" data-panel="privacy">🛡️ Privacy</a>
-                            <a href="#" class="nav-btn ${startPanel === "rss" ? "active" : ""}" data-panel="rss">📡 RSS</a>
-                            <a href="#" class="nav-btn ${startPanel === "timetracker" ? "active" : ""}" data-panel="timetracker">📊 Time</a>
+                            <a href="#" class="nav-btn ${startPanel === "qrscanner" ? "active" : ""}" data-panel="qrscanner">🔍 <span>QR Scanner</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "passwords" ? "active" : ""}" data-panel="passwords">🔑 <span>Passwords</span></a>
+                            <a href="ua.html" class="nav-btn" data-panel="ua">🕵️ <span>UA</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "calc" ? "active" : ""}" data-panel="calc">🧮 <span>Calc</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "clock" ? "active" : ""}" data-panel="clock">⏰ <span>Clock</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "regex" ? "active" : ""}" data-panel="regex">🔍 <span>Regex</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "color" ? "active" : ""}" data-panel="color">🎨 <span>Color</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "api" ? "active" : ""}" data-panel="api">📦 <span>API</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "privacy" ? "active" : ""}" data-panel="privacy">🛡️ <span>Privacy</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "rss" ? "active" : ""}" data-panel="rss">📡 <span>RSS</span></a>
+                            <a href="#" class="nav-btn ${startPanel === "timetracker" ? "active" : ""}" data-panel="timetracker">📊 <span>Time</span></a>
                         </div>
                     </div>
                 </div>
@@ -6249,7 +6249,7 @@ export function handleZip(bytes) {
                 
                 const toggleBtn = document.getElementById("global-theme-toggle");
                 if (toggleBtn) {
-                    toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+                    toggleBtn.innerHTML = isLight ? "🌙 <span>Dark</span>" : "☀️ <span>Light</span>";
                 }
             };
             
@@ -7003,7 +7003,7 @@ export function handleZip(bytes) {
         applyDarkFromStorage();
         const toggleBtn = document.getElementById("global-theme-toggle");
         if (toggleBtn) {
-            toggleBtn.textContent = nextTheme === "light" ? "🌙 Dark" : "☀️ Light";
+            toggleBtn.innerHTML = nextTheme === "light" ? "🌙 <span>Dark</span>" : "☀️ <span>Light</span>";
         }
     }
 

@@ -29,7 +29,7 @@
         
         const toggleBtn = document.getElementById("global-theme-toggle");
         if (toggleBtn) {
-            toggleBtn.textContent = isLight ? "🌙 Dark" : "☀️ Light";
+            toggleBtn.innerHTML = isLight ? "🌙 <span>Dark</span>" : "☀️ <span>Light</span>";
         }
     }
 

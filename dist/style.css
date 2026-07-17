@@ -663,14 +663,17 @@ table.rwd-table.grid-mode td.cell-empty {
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 4px !important;
-        padding: 6px 10px !important;
-        font-size: 11px !important;
-        border-radius: 6px !important;
+        gap: 0 !important;
+        padding: 8px 12px !important;
+        font-size: 16px !important;
+        border-radius: 20px !important;
         flex: 1 1 auto !important;
         text-align: center !important;
         text-decoration: none !important;
         white-space: nowrap !important;
+    }
+    .nav-btn span {
+        display: none !important;
     }
 }
 
