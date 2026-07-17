@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsBtn = document.getElementById('settingsBtn');
     const addBookmarkBtn = document.getElementById('addBookmarkBtn');
     const addFolderBtn = document.getElementById('addFolderBtn');
+    const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
+    const importBookmarksBtn = document.getElementById('importBookmarksBtn');
+    const importBookmarksFile = document.getElementById('importBookmarksFile');
     
     // Settings elements
     const gridSize = document.getElementById('gridSize');
@@ -186,6 +189,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Modal controls
         settingsBtn.addEventListener('click', () => openModal(settingsModal));
         addBookmarkBtn.addEventListener('click', () => openModal(addBookmarkModal));
+        
+        if (exportBookmarksBtn) {
+            exportBookmarksBtn.addEventListener('click', exportBookmarks);
+        }
+        if (importBookmarksBtn && importBookmarksFile) {
+            importBookmarksBtn.addEventListener('click', () => importBookmarksFile.click());
+            importBookmarksFile.addEventListener('change', handleImportBookmarks);
+        }
         
         // Modal close buttons
         document.querySelectorAll('.close').forEach(closeBtn => {
@@ -970,6 +981,98 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }, 300);
         }, 3000);
+    }
+
+    function exportBookmarks() {
+        chrome.bookmarks.getTree((tree) => {
+            const jsonString = JSON.stringify(tree, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const dateStr = new Date().toISOString().split('T')[0];
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bookmarkfs_bookmarks_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Bookmarks exported successfully!', 'success');
+        });
+    }
+
+    function handleImportBookmarks(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!Array.isArray(data) && typeof data !== 'object') {
+                    showToast('Invalid bookmarks format', 'error');
+                    return;
+                }
+                
+                showLoading(true);
+                const dateStr = new Date().toLocaleDateString();
+                const parentFolderTitle = `Imported Bookmarks (${dateStr})`;
+                
+                const tree = await chrome.bookmarks.getTree();
+                const rootFolderId = tree[0].children[0].id || '1';
+                
+                chrome.bookmarks.create({
+                    parentId: rootFolderId,
+                    title: parentFolderTitle
+                }, async (newParentFolder) => {
+                    const importNode = async (node, parentId) => {
+                        if (node.url) {
+                            return new Promise((resolve) => {
+                                chrome.bookmarks.create({ parentId, title: node.title, url: node.url }, resolve);
+                            });
+                        } else {
+                            const title = node.title || 'Untitled Folder';
+                            if (node.id === 'root' || node.id === '0' || !node.parentId) {
+                                if (node.children) {
+                                    for (const child of node.children) {
+                                        await importNode(child, parentId);
+                                    }
+                                }
+                            } else {
+                                return new Promise((resolve) => {
+                                    chrome.bookmarks.create({ parentId, title }, async (newFolder) => {
+                                        if (node.children) {
+                                            for (const child of node.children) {
+                                                await importNode(child, newFolder.id);
+                                            }
+                                        }
+                                        resolve(newFolder);
+                                    });
+                                });
+                            }
+                        }
+                    };
+                    
+                    if (Array.isArray(data)) {
+                        for (const node of data) {
+                            await importNode(node, newParentFolder.id);
+                        }
+                    } else {
+                        await importNode(data, newParentFolder.id);
+                    }
+                    
+                    showLoading(false);
+                    showToast('Bookmarks imported successfully!', 'success');
+                    loadInitialBookmarks();
+                });
+            } catch (err) {
+                console.error(err);
+                showLoading(false);
+                showToast('Failed to parse bookmarks file', 'error');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
     }
 
     function toggleDarkMode() {
