@@ -362,8 +362,15 @@
                             const latestSession = sorted[0];
                             if (latestSession && latestSession.tabs && latestSession.tabs.length > 0) {
                                 console.log("Auto-restoring latest session workspace:", latestSession.title);
-                                latestSession.tabs.forEach(t => {
-                                    if (t.url) chrome.tabs.create({ url: t.url, active: false });
+                                let activeIndex = latestSession.tabs.findIndex(t => t.active);
+                                if (activeIndex === -1) activeIndex = 0;
+
+                                latestSession.tabs.forEach((t, index) => {
+                                    if (t.url) {
+                                        const isActive = index === activeIndex;
+                                        const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
+                                        chrome.tabs.create({ url: url, active: isActive });
+                                    }
                                 });
                             }
                         }
@@ -480,10 +487,17 @@
         btnRestore.onclick = async () => {
             const session = savedSessions.find(s => s.id === selectedSessionId);
             if (!session) return;
-            for (const t of session.tabs) {
-                if (t.url) chrome.tabs.create({ url: t.url, active: false });
+            let activeIndex = session.tabs.findIndex(t => t.active);
+            if (activeIndex === -1) activeIndex = 0;
+
+            for (let i = 0; i < session.tabs.length; i++) {
+                const t = session.tabs[i];
+                if (t.url) {
+                    const isActive = i === activeIndex;
+                    const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
+                    await chrome.tabs.create({ url: url, active: isActive });
+                }
             }
-            alert(`Restored ${session.tabs.length} tabs!`);
         };
     }
 
@@ -491,8 +505,21 @@
         btnWin.onclick = async () => {
             const session = savedSessions.find(s => s.id === selectedSessionId);
             if (!session) return;
-            const urls = session.tabs.map(t => t.url).filter(Boolean);
-            if (urls.length > 0) chrome.windows.create({ url: urls });
+            let activeIndex = session.tabs.findIndex(t => t.active);
+            if (activeIndex === -1) activeIndex = 0;
+
+            const urls = [];
+            for (let i = 0; i < session.tabs.length; i++) {
+                const t = session.tabs[i];
+                if (t.url) {
+                    const isActive = i === activeIndex;
+                    const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
+                    urls.push(url);
+                }
+            }
+            if (urls.length > 0) {
+                await chrome.windows.create({ url: urls });
+            }
         };
     }
 
@@ -500,10 +527,16 @@
         btnGroup.onclick = async () => {
             const session = savedSessions.find(s => s.id === selectedSessionId);
             if (!session) return;
+            let activeIndex = session.tabs.findIndex(t => t.active);
+            if (activeIndex === -1) activeIndex = 0;
+
             const tabIds = [];
-            for (const t of session.tabs) {
+            for (let i = 0; i < session.tabs.length; i++) {
+                const t = session.tabs[i];
                 if (t.url) {
-                    const created = await chrome.tabs.create({ url: t.url, active: false });
+                    const isActive = i === activeIndex;
+                    const url = isActive ? t.url : chrome.runtime.getURL(`dist/lazy.html?url=${encodeURIComponent(t.url)}&title=${encodeURIComponent(t.title || t.url)}`);
+                    const created = await chrome.tabs.create({ url: url, active: isActive });
                     tabIds.push(created.id);
                 }
             }
@@ -652,7 +685,7 @@
         snapshotBtn.onclick = async () => {
             try {
                 const tabs = await chrome.tabs.query({ currentWindow: true });
-                const sessionData = tabs.map(t => ({ title: t.title, url: t.url }));
+                const sessionData = tabs.map(t => ({ title: t.title, url: t.url, active: t.active }));
                 const serializedText = JSON.stringify(sessionData, null, 2);
                 const bytes = new TextEncoder().encode(serializedText);
 
