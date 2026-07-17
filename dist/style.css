@@ -1419,6 +1419,11 @@ body.light-mode .dropdown-content .nav-btn.active {
         padding: 8px !important;
         box-sizing: border-box !important;
     }
+    body.screenshot-viewer,
+    body.screenshot-editor,
+    body.options {
+        padding: 0 !important;
+    }
     
     #panel-nav-bar {
         width: 100% !important;
