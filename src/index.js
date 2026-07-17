@@ -5983,7 +5983,7 @@ export function handleZip(bytes) {
         savedTitle.style.margin = "10px 0 0 0";
         savedTitle.style.color = "#02ff88";
         savedTitle.style.textAlign = "left";
-        savedTitle.textContent = "🗂️ Stored Workspace Sessions Library";
+        savedTitle.textContent = "🪟 Stored Workspace Sessions Library";
         flexWrapper.appendChild(savedTitle);
 
         const grid = document.createElement("div");
@@ -6118,7 +6118,7 @@ export function handleZip(bytes) {
                 <div class="nav-links">
                     <a href="index.html" class="nav-btn ${startPanel === "files" ? "active" : ""}" data-panel="files">📁 <span>Files</span></a>
                     <a href="bookmarks.html" class="nav-btn" data-panel="bookmarks">🔖 <span>Bookmarks</span></a>
-                    <a href="sessions.html" class="nav-btn" data-panel="sessions">🗂️ <span>Sessions</span></a>
+                    <a href="sessions.html" class="nav-btn" data-panel="sessions">🪟 <span>Sessions</span></a>
                     <a href="web.html" class="nav-btn" data-panel="web">🌐 <span>Web</span></a>
                     <a href="notes.html" class="nav-btn" data-panel="notes">📝 <span>Notes</span></a>
                     <a href="/dist/capture.html" class="nav-btn" data-panel="screenshot">📸 <span>Screenshot</span></a>
