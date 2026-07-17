@@ -1367,17 +1367,57 @@ body.light-mode .dropdown-content .nav-btn.active {
     color: #ffffff !important;
 }
 
+/* Bookmarks Sub-Toolbar styling (Desktop/Tablet) */
+.bookmarks-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    background-color: var(--bg-main);
+    border-bottom: 1px solid var(--border);
+    margin: -16px 0 16px 0;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: flex-start;
+}
+.bookmarks-toolbar .header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-primary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.bookmarks-toolbar .header-btn:hover {
+    background-color: rgba(2, 255, 136, 0.08);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.bookmarks-toolbar .header-btn svg {
+    fill: currentColor;
+}
+
 /* ==========================================================================
    Responsive Navigation Bar & Controls Overrides (Parsed Last)
    ========================================================================== */
 @media (max-width: 900px) {
-    body {
+    /* Reset screenshot min-width constraints in sidebar mode */
+    body, html, header, #content {
+        min-width: 0 !important;
+        width: 100% !important;
         padding: 8px !important;
+        box-sizing: border-box !important;
     }
+    
     #panel-nav-bar {
         width: 100% !important;
         flex-direction: row !important;
-        flex-wrap: wrap !important;
+        flex-wrap: nowrap !important;
         justify-content: space-between !important;
         align-items: center !important;
         padding: 4px 8px !important;
@@ -1454,31 +1494,25 @@ body.light-mode .dropdown-content .nav-btn.active {
         box-sizing: border-box !important;
     }
     
-    /* Responsive styling for page action controls in bookmarks.html */
-    .header-btn {
-        display: inline-flex !important;
-        align-items: center !important;
+    /* Bookmarks Toolbar Responsive adaptations */
+    .bookmarks-toolbar {
+        padding: 4px 8px !important;
+        margin: -8px 0 8px 0 !important;
         justify-content: center !important;
+        gap: 6px !important;
+    }
+    .bookmarks-toolbar .header-btn {
         padding: 0 !important;
         width: 28px !important;
         height: 28px !important;
         min-width: 28px !important;
         max-width: 28px !important;
         border-radius: 50% !important;
-        border: 1px solid var(--border) !important;
-        background: transparent !important;
-        color: var(--text-secondary) !important;
-        margin: 0 !important;
-        box-sizing: border-box !important;
+        justify-content: center !important;
+        flex: 0 0 auto !important;
     }
-    .header-btn:hover {
-        background-color: rgba(2, 255, 136, 0.08) !important;
-        color: var(--accent) !important;
-        border-color: var(--accent) !important;
-    }
-    .header-btn svg {
-        width: 14px !important;
-        height: 14px !important;
+    .bookmarks-toolbar .header-btn span {
+        display: none !important;
     }
 
     /* Tools Dropdown Positioning & Styling */
