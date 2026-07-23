@@ -842,41 +842,28 @@ function contentScriptCaptureMain() {
             styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
             document.head.appendChild(styleNode);
 
-            // 2. Temporarily convert fixed and sticky elements to absolute/relative positioning
-            // instead of display: none (which was malforming page layout and hiding navbars/headers).
-            const modifiedElts = [];
+            // 2. Prevent duplication of fixed and sticky elements while preserving layout
+            const fixedElts = [];
+            const stickyElts = [];
             const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
             let node;
-            const currentScrollY = window.scrollY;
-            const currentScrollX = window.scrollX;
             while (node = walker.nextNode()) {
                 if (!node || !node.style || node.id === "bookmarkfs-capture-progress-overlay") continue;
                 const style = window.getComputedStyle(node);
-                if (style.position === "fixed") {
-                    const rect = node.getBoundingClientRect();
-                    const absTop = rect.top + currentScrollY;
-                    const absLeft = rect.left + currentScrollX;
-                    modifiedElts.push({
+                const pos = style.position;
+                if (pos === "fixed") {
+                    fixedElts.push({
                         elt: node,
-                        prevPos: node.style.getPropertyValue("position"),
-                        prevPosPri: node.style.getPropertyPriority("position"),
-                        prevTop: node.style.getPropertyValue("top"),
-                        prevTopPri: node.style.getPropertyPriority("top"),
-                        prevLeft: node.style.getPropertyValue("left"),
-                        prevLeftPri: node.style.getPropertyPriority("left"),
-                        prevWidth: node.style.getPropertyValue("width"),
-                        prevWidthPri: node.style.getPropertyPriority("width")
+                        prevVis: node.style.getPropertyValue("visibility"),
+                        prevVisPri: node.style.getPropertyPriority("visibility")
                     });
-                    node.style.setProperty("position", "absolute", "important");
-                    node.style.setProperty("top", absTop + "px", "important");
-                    node.style.setProperty("left", absLeft + "px", "important");
-                    node.style.setProperty("width", rect.width + "px", "important");
-                } else if (style.position === "sticky") {
-                    modifiedElts.push({
+                } else if (pos === "sticky" || pos === "-webkit-sticky") {
+                    stickyElts.push({
                         elt: node,
                         prevPos: node.style.getPropertyValue("position"),
                         prevPosPri: node.style.getPropertyPriority("position")
                     });
+                    // Convert sticky to relative so it stays locked in its natural document position and scrolls away naturally
                     node.style.setProperty("position", "relative", "important");
                 }
             }
@@ -930,11 +917,11 @@ function contentScriptCaptureMain() {
             // Keep reference to cleanup
             window.__bookmarkfs_capture_cleanup = () => {
                 if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
-                modifiedElts.forEach(m => {
-                    m.elt.style.setProperty("position", m.prevPos, m.prevPosPri);
-                    if (m.prevTop !== undefined) m.elt.style.setProperty("top", m.prevTop, m.prevTopPri);
-                    if (m.prevLeft !== undefined) m.elt.style.setProperty("left", m.prevLeft, m.prevLeftPri);
-                    if (m.prevWidth !== undefined) m.elt.style.setProperty("width", m.prevWidth, m.prevWidthPri);
+                fixedElts.forEach(f => {
+                    f.elt.style.setProperty("visibility", f.prevVis, f.prevVisPri);
+                });
+                stickyElts.forEach(s => {
+                    s.elt.style.setProperty("position", s.prevPos, s.prevPosPri);
                 });
                 const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
                 if (progressOverlay && progressOverlay.parentNode) {
@@ -946,6 +933,16 @@ function contentScriptCaptureMain() {
         }
         else if (message.action === "scroll") {
             window.scrollTo(message.x, message.y);
+
+            // Hide fixed elements on slices after top (y > 0) to prevent duplication down the page
+            fixedElts.forEach(f => {
+                if (message.y === 0) {
+                    f.elt.style.setProperty("visibility", f.prevVis || "visible", f.prevVisPri);
+                } else {
+                    f.elt.style.setProperty("visibility", "hidden", "important");
+                }
+            });
+
             // Wait 100ms for browser viewport rendering engine to paint
             setTimeout(() => {
                 sendResponse({ scrolled: true });
