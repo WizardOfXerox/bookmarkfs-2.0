@@ -850,110 +850,47 @@ function contentScriptCaptureMain() {
                 styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
                 document.head.appendChild(styleNode);
 
-                // 2. Prevent duplication of left sidebars, fixed, and sticky elements while preserving layout
-                window.__bookmarkfs_target_elts = [];
-
-                function hideElementAndChildren(elt) {
-                    if (!elt || !elt.style) return;
-                    elt.style.setProperty("visibility", "hidden", "important");
-                    elt.style.setProperty("opacity", "0", "important");
-                    const children = elt.querySelectorAll("*");
-                    for (let i = 0; i < children.length; i++) {
-                        if (children[i].style) {
-                            children[i].style.setProperty("visibility", "hidden", "important");
-                            children[i].style.setProperty("opacity", "0", "important");
-                        }
-                    }
-                }
-
-                function restoreElementAndChildren(item) {
-                    if (!item || !item.elt || !item.elt.style) return;
-                    if (item.prevVis) {
-                        item.elt.style.setProperty("visibility", item.prevVis, item.prevVisPri);
-                    } else {
-                        item.elt.style.removeProperty("visibility");
-                    }
-                    if (item.prevOp) {
-                        item.elt.style.setProperty("opacity", item.prevOp, item.prevOpPri);
-                    } else {
-                        item.elt.style.removeProperty("opacity");
-                    }
-                    if (item.prevPos) {
-                        item.elt.style.setProperty("position", item.prevPos, item.prevPosPri);
-                    } else {
-                        item.elt.style.removeProperty("position");
-                    }
-                    
-                    const children = item.elt.querySelectorAll("*");
-                    for (let i = 0; i < children.length; i++) {
-                        if (children[i].style) {
-                            children[i].style.removeProperty("visibility");
-                            children[i].style.removeProperty("opacity");
-                        }
-                    }
-                }
-
-                window.__bookmarkfs_restore_helper = restoreElementAndChildren;
-                window.__bookmarkfs_hide_helper = hideElementAndChildren;
+                // 2. Neutralize ALL fixed/sticky positioning via CSS data-attribute targeting
+                //    This is more reliable than inline styles because it survives JS framework re-application
+                window.__bookmarkfs_marked_elts = [];
 
                 const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
                 let node;
-                const vw = window.innerWidth;
-                const vh = window.innerHeight;
                 while (node = walker.nextNode()) {
-                    if (!node || !node.style || node.id === "bookmarkfs-capture-progress-overlay") continue;
-                    const style = window.getComputedStyle(node);
-                    const pos = style.position;
-                    const rect = node.getBoundingClientRect();
-
-                    const isFixedOrSticky = (pos === "fixed" || pos === "sticky" || pos === "-webkit-sticky");
+                    if (!node || !node.style) continue;
+                    // Skip our own overlay
+                    if (node.id === "bookmarkfs-capture-progress-overlay" || node.closest("#bookmarkfs-capture-progress-overlay")) continue;
                     
-                    const tag = node.tagName.toLowerCase();
-                    const className = (typeof node.className === "string") ? node.className.toLowerCase() : "";
-                    const idName = (typeof node.id === "string") ? node.id.toLowerCase() : "";
+                    const computed = window.getComputedStyle(node);
+                    const pos = computed.position;
                     
-                    const isSidebarIdentifier = (
-                        tag === "aside" || 
-                        tag === "nav" ||
-                        className.includes("sidebar") || 
-                        className.includes("sidenav") || 
-                        className.includes("side-nav") || 
-                        className.includes("left-bar") ||
-                        className.includes("left-panel") ||
-                        className.includes("admin") ||
-                        className.includes("menu") ||
-                        idName.includes("sidebar") ||
-                        idName.includes("sidenav") ||
-                        idName.includes("menu")
-                    );
-
-                    // Geometrical left column detector: left edge < 120px, width < 45% screen width, height >= 30% viewport height
-                    const isLeftColumn = (rect.left < 120) && (rect.width > 30 && rect.width < vw * 0.45) && (rect.height >= vh * 0.3);
-
-                    if (isFixedOrSticky || isLeftColumn || isSidebarIdentifier) {
-                        window.__bookmarkfs_target_elts.push({
-                            elt: node,
-                            prevVis: node.style.getPropertyValue("visibility"),
-                            prevVisPri: node.style.getPropertyPriority("visibility"),
-                            prevOp: node.style.getPropertyValue("opacity"),
-                            prevOpPri: node.style.getPropertyPriority("opacity"),
-                            prevPos: node.style.getPropertyValue("position"),
-                            prevPosPri: node.style.getPropertyPriority("position")
-                        });
-                        
-                        // Override sticky and fixed positions to relative/static in DOM flow during capture
-                        if (pos === "sticky" || pos === "-webkit-sticky") {
-                            node.style.setProperty("position", "relative", "important");
-                        } else if (pos === "fixed") {
-                            node.style.setProperty("position", "static", "important");
-                        }
+                    if (pos === "fixed" || pos === "sticky" || pos === "-webkit-sticky") {
+                        node.setAttribute("data-bmfs-neutralize", "1");
+                        window.__bookmarkfs_marked_elts.push(node);
                     }
                 }
+
+                // Inject CSS rules that force neutralization — these beat any stylesheet !important
+                // because the [data-attr] selector + our rule is applied last in the cascade
+                const neutralizeStyle = document.createElement("style");
+                neutralizeStyle.id = "bookmarkfs-neutralize-style";
+                neutralizeStyle.textContent = `
+                    [data-bmfs-neutralize] {
+                        position: relative !important;
+                    }
+                    #bookmarkfs-capture-progress-overlay {
+                        position: fixed !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                    }
+                `;
+                document.head.appendChild(neutralizeStyle);
 
             // Save original scroll states
             const origX = window.scrollX;
             const origY = window.scrollY;
 
+            // Measure AFTER neutralization — converting fixed sidebars to relative may change scroll dimensions
             const totalWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
             const totalHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
             const viewportWidth = window.innerWidth;
@@ -998,17 +935,16 @@ function contentScriptCaptureMain() {
 
             // Keep reference to cleanup
             window.__bookmarkfs_capture_cleanup = () => {
+                // Remove injected styles
                 if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
-                const tElts = window.__bookmarkfs_target_elts || [];
-                const restoreFn = window.__bookmarkfs_restore_helper || restoreElementAndChildren;
+                const ns = document.getElementById("bookmarkfs-neutralize-style");
+                if (ns && ns.parentNode) ns.parentNode.removeChild(ns);
                 
-                tElts.forEach(item => {
-                    restoreFn(item);
+                // Remove data-attributes to restore original positioning
+                (window.__bookmarkfs_marked_elts || []).forEach(el => {
+                    el.removeAttribute("data-bmfs-neutralize");
                 });
-
-                window.__bookmarkfs_target_elts = null;
-                window.__bookmarkfs_restore_helper = null;
-                window.__bookmarkfs_hide_helper = null;
+                window.__bookmarkfs_marked_elts = null;
 
                 const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
                 if (progressOverlay && progressOverlay.parentNode) {
@@ -1021,27 +957,10 @@ function contentScriptCaptureMain() {
         else if (message.action === "scroll") {
             window.scrollTo(message.x, message.y);
 
-            // Hide sidebars, fixed, and sticky elements on slices after top (y > 0) to prevent duplication
-            const tElts = window.__bookmarkfs_target_elts || [];
-            const restoreFn = window.__bookmarkfs_restore_helper;
-            const hideFn = window.__bookmarkfs_hide_helper;
+            // No per-slice element toggling needed — fixed/sticky elements are already
+            // neutralized to position:relative via CSS, so they scroll naturally with content
 
-            tElts.forEach(item => {
-                if (message.y === 0) {
-                    if (restoreFn) {
-                        restoreFn(item);
-                    }
-                } else {
-                    if (hideFn) {
-                        hideFn(item.elt);
-                    } else {
-                        item.elt.style.setProperty("visibility", "hidden", "important");
-                        item.elt.style.setProperty("opacity", "0", "important");
-                    }
-                }
-            });
-
-            // Wait 100ms for browser viewport rendering engine to paint
+            // Wait for browser to paint the new scroll position
             setTimeout(() => {
                 sendResponse({ scrolled: true });
             }, 100);
