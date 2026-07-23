@@ -843,8 +843,9 @@ function contentScriptCaptureMain() {
             document.head.appendChild(styleNode);
 
             // 2. Prevent duplication of fixed and sticky elements while preserving layout
-            const fixedElts = [];
-            const stickyElts = [];
+            window.__bookmarkfs_fixed_elts = [];
+            window.__bookmarkfs_sticky_elts = [];
+
             const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
             let node;
             while (node = walker.nextNode()) {
@@ -852,13 +853,13 @@ function contentScriptCaptureMain() {
                 const style = window.getComputedStyle(node);
                 const pos = style.position;
                 if (pos === "fixed") {
-                    fixedElts.push({
+                    window.__bookmarkfs_fixed_elts.push({
                         elt: node,
                         prevVis: node.style.getPropertyValue("visibility"),
                         prevVisPri: node.style.getPropertyPriority("visibility")
                     });
                 } else if (pos === "sticky" || pos === "-webkit-sticky") {
-                    stickyElts.push({
+                    window.__bookmarkfs_sticky_elts.push({
                         elt: node,
                         prevPos: node.style.getPropertyValue("position"),
                         prevPosPri: node.style.getPropertyPriority("position")
@@ -917,12 +918,27 @@ function contentScriptCaptureMain() {
             // Keep reference to cleanup
             window.__bookmarkfs_capture_cleanup = () => {
                 if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
-                fixedElts.forEach(f => {
-                    f.elt.style.setProperty("visibility", f.prevVis, f.prevVisPri);
+                const fElts = window.__bookmarkfs_fixed_elts || [];
+                const sElts = window.__bookmarkfs_sticky_elts || [];
+                
+                fElts.forEach(f => {
+                    if (f.prevVis) {
+                        f.elt.style.setProperty("visibility", f.prevVis, f.prevVisPri);
+                    } else {
+                        f.elt.style.removeProperty("visibility");
+                    }
                 });
-                stickyElts.forEach(s => {
-                    s.elt.style.setProperty("position", s.prevPos, s.prevPosPri);
+                sElts.forEach(s => {
+                    if (s.prevPos) {
+                        s.elt.style.setProperty("position", s.prevPos, s.prevPosPri);
+                    } else {
+                        s.elt.style.removeProperty("position");
+                    }
                 });
+
+                window.__bookmarkfs_fixed_elts = null;
+                window.__bookmarkfs_sticky_elts = null;
+
                 const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
                 if (progressOverlay && progressOverlay.parentNode) {
                     progressOverlay.parentNode.removeChild(progressOverlay);
@@ -934,10 +950,15 @@ function contentScriptCaptureMain() {
         else if (message.action === "scroll") {
             window.scrollTo(message.x, message.y);
 
-            // Hide fixed elements on slices after top (y > 0) to prevent duplication down the page
-            fixedElts.forEach(f => {
+            // Hide fixed elements (like left sidebars and top navbars) on slices after top (y > 0) to prevent duplication
+            const fElts = window.__bookmarkfs_fixed_elts || [];
+            fElts.forEach(f => {
                 if (message.y === 0) {
-                    f.elt.style.setProperty("visibility", f.prevVis || "visible", f.prevVisPri);
+                    if (f.prevVis) {
+                        f.elt.style.setProperty("visibility", f.prevVis, f.prevVisPri);
+                    } else {
+                        f.elt.style.removeProperty("visibility");
+                    }
                 } else {
                     f.elt.style.setProperty("visibility", "hidden", "important");
                 }
