@@ -67,6 +67,49 @@
                 title.textContent = tab.title || tab.url;
                 row.appendChild(title);
 
+                row.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const menuItems = [
+                        {
+                            label: 'Close Tab',
+                            icon: 'fa-times',
+                            onClick: () => {
+                                chrome.tabs.remove(tab.id, () => {
+                                    loadActiveWorkspace();
+                                });
+                            }
+                        },
+                        {
+                            label: 'Save as Bookmark',
+                            icon: 'fa-bookmark',
+                            onClick: () => {
+                                chrome.bookmarks.create({
+                                    title: tab.title,
+                                    url: tab.url
+                                }, () => {
+                                    alert('Bookmark saved successfully!');
+                                });
+                            }
+                        },
+                        { divider: true },
+                        {
+                            label: 'Copy URL',
+                            icon: 'fa-copy',
+                            onClick: () => {
+                                navigator.clipboard.writeText(tab.url).then(() => {
+                                    alert('URL copied to clipboard!');
+                                }).catch(() => {
+                                    alert('Failed to copy URL');
+                                });
+                            }
+                        }
+                    ];
+
+                    window.ContextMenu.show(e, menuItems);
+                };
+
                 activeTabsList.appendChild(row);
             });
         } catch (err) {
@@ -333,6 +376,80 @@
                     selectWorkspace(session.id);
                 };
 
+                item.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const menuItems = [
+                        {
+                            label: 'Restore Session',
+                            icon: '🚀',
+                            onClick: () => {
+                                selectWorkspace(session.id);
+                                if (btnRestore) btnRestore.click();
+                            }
+                        },
+                        {
+                            label: 'Open in New Window',
+                            icon: 'fa-window-restore',
+                            onClick: () => {
+                                selectWorkspace(session.id);
+                                if (btnWin) btnWin.click();
+                            }
+                        },
+                        { divider: true },
+                        {
+                            label: 'Rename',
+                            icon: 'fa-edit',
+                            onClick: () => {
+                                selectWorkspace(session.id);
+                                if (btnRename) btnRename.click();
+                            }
+                        },
+                        {
+                            label: 'Duplicate',
+                            icon: 'fa-clone',
+                            onClick: async () => {
+                                try {
+                                    const serializedText = JSON.stringify(session.tabs, null, 2);
+                                    const bytes = new TextEncoder().encode(serializedText);
+                                    await storeSession(`${session.title} - Copy`, bytes);
+                                    alert('Workspace duplicated!');
+                                    refreshWorkspaces();
+                                } catch (err) {
+                                    alert('Error duplicating workspace: ' + err.message);
+                                }
+                            }
+                        },
+                        {
+                            label: 'Export Session',
+                            icon: 'fa-download',
+                            onClick: () => {
+                                const blob = new Blob([JSON.stringify(session.tabs, null, 2)], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `${session.title}.json`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            }
+                        },
+                        { divider: true },
+                        {
+                            label: 'Delete',
+                            icon: 'fa-trash',
+                            onClick: () => {
+                                selectWorkspace(session.id);
+                                if (btnDelete) btnDelete.click();
+                            }
+                        }
+                    ];
+
+                    window.ContextMenu.show(e, menuItems);
+                };
+
                 workspaceList.appendChild(item);
             });
 
@@ -477,6 +594,54 @@
             };
             actions.appendChild(btnCloseTab);
             row.appendChild(actions);
+
+            row.oncontextmenu = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const menuItems = [
+                    {
+                        label: 'Open Tab',
+                        icon: 'fa-external-link-alt',
+                        onClick: () => {
+                            chrome.tabs.create({ url: tab.url });
+                        }
+                    },
+                    { divider: true },
+                    {
+                        label: 'Copy URL',
+                        icon: 'fa-copy',
+                        onClick: () => {
+                            navigator.clipboard.writeText(tab.url).then(() => {
+                                alert('URL copied to clipboard!');
+                            }).catch(() => {
+                                alert('Failed to copy URL');
+                            });
+                        }
+                    },
+                    {
+                        label: 'Copy Title',
+                        icon: 'fa-heading',
+                        onClick: () => {
+                            navigator.clipboard.writeText(tab.title || tab.url).then(() => {
+                                alert('Title copied to clipboard!');
+                            }).catch(() => {
+                                alert('Failed to copy title');
+                            });
+                        }
+                    },
+                    { divider: true },
+                    {
+                        label: 'Remove from Session',
+                        icon: 'fa-trash',
+                        onClick: () => {
+                            btnCloseTab.click();
+                        }
+                    }
+                ];
+
+                window.ContextMenu.show(e, menuItems);
+            };
 
             tabsContainer.appendChild(row);
         });

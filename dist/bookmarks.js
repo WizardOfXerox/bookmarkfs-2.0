@@ -243,47 +243,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
         event.preventDefault();
 
-        chrome.bookmarks.get(folderId, (results) => {
+        chrome.bookmarks.getSubTree(folderId, (results) => {
             if (!results || results.length === 0) return;
             const folderNode = results[0];
 
-            const action = prompt(
-                `Manage Folder "${folderNode.title}":\n` +
-                `Type "rename" to change its name, or "delete" to permanently delete it along with all its bookmarks.`, 
-                "rename"
-            );
-            if (!action) return;
+            const menuItems = [
+                {
+                    label: 'Rename Folder',
+                    icon: 'fa-edit',
+                    onClick: () => {
+                        const newTitle = prompt("Enter new folder name:", folderNode.title);
+                        if (newTitle && newTitle.trim() !== "") {
+                            chrome.bookmarks.update(folderId, { title: newTitle.trim() }, () => {
+                                if (chrome.runtime.lastError) {
+                                    showToast("Error renaming folder: " + chrome.runtime.lastError.message, "error");
+                                } else {
+                                    showToast("Folder renamed successfully!", "success");
+                                    loadInitialBookmarks();
+                                }
+                            });
+                        }
+                    }
+                },
+                {
+                    label: 'Delete Folder',
+                    icon: 'fa-trash',
+                    onClick: () => {
+                        if (confirm(`⚠️ Are you sure you want to permanently delete "${folderNode.title}" and all its subfolders/bookmarks?`)) {
+                            chrome.bookmarks.removeTree(folderId, () => {
+                                if (chrome.runtime.lastError) {
+                                    showToast("Error deleting folder: " + chrome.runtime.lastError.message, "error");
+                                } else {
+                                    showToast("Folder deleted successfully!", "success");
+                                    const allTab = primaryFolderTabs.querySelector('[data-id="all"]');
+                                    if (allTab) allTab.click();
+                                    loadInitialBookmarks();
+                                }
+                            });
+                        }
+                    }
+                },
+                { divider: true }
+            ];
 
-            if (action.toLowerCase() === 'rename') {
-                const newTitle = prompt("Enter new folder name:", folderNode.title);
-                if (newTitle && newTitle.trim() !== "") {
-                    chrome.bookmarks.update(folderId, { title: newTitle.trim() }, () => {
-                        if (chrome.runtime.lastError) {
-                            showToast("Error renaming folder: " + chrome.runtime.lastError.message, "error");
-                        } else {
-                            showToast("Folder renamed successfully!", "success");
-                            loadInitialBookmarks();
-                        }
-                    });
-                }
-            } else if (action.toLowerCase() === 'delete') {
-                if (confirm(`⚠️ Are you sure you want to permanently delete "${folderNode.title}" and all its subfolders/bookmarks?`)) {
-                    chrome.bookmarks.removeTree(folderId, () => {
-                        if (chrome.runtime.lastError) {
-                            showToast("Error deleting folder: " + chrome.runtime.lastError.message, "error");
-                        } else {
-                            showToast("Folder deleted successfully!", "success");
-                            const allTab = primaryFolderTabs.querySelector('[data-id="all"]');
-                            if (allTab) allTab.click();
-                            loadInitialBookmarks();
-                        }
-                    });
-                }
+            const childUrls = [];
+            function collectUrls(node) {
+                if (node.url) childUrls.push(node.url);
+                if (node.children) node.children.forEach(collectUrls);
             }
+            collectUrls(folderNode);
+
+            menuItems.push({
+                label: `Open All Bookmarks (${childUrls.length})`,
+                icon: 'fa-external-link-alt',
+                disabled: childUrls.length === 0,
+                onClick: () => {
+                    childUrls.forEach(url => {
+                        chrome.tabs.create({ url, active: false });
+                    });
+                }
+            });
+
+            window.ContextMenu.show(event, menuItems);
         });
     }
 
-    // --- Bookmark Loading and Management ---
     async function loadInitialBookmarks() {
         showLoading(true);
         try {
@@ -801,6 +825,85 @@ document.addEventListener('DOMContentLoaded', () => {
             bookmarkElement.addEventListener('dragover', handleDragOver);
             bookmarkElement.addEventListener('drop', handleDrop);
             bookmarkElement.addEventListener('dragend', handleDragEnd);
+
+            // Context Menu
+            bookmarkElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const menuItems = [
+                    {
+                        label: 'Open',
+                        icon: 'fa-folder-open',
+                        onClick: () => {
+                            chrome.tabs.update({ url: bookmark.url });
+                        }
+                    },
+                    {
+                        label: 'Open in New Tab',
+                        icon: 'fa-external-link-alt',
+                        onClick: () => {
+                            chrome.tabs.create({ url: bookmark.url });
+                        }
+                    },
+                    {
+                        label: 'Open in New Window',
+                        icon: 'fa-window-maximize',
+                        onClick: () => {
+                            chrome.windows.create({ url: bookmark.url });
+                        }
+                    },
+                    { divider: true },
+                    {
+                        label: 'Copy URL',
+                        icon: 'fa-copy',
+                        onClick: () => {
+                            navigator.clipboard.writeText(bookmark.url).then(() => {
+                                showToast('URL copied to clipboard!', 'success');
+                            }).catch(() => {
+                                showToast('Failed to copy URL', 'error');
+                            });
+                        }
+                    },
+                    {
+                        label: 'Copy Title',
+                        icon: 'fa-heading',
+                        onClick: () => {
+                            navigator.clipboard.writeText(bookmark.title || 'Untitled').then(() => {
+                                showToast('Title copied to clipboard!', 'success');
+                            }).catch(() => {
+                                showToast('Failed to copy title', 'error');
+                            });
+                        }
+                    },
+                    { divider: true },
+                    {
+                        label: 'Edit',
+                        icon: 'fa-edit',
+                        onClick: () => {
+                            openEditBookmarkModal(bookmark);
+                        }
+                    },
+                    {
+                        label: 'Delete',
+                        icon: 'fa-trash',
+                        onClick: () => {
+                            if (confirm('Are you sure you want to delete this bookmark?')) {
+                                chrome.bookmarks.remove(bookmarkId, () => {
+                                    if (chrome.runtime.lastError) {
+                                        showToast('Error deleting bookmark', 'error');
+                                    } else {
+                                        showToast('Bookmark deleted successfully!', 'success');
+                                        loadInitialBookmarks();
+                                    }
+                                });
+                            }
+                        }
+                    }
+                ];
+                
+                window.ContextMenu.show(e, menuItems);
+            });
         });
     }
 

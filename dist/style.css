@@ -1271,6 +1271,19 @@ html.light-mode {
     font-weight: 700 !important;
     letter-spacing: 1px !important;
     color: var(--accent) !important;
+    white-space: nowrap !important;
+}
+.totp-code-display {
+    cursor: pointer !important;
+    transition: transform 0.15s ease, color 0.15s ease !important;
+    user-select: none !important;
+}
+.totp-code-display:hover {
+    transform: scale(1.05) !important;
+    filter: brightness(1.25) !important;
+}
+.totp-code-display:active {
+    transform: scale(0.95) !important;
 }
 .twofa-card-timer {
     font-size: 11px !important;
@@ -1290,8 +1303,21 @@ body.light-mode .twofa-card-timer {
     flex-wrap: wrap !important;
 }
 
+@media (min-width: 681px) {
+    .twofa-profile-card {
+        display: grid !important;
+        grid-template-columns: 280px 220px 1fr !important;
+        align-items: center !important;
+        gap: 16px !important;
+    }
+    .twofa-card-actions {
+        justify-content: flex-end !important;
+        width: 100% !important;
+    }
+}
+
 /* Layout response based on sidebar width */
-@media (max-width: 600px) {
+@media (max-width: 680px) {
     .twofa-profile-card {
         flex-direction: column !important;
         align-items: stretch !important;

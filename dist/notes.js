@@ -308,6 +308,48 @@
 
                 item.appendChild(info);
                 item.appendChild(deleteBtn);
+
+                item.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const menuItems = [
+                        {
+                            label: 'Open Note',
+                            icon: 'fa-edit',
+                            onClick: () => {
+                                info.click();
+                            }
+                        },
+                        {
+                            label: 'Export Note',
+                            icon: 'fa-download',
+                            onClick: () => {
+                                const plainText = content.replace(/<[^>]+>/g, "\n");
+                                const blob = new Blob([plainText], { type: 'text/plain' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `note_${target.replace(/[^a-z0-9_-]/gi, '_')}.txt`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            }
+                        },
+                        { divider: true },
+                        {
+                            label: 'Delete Note',
+                            icon: 'fa-trash',
+                            onClick: () => {
+                                deleteBtn.click();
+                            }
+                        }
+                    ];
+
+                    window.ContextMenu.show(e, menuItems);
+                };
+
                 indexList.appendChild(item);
             });
         });
@@ -680,6 +722,91 @@
                 triggerAutoSave();
             }
         });
+    });
+
+    function insertTextAtCursor(text) {
+        editor.focus();
+        let sel, range;
+        if (window.getSelection) {
+            sel = window.getSelection();
+            if (sel.getRangeAt && sel.rangeCount) {
+                range = sel.getRangeAt(0);
+                range.deleteContents();
+                const textNode = document.createTextNode(text);
+                range.insertNode(textNode);
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+    }
+
+    function insertLinkAtCursor(url) {
+        editor.focus();
+        let sel = window.getSelection();
+        if (sel.rangeCount) {
+            let range = sel.getRangeAt(0);
+            let selectedText = range.toString() || url;
+            range.deleteContents();
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.textContent = selectedText;
+            range.insertNode(a);
+        }
+    }
+
+    editor.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const menuItems = [
+            {
+                label: 'Insert Date/Time',
+                icon: 'fa-calendar-alt',
+                onClick: () => {
+                    insertTextAtCursor(new Date().toLocaleString());
+                    updateWordCount();
+                    triggerAutoSave();
+                }
+            },
+            {
+                label: 'Insert Link',
+                icon: 'fa-link',
+                onClick: () => {
+                    const url = prompt("Enter Link URL (e.g. https://google.com):", "https://");
+                    if (url) {
+                        insertLinkAtCursor(url);
+                        updateWordCount();
+                        triggerAutoSave();
+                    }
+                }
+            },
+            { divider: true },
+            {
+                label: 'Copy All',
+                icon: 'fa-copy',
+                onClick: () => {
+                    navigator.clipboard.writeText(editor.innerText).then(() => {
+                        statusLabel.textContent = "Copied to clipboard";
+                    });
+                }
+            },
+            {
+                label: 'Clear Note',
+                icon: 'fa-trash-alt',
+                onClick: () => {
+                    if (confirm("Clear all note contents?")) {
+                        editor.innerHTML = "";
+                        updateWordCount();
+                        triggerAutoSave();
+                    }
+                }
+            }
+        ];
+
+        window.ContextMenu.show(e, menuItems);
     });
 
     editor.addEventListener("input", () => {

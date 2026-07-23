@@ -167,4 +167,111 @@
 
     // Initialize nav button states
     updateNavButtons();
+
+    // Context Menu for Address Bar
+    addressBar.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const menuItems = [
+            {
+                label: 'Copy URL',
+                icon: 'fa-copy',
+                onClick: () => {
+                    navigator.clipboard.writeText(addressBar.value).then(() => {
+                        console.log('Address bar URL copied');
+                    });
+                }
+            },
+            {
+                label: 'Paste & Go',
+                icon: 'fa-clipboard',
+                onClick: () => {
+                    navigator.clipboard.readText().then((clipText) => {
+                        if (clipText && clipText.trim()) {
+                            addressBar.value = clipText.trim();
+                            navigateTo(clipText.trim());
+                        }
+                    }).catch((err) => {
+                        console.error('Failed to read clipboard: ', err);
+                    });
+                }
+            },
+            {
+                label: 'Clear',
+                icon: 'fa-eraser',
+                onClick: () => {
+                    addressBar.value = '';
+                    addressBar.focus();
+                }
+            },
+            { divider: true },
+            {
+                label: 'Bookmark This Page',
+                icon: 'fa-bookmark',
+                onClick: () => {
+                    const pageUrl = iframe.src;
+                    chrome.bookmarks.create({
+                        title: pageUrl,
+                        url: pageUrl
+                    }, () => {
+                        alert('Page bookmarked successfully!');
+                    });
+                }
+            }
+        ];
+
+        window.ContextMenu.show(e, menuItems);
+    });
+
+    // Context Menu for Browser Container (General page actions)
+    const browserContainer = document.querySelector(".web-browser-container");
+    if (browserContainer) {
+        browserContainer.addEventListener("contextmenu", (e) => {
+            // Avoid triggering when right clicking address bar itself (since it has its own stopPropagation)
+            e.preventDefault();
+
+            const menuItems = [
+                {
+                    label: 'Bookmark This Page',
+                    icon: 'fa-bookmark',
+                    onClick: () => {
+                        const pageUrl = iframe.src;
+                        chrome.bookmarks.create({
+                            title: pageUrl,
+                            url: pageUrl
+                        }, () => {
+                            alert('Page bookmarked successfully!');
+                        });
+                    }
+                },
+                {
+                    label: 'Open in New Tab',
+                    icon: 'fa-external-link-alt',
+                    onClick: () => {
+                        chrome.tabs.create({ url: iframe.src });
+                    }
+                },
+                {
+                    label: 'Copy Page URL',
+                    icon: 'fa-copy',
+                    onClick: () => {
+                        navigator.clipboard.writeText(iframe.src).then(() => {
+                            alert('Page URL copied to clipboard!');
+                        });
+                    }
+                },
+                { divider: true },
+                {
+                    label: 'Reload',
+                    icon: 'fa-sync-alt',
+                    onClick: () => {
+                        iframe.src = iframe.src;
+                    }
+                }
+            ];
+
+            window.ContextMenu.show(e, menuItems);
+        });
+    }
 })();

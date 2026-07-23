@@ -1918,7 +1918,8 @@ export function handleZip(bytes) {
                         current.push({
                             label: (acc.issuer ? `${acc.issuer}: ${acc.label}` : acc.label).trim(),
                             secret: acc.secret,
-                            recoveryCodes: ""
+                            recoveryCodes: "",
+                            url: ""
                         });
                         importedCount++;
                     }
@@ -2277,6 +2278,11 @@ export function handleZip(bytes) {
                 <input type="text" id="add-twofa-secret" placeholder="Base32 Key" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px; font-family: monospace;">
             </div>
 
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 12px; color: #a1a1aa;">Website URL (Optional):</label>
+                <input type="text" id="add-twofa-url" placeholder="e.g. github.com" style="padding: 8px 12px; background: #09090b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 6px; outline: none; font-size: 13px;">
+            </div>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <button id="btn-twofa-cam-scan" class="button" style="font-size: 12px; padding: 6px 12px;">📷 Scan Camera</button>
                 <button id="btn-twofa-screen-scan" class="button" style="font-size: 12px; padding: 6px 12px;">🖥️ <span>Screen Scan</span></button>
@@ -2320,6 +2326,7 @@ export function handleZip(bytes) {
 
         const labelInput = box.querySelector("#add-twofa-label");
         const secretInput = box.querySelector("#add-twofa-secret");
+        const urlInput = box.querySelector("#add-twofa-url");
         const camBtn = box.querySelector("#btn-twofa-cam-scan");
         const screenBtn = box.querySelector("#btn-twofa-screen-scan");
         const screenshotBtn = box.querySelector("#btn-twofa-screenshot-crop");
@@ -2336,6 +2343,7 @@ export function handleZip(bytes) {
         if (editProfile) {
             labelInput.value = editProfile.label || "";
             secretInput.value = editProfile.secret || "";
+            urlInput.value = editProfile.url || "";
             recoveryInput.value = editProfile.recoveryCodes || "";
         }
 
@@ -2705,6 +2713,7 @@ export function handleZip(bytes) {
             const label = labelInput.value.trim();
             const secret = secretInput.value.replace(/\s+/g, "").toUpperCase();
             const recoveryCodes = recoveryInput.value.trim();
+            const url = urlInput.value.trim();
             if (!label || !secret) {
                 alert("Please fill in both Label and Secret Key fields.");
                 return;
@@ -2712,7 +2721,7 @@ export function handleZip(bytes) {
             stopCamera();
             modal.removeEventListener("paste", modalPasteListener);
             modal.remove();
-            callback({ label, secret, recoveryCodes });
+            callback({ label, secret, recoveryCodes, url });
         };
 
         cancelBtn.onclick = () => {
@@ -5089,7 +5098,8 @@ export function handleZip(bytes) {
                         profiles.push({
                             label: result.label,
                             secret: result.secret,
-                            recoveryCodes: result.recoveryCodes || ""
+                            recoveryCodes: result.recoveryCodes || "",
+                            url: result.url || ""
                         });
                         await save2FAProfiles(profiles);
                         await render2FAProfilesList();
@@ -5138,8 +5148,21 @@ export function handleZip(bytes) {
             } else {
                 labelEl.textContent = profile.label;
             }
-            
             info.appendChild(labelEl);
+
+            if (profile.url) {
+                const urlEl = document.createElement("div");
+                urlEl.className = "twofa-card-url";
+                urlEl.style.fontSize = "12px";
+                urlEl.style.marginTop = "2px";
+                let displayUrl = profile.url;
+                let hrefUrl = profile.url;
+                if (!/^https?:\/\//i.test(hrefUrl)) {
+                    hrefUrl = "https://" + hrefUrl;
+                }
+                urlEl.innerHTML = `🔗 <a href="${hrefUrl}" target="_blank" style="color: var(--text-secondary); text-decoration: underline; word-break: break-all;">${displayUrl}</a>`;
+                info.appendChild(urlEl);
+            }
 
             const otpArea = document.createElement("div");
             otpArea.className = "twofa-card-otp";
@@ -5148,25 +5171,35 @@ export function handleZip(bytes) {
             codeEl.className = "totp-code-display twofa-card-code";
             codeEl.dataset.secret = profile.secret;
             codeEl.textContent = "------";
+            codeEl.title = "Click to copy";
+            
+            codeEl.onclick = () => {
+                const cleanCode = codeEl.textContent.replace(/\s+/g, "");
+                if (cleanCode === "Copied!") return;
+                
+                navigator.clipboard.writeText(cleanCode);
+                
+                codeEl.textContent = "Copied!";
+                codeEl.style.color = "#10b981"; // green
+                codeEl.dataset.copied = "true";
+                
+                // Bounce scale animation
+                codeEl.style.transform = "scale(1.08)";
+                setTimeout(() => { codeEl.style.transform = ""; }, 150);
+                
+                setTimeout(() => {
+                    codeEl.dataset.copied = "";
+                    codeEl.style.color = "";
+                    updateTOTPCodes(); // restore immediately
+                }, 1200);
+            };
 
             const timerEl = document.createElement("div");
             timerEl.className = "totp-timer-display twofa-card-timer";
             timerEl.textContent = "--";
 
-            const copyBtn = document.createElement("button");
-            copyBtn.className = "button";
-            copyBtn.textContent = "📋 Copy";
-            copyBtn.style.padding = "4px 10px";
-            copyBtn.style.fontSize = "12px";
-            copyBtn.onclick = () => {
-                navigator.clipboard.writeText(codeEl.textContent.replace(/\s+/g, ""));
-                copyBtn.textContent = "✓ Copied";
-                setTimeout(() => { copyBtn.textContent = "📋 Copy"; }, 1500);
-            };
-
             otpArea.appendChild(codeEl);
             otpArea.appendChild(timerEl);
-            otpArea.appendChild(copyBtn);
             
             const actionsRow = document.createElement("div");
             actionsRow.className = "twofa-card-actions";
@@ -5185,7 +5218,8 @@ export function handleZip(bytes) {
                         current[i] = {
                             label: result.label,
                             secret: result.secret,
-                            recoveryCodes: result.recoveryCodes || ""
+                            recoveryCodes: result.recoveryCodes || "",
+                            url: result.url || ""
                         };
                         await save2FAProfiles(current);
                         await render2FAProfilesList();
@@ -5332,7 +5366,6 @@ export function handleZip(bytes) {
             delBtn.style.fontSize = "12px";
             delBtn.style.borderColor = "#ef4444";
             delBtn.style.color = "#ef4444";
-            delBtn.style.marginLeft = "auto";
             delBtn.onclick = async () => {
                 if (!confirm(`Are you sure you want to delete profile "${profile.label}"?`)) return;
                 const current = await load2FAProfiles();
@@ -5361,6 +5394,7 @@ export function handleZip(bytes) {
     async function updateTOTPCodes() {
         const codes = document.querySelectorAll(".totp-code-display");
         for (const codeEl of codes) {
+            if (codeEl.dataset.copied === "true") continue;
             const secret = codeEl.dataset.secret;
             const timerEl = codeEl.nextElementSibling;
             try {

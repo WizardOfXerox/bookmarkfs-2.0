@@ -176,4 +176,67 @@ document.addEventListener("DOMContentLoaded", () => {
             qs("#ua-custom").value = UA_PRESETS[val];
         }
     });
+
+    const activeDisplay = qs("#ua-current-active");
+    if (activeDisplay) {
+        activeDisplay.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const menuItems = [
+                {
+                    label: 'Copy User-Agent',
+                    icon: 'fa-copy',
+                    onClick: () => {
+                        navigator.clipboard.writeText(activeDisplay.textContent).then(() => {
+                            alert('User-Agent string copied to clipboard!');
+                        });
+                    }
+                }
+            ];
+
+            window.ContextMenu.show(e, menuItems);
+        });
+    }
+
+    const exceptionsArea = qs("#ua-exceptions");
+    if (exceptionsArea) {
+        exceptionsArea.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const menuItems = [
+                {
+                    label: "Add Current Tab's Domain",
+                    icon: 'fa-plus',
+                    onClick: () => {
+                        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                            if (tabs && tabs[0] && tabs[0].url) {
+                                try {
+                                    const domain = new URL(tabs[0].url).hostname;
+                                    if (domain) {
+                                        const currentVal = exceptionsArea.value.trim();
+                                        const lines = currentVal ? currentVal.split("\n").map(l => l.trim()) : [];
+                                        if (!lines.includes(domain)) {
+                                            lines.push(domain);
+                                            exceptionsArea.value = lines.join("\n");
+                                            alert(`Added "${domain}" to exceptions list! (Remember to save)`);
+                                        } else {
+                                            alert(`"${domain}" is already in the exceptions list.`);
+                                        }
+                                    }
+                                } catch (err) {
+                                    alert("Could not extract domain from active tab: " + err.message);
+                                }
+                            } else {
+                                alert("No active tab found.");
+                            }
+                        });
+                    }
+                }
+            ];
+
+            window.ContextMenu.show(e, menuItems);
+        });
+    }
 });
