@@ -853,6 +853,49 @@ function contentScriptCaptureMain() {
                 // 2. Prevent duplication of left sidebars, fixed, and sticky elements while preserving layout
                 window.__bookmarkfs_target_elts = [];
 
+                function hideElementAndChildren(elt) {
+                    if (!elt || !elt.style) return;
+                    elt.style.setProperty("visibility", "hidden", "important");
+                    elt.style.setProperty("opacity", "0", "important");
+                    const children = elt.querySelectorAll("*");
+                    for (let i = 0; i < children.length; i++) {
+                        if (children[i].style) {
+                            children[i].style.setProperty("visibility", "hidden", "important");
+                            children[i].style.setProperty("opacity", "0", "important");
+                        }
+                    }
+                }
+
+                function restoreElementAndChildren(item) {
+                    if (!item || !item.elt || !item.elt.style) return;
+                    if (item.prevVis) {
+                        item.elt.style.setProperty("visibility", item.prevVis, item.prevVisPri);
+                    } else {
+                        item.elt.style.removeProperty("visibility");
+                    }
+                    if (item.prevOp) {
+                        item.elt.style.setProperty("opacity", item.prevOp, item.prevOpPri);
+                    } else {
+                        item.elt.style.removeProperty("opacity");
+                    }
+                    if (item.prevPos) {
+                        item.elt.style.setProperty("position", item.prevPos, item.prevPosPri);
+                    } else {
+                        item.elt.style.removeProperty("position");
+                    }
+                    
+                    const children = item.elt.querySelectorAll("*");
+                    for (let i = 0; i < children.length; i++) {
+                        if (children[i].style) {
+                            children[i].style.removeProperty("visibility");
+                            children[i].style.removeProperty("opacity");
+                        }
+                    }
+                }
+
+                window.__bookmarkfs_restore_helper = restoreElementAndChildren;
+                window.__bookmarkfs_hide_helper = hideElementAndChildren;
+
                 const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
                 let node;
                 const vw = window.innerWidth;
@@ -878,12 +921,14 @@ function contentScriptCaptureMain() {
                         className.includes("left-bar") ||
                         className.includes("left-panel") ||
                         className.includes("admin") ||
+                        className.includes("menu") ||
                         idName.includes("sidebar") ||
-                        idName.includes("sidenav")
+                        idName.includes("sidenav") ||
+                        idName.includes("menu")
                     );
 
-                    // Geometrical left column detector: left edge < 100px, width < 40% screen width, height >= 40% viewport height
-                    const isLeftColumn = (rect.left < 100) && (rect.width > 50 && rect.width < vw * 0.4) && (rect.height >= vh * 0.4);
+                    // Geometrical left column detector: left edge < 120px, width < 45% screen width, height >= 30% viewport height
+                    const isLeftColumn = (rect.left < 120) && (rect.width > 30 && rect.width < vw * 0.45) && (rect.height >= vh * 0.3);
 
                     if (isFixedOrSticky || isLeftColumn || isSidebarIdentifier) {
                         window.__bookmarkfs_target_elts.push({
@@ -955,26 +1000,15 @@ function contentScriptCaptureMain() {
             window.__bookmarkfs_capture_cleanup = () => {
                 if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
                 const tElts = window.__bookmarkfs_target_elts || [];
+                const restoreFn = window.__bookmarkfs_restore_helper || restoreElementAndChildren;
                 
                 tElts.forEach(item => {
-                    if (item.prevVis) {
-                        item.elt.style.setProperty("visibility", item.prevVis, item.prevVisPri);
-                    } else {
-                        item.elt.style.removeProperty("visibility");
-                    }
-                    if (item.prevOp) {
-                        item.elt.style.setProperty("opacity", item.prevOp, item.prevOpPri);
-                    } else {
-                        item.elt.style.removeProperty("opacity");
-                    }
-                    if (item.prevPos) {
-                        item.elt.style.setProperty("position", item.prevPos, item.prevPosPri);
-                    } else {
-                        item.elt.style.removeProperty("position");
-                    }
+                    restoreFn(item);
                 });
 
                 window.__bookmarkfs_target_elts = null;
+                window.__bookmarkfs_restore_helper = null;
+                window.__bookmarkfs_hide_helper = null;
 
                 const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
                 if (progressOverlay && progressOverlay.parentNode) {
@@ -989,21 +1023,21 @@ function contentScriptCaptureMain() {
 
             // Hide sidebars, fixed, and sticky elements on slices after top (y > 0) to prevent duplication
             const tElts = window.__bookmarkfs_target_elts || [];
+            const restoreFn = window.__bookmarkfs_restore_helper;
+            const hideFn = window.__bookmarkfs_hide_helper;
+
             tElts.forEach(item => {
                 if (message.y === 0) {
-                    if (item.prevVis) {
-                        item.elt.style.setProperty("visibility", item.prevVis, item.prevVisPri);
-                    } else {
-                        item.elt.style.removeProperty("visibility");
-                    }
-                    if (item.prevOp) {
-                        item.elt.style.setProperty("opacity", item.prevOp, item.prevOpPri);
-                    } else {
-                        item.elt.style.removeProperty("opacity");
+                    if (restoreFn) {
+                        restoreFn(item);
                     }
                 } else {
-                    item.elt.style.setProperty("visibility", "hidden", "important");
-                    item.elt.style.setProperty("opacity", "0", "important");
+                    if (hideFn) {
+                        hideFn(item.elt);
+                    } else {
+                        item.elt.style.setProperty("visibility", "hidden", "important");
+                        item.elt.style.setProperty("opacity", "0", "important");
+                    }
                 }
             });
 
