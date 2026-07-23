@@ -842,30 +842,56 @@ function contentScriptCaptureMain() {
             styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
             document.head.appendChild(styleNode);
 
-            // 2. Prevent duplication of fixed and sticky elements while preserving layout
-            window.__bookmarkfs_fixed_elts = [];
-            window.__bookmarkfs_sticky_elts = [];
+            // 2. Prevent duplication of left sidebars, fixed, and sticky elements while preserving layout
+            window.__bookmarkfs_target_elts = [];
 
             const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
             let node;
+            const vw = window.innerWidth;
             while (node = walker.nextNode()) {
                 if (!node || !node.style || node.id === "bookmarkfs-capture-progress-overlay") continue;
                 const style = window.getComputedStyle(node);
                 const pos = style.position;
-                if (pos === "fixed") {
-                    window.__bookmarkfs_fixed_elts.push({
+                const rect = node.getBoundingClientRect();
+
+                const isFixedOrSticky = (pos === "fixed" || pos === "sticky" || pos === "-webkit-sticky");
+                
+                const tag = node.tagName.toLowerCase();
+                const className = (typeof node.className === "string") ? node.className.toLowerCase() : "";
+                const idName = (typeof node.id === "string") ? node.id.toLowerCase() : "";
+                
+                const isSidebarIdentifier = (
+                    tag === "aside" || 
+                    tag === "nav" ||
+                    className.includes("sidebar") || 
+                    className.includes("sidenav") || 
+                    className.includes("side-nav") || 
+                    className.includes("left-bar") ||
+                    className.includes("admin-panel") ||
+                    idName.includes("sidebar") ||
+                    idName.includes("sidenav")
+                );
+
+                // Detect left-aligned sidebars even if they use position: absolute or flex height
+                const isLeftSidebar = isSidebarIdentifier && (rect.left < 100) && (rect.width > 0 && rect.width < vw * 0.4);
+
+                if (isFixedOrSticky || isLeftSidebar) {
+                    window.__bookmarkfs_target_elts.push({
                         elt: node,
                         prevVis: node.style.getPropertyValue("visibility"),
-                        prevVisPri: node.style.getPropertyPriority("visibility")
-                    });
-                } else if (pos === "sticky" || pos === "-webkit-sticky") {
-                    window.__bookmarkfs_sticky_elts.push({
-                        elt: node,
+                        prevVisPri: node.style.getPropertyPriority("visibility"),
+                        prevOp: node.style.getPropertyValue("opacity"),
+                        prevOpPri: node.style.getPropertyPriority("opacity"),
                         prevPos: node.style.getPropertyValue("position"),
                         prevPosPri: node.style.getPropertyPriority("position")
                     });
-                    // Convert sticky to relative so it stays locked in its natural document position and scrolls away naturally
-                    node.style.setProperty("position", "relative", "important");
+                    
+                    // Override sticky and fixed positions to relative/static in DOM flow during capture
+                    if (pos === "sticky" || pos === "-webkit-sticky") {
+                        node.style.setProperty("position", "relative", "important");
+                    } else if (pos === "fixed") {
+                        node.style.setProperty("position", "static", "important");
+                    }
                 }
             }
 
@@ -918,26 +944,27 @@ function contentScriptCaptureMain() {
             // Keep reference to cleanup
             window.__bookmarkfs_capture_cleanup = () => {
                 if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
-                const fElts = window.__bookmarkfs_fixed_elts || [];
-                const sElts = window.__bookmarkfs_sticky_elts || [];
+                const tElts = window.__bookmarkfs_target_elts || [];
                 
-                fElts.forEach(f => {
-                    if (f.prevVis) {
-                        f.elt.style.setProperty("visibility", f.prevVis, f.prevVisPri);
+                tElts.forEach(item => {
+                    if (item.prevVis) {
+                        item.elt.style.setProperty("visibility", item.prevVis, item.prevVisPri);
                     } else {
-                        f.elt.style.removeProperty("visibility");
+                        item.elt.style.removeProperty("visibility");
                     }
-                });
-                sElts.forEach(s => {
-                    if (s.prevPos) {
-                        s.elt.style.setProperty("position", s.prevPos, s.prevPosPri);
+                    if (item.prevOp) {
+                        item.elt.style.setProperty("opacity", item.prevOp, item.prevOpPri);
                     } else {
-                        s.elt.style.removeProperty("position");
+                        item.elt.style.removeProperty("opacity");
+                    }
+                    if (item.prevPos) {
+                        item.elt.style.setProperty("position", item.prevPos, item.prevPosPri);
+                    } else {
+                        item.elt.style.removeProperty("position");
                     }
                 });
 
-                window.__bookmarkfs_fixed_elts = null;
-                window.__bookmarkfs_sticky_elts = null;
+                window.__bookmarkfs_target_elts = null;
 
                 const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
                 if (progressOverlay && progressOverlay.parentNode) {
@@ -950,17 +977,23 @@ function contentScriptCaptureMain() {
         else if (message.action === "scroll") {
             window.scrollTo(message.x, message.y);
 
-            // Hide fixed elements (like left sidebars and top navbars) on slices after top (y > 0) to prevent duplication
-            const fElts = window.__bookmarkfs_fixed_elts || [];
-            fElts.forEach(f => {
+            // Hide sidebars, fixed, and sticky elements on slices after top (y > 0) to prevent duplication
+            const tElts = window.__bookmarkfs_target_elts || [];
+            tElts.forEach(item => {
                 if (message.y === 0) {
-                    if (f.prevVis) {
-                        f.elt.style.setProperty("visibility", f.prevVis, f.prevVisPri);
+                    if (item.prevVis) {
+                        item.elt.style.setProperty("visibility", item.prevVis, item.prevVisPri);
                     } else {
-                        f.elt.style.removeProperty("visibility");
+                        item.elt.style.removeProperty("visibility");
+                    }
+                    if (item.prevOp) {
+                        item.elt.style.setProperty("opacity", item.prevOp, item.prevOpPri);
+                    } else {
+                        item.elt.style.removeProperty("opacity");
                     }
                 } else {
-                    f.elt.style.setProperty("visibility", "hidden", "important");
+                    item.elt.style.setProperty("visibility", "hidden", "important");
+                    item.elt.style.setProperty("opacity", "0", "important");
                 }
             });
 
