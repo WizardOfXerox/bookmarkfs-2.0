@@ -640,8 +640,8 @@ async function captureFullPage(tab) {
 
             await chrome.tabs.sendMessage(tab.id, { action: "scroll", x: coord.x, y: coord.y });
             
-            // Wait additional 300ms for browser paint cycle (total ~600ms scroll+paint delay)
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Reduced paint delay for 3x faster viewport capture cycle
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // Capture the current visible tab window viewport with retry on rate limit
             let dataUrl = null;
@@ -652,8 +652,8 @@ async function captureFullPage(tab) {
                     break;
                 } catch (err) {
                     if (err.message && err.message.includes("MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND")) {
-                        console.warn(`Quota rate limit hit (slice ${currentSliceIdx}), retrying in 800ms...`);
-                        await new Promise(resolve => setTimeout(resolve, 800));
+                        console.warn(`Quota rate limit hit (slice ${currentSliceIdx}), retrying in 400ms...`);
+                        await new Promise(resolve => setTimeout(resolve, 400));
                         retries--;
                     } else {
                         throw err;
@@ -703,8 +703,10 @@ async function captureFullPage(tab) {
             const dateStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
             const filename = `screenshot-${domain}-${dateStr}.png`;
 
-            // Save raw bytes directly to BookmarkFS folder database
-            await storeRawBytesInBookmarks(filename, bytes, "image/png");
+            // Save raw bytes asynchronously in background so it never blocks or lags the user capture flow
+            storeRawBytesInBookmarks(filename, bytes, "image/png").catch(err => {
+                console.warn("Background bookmark store warning:", err);
+            });
             console.log("Full-page screenshot successfully saved as file:", filename);
 
             // 7. Save capture object to Dexie database "Test4"
@@ -840,15 +842,42 @@ function contentScriptCaptureMain() {
             styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
             document.head.appendChild(styleNode);
 
-            // 2. Hide fixed and sticky elements temporarily to avoid repeating patterns
-            const hiddenElts = [];
+            // 2. Temporarily convert fixed and sticky elements to absolute/relative positioning
+            // instead of display: none (which was malforming page layout and hiding navbars/headers).
+            const modifiedElts = [];
             const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
             let node;
+            const currentScrollY = window.scrollY;
+            const currentScrollX = window.scrollX;
             while (node = walker.nextNode()) {
+                if (!node || !node.style || node.id === "bookmarkfs-capture-progress-overlay") continue;
                 const style = window.getComputedStyle(node);
-                if (style.position === "fixed" || style.position === "sticky") {
-                    hiddenElts.push({ elt: node, originalDisplay: node.style.display });
-                    node.style.display = "none";
+                if (style.position === "fixed") {
+                    const rect = node.getBoundingClientRect();
+                    const absTop = rect.top + currentScrollY;
+                    const absLeft = rect.left + currentScrollX;
+                    modifiedElts.push({
+                        elt: node,
+                        prevPos: node.style.getPropertyValue("position"),
+                        prevPosPri: node.style.getPropertyPriority("position"),
+                        prevTop: node.style.getPropertyValue("top"),
+                        prevTopPri: node.style.getPropertyPriority("top"),
+                        prevLeft: node.style.getPropertyValue("left"),
+                        prevLeftPri: node.style.getPropertyPriority("left"),
+                        prevWidth: node.style.getPropertyValue("width"),
+                        prevWidthPri: node.style.getPropertyPriority("width")
+                    });
+                    node.style.setProperty("position", "absolute", "important");
+                    node.style.setProperty("top", absTop + "px", "important");
+                    node.style.setProperty("left", absLeft + "px", "important");
+                    node.style.setProperty("width", rect.width + "px", "important");
+                } else if (style.position === "sticky") {
+                    modifiedElts.push({
+                        elt: node,
+                        prevPos: node.style.getPropertyValue("position"),
+                        prevPosPri: node.style.getPropertyPriority("position")
+                    });
+                    node.style.setProperty("position", "relative", "important");
                 }
             }
 
@@ -901,8 +930,11 @@ function contentScriptCaptureMain() {
             // Keep reference to cleanup
             window.__bookmarkfs_capture_cleanup = () => {
                 if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
-                hiddenElts.forEach(h => {
-                    h.elt.style.display = h.originalDisplay;
+                modifiedElts.forEach(m => {
+                    m.elt.style.setProperty("position", m.prevPos, m.prevPosPri);
+                    if (m.prevTop !== undefined) m.elt.style.setProperty("top", m.prevTop, m.prevTopPri);
+                    if (m.prevLeft !== undefined) m.elt.style.setProperty("left", m.prevLeft, m.prevLeftPri);
+                    if (m.prevWidth !== undefined) m.elt.style.setProperty("width", m.prevWidth, m.prevWidthPri);
                 });
                 const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
                 if (progressOverlay && progressOverlay.parentNode) {
@@ -914,10 +946,10 @@ function contentScriptCaptureMain() {
         }
         else if (message.action === "scroll") {
             window.scrollTo(message.x, message.y);
-            // Wait 300ms for browser viewport rendering engine to paint
+            // Wait 100ms for browser viewport rendering engine to paint
             setTimeout(() => {
                 sendResponse({ scrolled: true });
-            }, 300);
+            }, 100);
             return true; // Keep message channel open for async response
         }
         else if (message.action === "stitch") {
