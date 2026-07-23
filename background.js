@@ -583,7 +583,9 @@ async function restoreLatestSessionOnStartup() {
             console.log(`Auto-restored ${latest.tabs.length} tabs on browser startup.`);
         }
     } catch (err) {
-        console.error("Failed to auto-restore latest session:", err);
+        if (!err.message || !err.message.includes("No current window")) {
+            console.warn("Auto-restore session notice:", err);
+        }
     }
 }
 
@@ -611,16 +613,27 @@ async function captureFullPage(tab) {
             func: contentScriptCaptureMain
         });
 
-        // 3. Wait for the injected content script to report "ready"
+        // 3. Wait for injected content script handshake or fast timeout
         await Promise.race([
             readyPromise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout waiting for capture page response")), 2000))
+            new Promise((resolve) => setTimeout(resolve, 500))
         ]);
 
-        // 4. Prepare capture dimensions and scroll grids
-        const prep = await chrome.tabs.sendMessage(tab.id, { action: "prepare" });
+        // 4. Prepare capture dimensions and scroll grids with retry
+        let prep = null;
+        let prepRetries = 3;
+        while (prepRetries > 0) {
+            try {
+                prep = await chrome.tabs.sendMessage(tab.id, { action: "prepare" });
+                if (prep && prep.coords) break;
+            } catch (e) {
+                await new Promise(r => setTimeout(r, 150));
+            }
+            prepRetries--;
+        }
+
         if (!prep || !prep.coords) {
-            throw new Error("Failed to prepare page capture grid details.");
+            throw new Error("Failed to connect to page script for screenshot capture. Please refresh the tab and try again.");
         }
 
         const { coords, totalWidth, totalHeight, viewportWidth, viewportHeight, dpr } = prep;
@@ -788,112 +801,109 @@ function saveCaptureToDexie(captureObj) {
 }
 
 function contentScriptCaptureMain() {
-    if (window.__bookmarkfs_capture_initialized) {
-        try {
-            chrome.runtime.sendMessage({ action: "capture-ready" });
-        } catch (e) {}
-        return;
-    }
-    window.__bookmarkfs_capture_initialized = true;
+    if (!window.__bookmarkfs_capture_initialized) {
+        window.__bookmarkfs_capture_initialized = true;
 
-    // Listen to runtime scroll, stitch and toast commands
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.action === "prepare") {
-            // Create progress indicator overlay
-            const overlay = document.createElement("div");
-            overlay.id = "bookmarkfs-capture-progress-overlay";
-            overlay.style.position = "fixed";
-            overlay.style.top = "0";
-            overlay.style.left = "0";
-            overlay.style.width = "100vw";
-            overlay.style.height = "100vh";
-            overlay.style.backgroundColor = "rgba(0, 0, 0, 0.45)";
-            overlay.style.zIndex = "2147483647"; // Max z-index
-            overlay.style.display = "flex";
-            overlay.style.alignItems = "center";
-            overlay.style.justifyContent = "center";
-            overlay.style.fontFamily = "Helvetica, -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-            
-            overlay.innerHTML = `
-                <div style="width: 324px; background: #ffffff; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); padding: 16px 20px; text-align: left; position: relative; border: 1px solid #ddd; box-sizing: border-box;">
-                    <div style="height: 50px; background: #161616; margin: -16px -20px 16px; padding: 0 20px; font-size: 20px; font-weight: 300; line-height: 50px; color: #fff; display: flex; align-items: center; border-top-left-radius: 5px; border-top-right-radius: 5px; box-sizing: border-box;">
-                        <img src="${chrome.runtime.getURL('images/icon-camera-fm.svg')}" style="width: 20px; height: 20px; margin-right: 10px; vertical-align: middle;">
-                        BookmarkFS
-                    </div>
-                    <div id="bookmarkfs-capture-progress-text" style="margin-bottom: 9px; font-size: 16px; color: #666; font-family: inherit;">Screen capture in progress…</div>
-                    <div style="height: 34px; margin-left: -12px; margin-right: -12px; position: relative; overflow: hidden; background: #fff;">
-                        <!-- dots background (gray dots) -->
-                        <div style="height: 12px; position: absolute; bottom: 11px; left: 12px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
-                            <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #ccc; position: absolute; bottom: 0; right: 0;"></div>
-                        </div>
-                        <!-- dots remaining (black dots) -->
-                        <div id="bookmarkfs-capture-progress-dots" style="height: 12px; position: absolute; bottom: 11px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
-                            <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #161616; position: absolute; bottom: 0; right: 0;"></div>
-                        </div>
-                        <!-- bar with Pacman gif -->
-                        <div id="bookmarkfs-capture-progress-fill" style="width: 0%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; background-image: url(${chrome.runtime.getURL('images/anim.gif')}); background-position: 100% 50%; background-size: 34px 34px; background-repeat: no-repeat;"></div>
-                    </div>
-                </div>
-            `;
-            (document.body || document.documentElement).appendChild(overlay);
-
-            // 1. Disable smooth scroll and transitions so viewports match coordinates exactly
-            const styleNode = document.createElement("style");
-            styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
-            document.head.appendChild(styleNode);
-
-            // 2. Prevent duplication of left sidebars, fixed, and sticky elements while preserving layout
-            window.__bookmarkfs_target_elts = [];
-
-            const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
-            let node;
-            const vw = window.innerWidth;
-            while (node = walker.nextNode()) {
-                if (!node || !node.style || node.id === "bookmarkfs-capture-progress-overlay") continue;
-                const style = window.getComputedStyle(node);
-                const pos = style.position;
-                const rect = node.getBoundingClientRect();
-
-                const isFixedOrSticky = (pos === "fixed" || pos === "sticky" || pos === "-webkit-sticky");
+        // Listen to runtime scroll, stitch and toast commands
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.action === "prepare") {
+                // Create progress indicator overlay
+                const overlay = document.createElement("div");
+                overlay.id = "bookmarkfs-capture-progress-overlay";
+                overlay.style.position = "fixed";
+                overlay.style.top = "0";
+                overlay.style.left = "0";
+                overlay.style.width = "100vw";
+                overlay.style.height = "100vh";
+                overlay.style.backgroundColor = "rgba(0, 0, 0, 0.45)";
+                overlay.style.zIndex = "2147483647"; // Max z-index
+                overlay.style.display = "flex";
+                overlay.style.alignItems = "center";
+                overlay.style.justifyContent = "center";
+                overlay.style.fontFamily = "Helvetica, -apple-system, BlinkMacSystemFont, Arial, sans-serif";
                 
-                const tag = node.tagName.toLowerCase();
-                const className = (typeof node.className === "string") ? node.className.toLowerCase() : "";
-                const idName = (typeof node.id === "string") ? node.id.toLowerCase() : "";
-                
-                const isSidebarIdentifier = (
-                    tag === "aside" || 
-                    tag === "nav" ||
-                    className.includes("sidebar") || 
-                    className.includes("sidenav") || 
-                    className.includes("side-nav") || 
-                    className.includes("left-bar") ||
-                    className.includes("admin-panel") ||
-                    idName.includes("sidebar") ||
-                    idName.includes("sidenav")
-                );
+                overlay.innerHTML = `
+                    <div style="width: 324px; background: #ffffff; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); padding: 16px 20px; text-align: left; position: relative; border: 1px solid #ddd; box-sizing: border-box;">
+                        <div style="height: 50px; background: #161616; margin: -16px -20px 16px; padding: 0 20px; font-size: 20px; font-weight: 300; line-height: 50px; color: #fff; display: flex; align-items: center; border-top-left-radius: 5px; border-top-right-radius: 5px; box-sizing: border-box;">
+                            <img src="${chrome.runtime.getURL('images/icon-camera-fm.svg')}" style="width: 20px; height: 20px; margin-right: 10px; vertical-align: middle;">
+                            BookmarkFS
+                        </div>
+                        <div id="bookmarkfs-capture-progress-text" style="margin-bottom: 9px; font-size: 16px; color: #666; font-family: inherit;">Screen capture in progress…</div>
+                        <div style="height: 34px; margin-left: -12px; margin-right: -12px; position: relative; overflow: hidden; background: #fff;">
+                            <!-- dots background (gray dots) -->
+                            <div style="height: 12px; position: absolute; bottom: 11px; left: 12px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
+                                <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #ccc; position: absolute; bottom: 0; right: 0;"></div>
+                            </div>
+                            <!-- dots remaining (black dots) -->
+                            <div id="bookmarkfs-capture-progress-dots" style="height: 12px; position: absolute; bottom: 11px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
+                                <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #161616; position: absolute; bottom: 0; right: 0;"></div>
+                            </div>
+                            <!-- bar with Pacman gif -->
+                            <div id="bookmarkfs-capture-progress-fill" style="width: 0%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; background-image: url(${chrome.runtime.getURL('images/anim.gif')}); background-position: 100% 50%; background-size: 34px 34px; background-repeat: no-repeat;"></div>
+                        </div>
+                    </div>
+                `;
+                (document.body || document.documentElement).appendChild(overlay);
 
-                // Detect left-aligned sidebars even if they use position: absolute or flex height
-                const isLeftSidebar = isSidebarIdentifier && (rect.left < 100) && (rect.width > 0 && rect.width < vw * 0.4);
+                // 1. Disable smooth scroll and transitions so viewports match coordinates exactly
+                const styleNode = document.createElement("style");
+                styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
+                document.head.appendChild(styleNode);
 
-                if (isFixedOrSticky || isLeftSidebar) {
-                    window.__bookmarkfs_target_elts.push({
-                        elt: node,
-                        prevVis: node.style.getPropertyValue("visibility"),
-                        prevVisPri: node.style.getPropertyPriority("visibility"),
-                        prevOp: node.style.getPropertyValue("opacity"),
-                        prevOpPri: node.style.getPropertyPriority("opacity"),
-                        prevPos: node.style.getPropertyValue("position"),
-                        prevPosPri: node.style.getPropertyPriority("position")
-                    });
+                // 2. Prevent duplication of left sidebars, fixed, and sticky elements while preserving layout
+                window.__bookmarkfs_target_elts = [];
+
+                const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT);
+                let node;
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                while (node = walker.nextNode()) {
+                    if (!node || !node.style || node.id === "bookmarkfs-capture-progress-overlay") continue;
+                    const style = window.getComputedStyle(node);
+                    const pos = style.position;
+                    const rect = node.getBoundingClientRect();
+
+                    const isFixedOrSticky = (pos === "fixed" || pos === "sticky" || pos === "-webkit-sticky");
                     
-                    // Override sticky and fixed positions to relative/static in DOM flow during capture
-                    if (pos === "sticky" || pos === "-webkit-sticky") {
-                        node.style.setProperty("position", "relative", "important");
-                    } else if (pos === "fixed") {
-                        node.style.setProperty("position", "static", "important");
+                    const tag = node.tagName.toLowerCase();
+                    const className = (typeof node.className === "string") ? node.className.toLowerCase() : "";
+                    const idName = (typeof node.id === "string") ? node.id.toLowerCase() : "";
+                    
+                    const isSidebarIdentifier = (
+                        tag === "aside" || 
+                        tag === "nav" ||
+                        className.includes("sidebar") || 
+                        className.includes("sidenav") || 
+                        className.includes("side-nav") || 
+                        className.includes("left-bar") ||
+                        className.includes("left-panel") ||
+                        className.includes("admin") ||
+                        idName.includes("sidebar") ||
+                        idName.includes("sidenav")
+                    );
+
+                    // Geometrical left column detector: left edge < 100px, width < 40% screen width, height >= 40% viewport height
+                    const isLeftColumn = (rect.left < 100) && (rect.width > 50 && rect.width < vw * 0.4) && (rect.height >= vh * 0.4);
+
+                    if (isFixedOrSticky || isLeftColumn || isSidebarIdentifier) {
+                        window.__bookmarkfs_target_elts.push({
+                            elt: node,
+                            prevVis: node.style.getPropertyValue("visibility"),
+                            prevVisPri: node.style.getPropertyPriority("visibility"),
+                            prevOp: node.style.getPropertyValue("opacity"),
+                            prevOpPri: node.style.getPropertyPriority("opacity"),
+                            prevPos: node.style.getPropertyValue("position"),
+                            prevPosPri: node.style.getPropertyPriority("position")
+                        });
+                        
+                        // Override sticky and fixed positions to relative/static in DOM flow during capture
+                        if (pos === "sticky" || pos === "-webkit-sticky") {
+                            node.style.setProperty("position", "relative", "important");
+                        } else if (pos === "fixed") {
+                            node.style.setProperty("position", "static", "important");
+                        }
                     }
                 }
-            }
 
             // Save original scroll states
             const origX = window.scrollX;
