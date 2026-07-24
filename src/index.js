@@ -3,6 +3,26 @@ import { createExtractorFromData } from "node-unrar-js";
 import jsQR from "jsqr";
 import QRCode from "qrcode";
 
+// Global safe guard for Popover API on disconnected elements
+if (typeof HTMLElement !== "undefined" && HTMLElement.prototype.showPopover) {
+    const _origShowPopover = HTMLElement.prototype.showPopover;
+    HTMLElement.prototype.showPopover = function(...args) {
+        if (!this.isConnected) {
+            console.warn("[BookmarkFS] Suppressed showPopover on disconnected element");
+            return;
+        }
+        try {
+            return _origShowPopover.apply(this, args);
+        } catch (err) {
+            if (err && err.name === "InvalidStateError") {
+                console.warn("[BookmarkFS] Suppressed showPopover InvalidStateError:", err.message);
+                return;
+            }
+            throw err;
+        }
+    };
+}
+
 async function handleRar(bytes) {
     const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
     const extractor = await createExtractorFromData({

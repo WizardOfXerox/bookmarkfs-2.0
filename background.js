@@ -485,31 +485,42 @@ async function restoreLatestSessionOnStartup() {
             // Guard to sync with sessions.js tab load timestamp
             chrome.storage.local.set({ last_auto_restore_timestamp: Date.now() });
 
-            // Robust window helper to query or create
-            let windowId = null;
-            try {
-                const win = await chrome.windows.getLastFocused();
-                if (win && win.id && win.id !== chrome.windows.WINDOW_ID_NONE) {
-                    windowId = win.id;
-                }
-            } catch (e) {}
+            // Safe window resolver using callbacks to catch chrome.runtime.lastError cleanly
+            let windowId = await new Promise(resolve => {
+                chrome.windows.getLastFocused({ populate: false }, win => {
+                    const err = chrome.runtime.lastError; // consume lastError
+                    if (win && win.id && win.id !== chrome.windows.WINDOW_ID_NONE) {
+                        resolve(win.id);
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
 
             if (!windowId) {
-                try {
-                    const wins = await chrome.windows.getAll();
-                    if (wins && wins.length > 0) {
-                        windowId = wins[0].id;
-                    }
-                } catch (e) {}
+                windowId = await new Promise(resolve => {
+                    chrome.windows.getAll({ populate: false }, wins => {
+                        const err = chrome.runtime.lastError; // consume lastError
+                        if (wins && wins.length > 0) {
+                            resolve(wins[0].id);
+                        } else {
+                            resolve(null);
+                        }
+                    });
+                });
             }
 
             if (!windowId) {
-                try {
-                    const newWin = await chrome.windows.create({ focused: true });
-                    windowId = newWin.id;
-                } catch (e) {
-                    console.error("Failed to create window on startup", e);
-                }
+                windowId = await new Promise(resolve => {
+                    chrome.windows.create({ focused: true }, newWin => {
+                        const err = chrome.runtime.lastError; // consume lastError
+                        if (newWin && newWin.id) {
+                            resolve(newWin.id);
+                        } else {
+                            resolve(null);
+                        }
+                    });
+                });
             }
 
             // Find active tab index
