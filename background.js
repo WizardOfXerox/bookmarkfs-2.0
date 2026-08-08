@@ -1060,26 +1060,33 @@ function contentScriptCaptureMain() {
 
 // --- User-Agent Switcher Feature ---
 
+// --- User-Agent & Full-Stack Identity Spoofer Feature ---
+
 const UA_DATABASE = [
-    // Windows
-    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", os: "windows", browser: "chrome" },
-    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0", os: "windows", browser: "edge" },
-    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0", os: "windows", browser: "firefox" },
-    // MacOS
-    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", os: "macos", browser: "chrome" },
-    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15", os: "macos", browser: "safari" },
-    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) Gecko/20100101 Firefox/123.0", os: "macos", browser: "firefox" },
-    // Linux
-    { ua: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", os: "linux", browser: "chrome" },
-    { ua: "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0", os: "linux", browser: "firefox" },
-    // Android
-    { ua: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36", os: "android", browser: "chrome" },
-    { ua: "Mozilla/5.0 (Linux; Android 13; Samsung Galaxy S23) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36", os: "android", browser: "chrome" },
-    { ua: "Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0", os: "android", browser: "firefox" },
-    // iOS
-    { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1", os: "ios", browser: "safari" },
-    { ua: "Mozilla/5.0 (iPad; CPU OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1", os: "ios", browser: "safari" },
-    { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) FxiOS/121.0 Mobile/15E148 Safari/537.36", os: "ios", browser: "firefox" }
+    // Desktop - Windows
+    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36", os: "windows", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0", os: "windows", browser: "edge" },
+    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0", os: "windows", browser: "firefox" },
+    // Desktop - MacOS
+    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36", os: "macos", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15", os: "macos", browser: "safari" },
+    { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:125.0) Gecko/20100101 Firefox/125.0", os: "macos", browser: "firefox" },
+    // Desktop - Linux
+    { ua: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36", os: "linux", browser: "chrome" },
+    { ua: "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0", os: "linux", browser: "firefox" },
+    // Mobile - Android
+    { ua: "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36", os: "android", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36", os: "android", browser: "chrome" },
+    { ua: "Mozilla/5.0 (Android 14; Mobile; rv:125.0) Gecko/125.0 Firefox/125.0", os: "android", browser: "firefox" },
+    // Mobile - iOS
+    { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1", os: "ios", browser: "safari" },
+    { ua: "Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1", os: "ios", browser: "safari" },
+    { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) FxiOS/125.0 Mobile/15E148 Safari/537.36", os: "ios", browser: "firefox" },
+    // Stealth & Privacy
+    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0", os: "windows", browser: "firefox" }, // Tor Browser
+    { ua: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", os: "linux", browser: "chrome" },
+    { ua: "Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)", os: "windows", browser: "edge" },
+    { ua: "curl/8.7.1", os: "linux", browser: "chrome" }
 ];
 
 function getNewUserAgent(settings) {
@@ -1092,8 +1099,7 @@ function getNewUserAgent(settings) {
         return osOk && browserOk;
     });
     if (filtered.length === 0) {
-        // Fallback to a default if user unchecked everything
-        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     }
     const randIdx = Math.floor(Math.random() * filtered.length);
     return filtered[randIdx].ua;
@@ -1109,11 +1115,11 @@ async function updateDeclarativeNetRequestRules() {
         applyTo: "iframe", 
         exceptions: [],
         cspBypass: true,
-        corsBypass: true
+        corsBypass: true,
+        stripClientHints: true
     };
     
-    // Default fallback UA matches current rule 2 mobile UA
-    const defaultMobileUa = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
+    const defaultMobileUa = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
     let currentUa = storageData.bookmarkfs_ua_current;
     
     if (!currentUa) {
@@ -1148,7 +1154,7 @@ async function updateDeclarativeNetRequestRules() {
                 }
             });
 
-            // Rule 4: Strip Referer header to prevent origin detection (bypasses extension check)
+            // Rule 4: Strip Referer header to prevent origin detection
             rules.push({
                 id: 4,
                 priority: 1,
@@ -1184,20 +1190,57 @@ async function updateDeclarativeNetRequestRules() {
             });
         }
 
-        // Rule 2: User-Agent Modify Rule (if enabled or using default iframe mobile UA)
+        // Rule 2: User-Agent & Coherent Header Stack Rule
         const activeUa = settings.enabled ? currentUa : defaultMobileUa;
+        const requestHeadersToModify = [
+            {
+                header: "user-agent",
+                operation: "set",
+                value: activeUa
+            }
+        ];
+
+        // Client Hints Stripping / Synchronizing
+        const isNonChrome = activeUa.includes("Firefox") || activeUa.includes("Safari") || activeUa.includes("Googlebot") || activeUa.includes("curl");
+        if (settings.stripClientHints !== false || isNonChrome) {
+            // Strip Client Hints headers so Chrome doesn't leak its real version/brand
+            const chHeaders = [
+                "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform", 
+                "sec-ch-ua-platform-version", "sec-ch-ua-full-version-list",
+                "sec-ch-ua-arch", "sec-ch-ua-bitness", "sec-ch-ua-model"
+            ];
+            chHeaders.forEach(h => {
+                requestHeadersToModify.push({ header: h, operation: "remove" });
+            });
+        }
+
+        // Accept-Language header spoofing
+        if (settings.acceptLanguage) {
+            requestHeadersToModify.push({
+                header: "accept-language",
+                operation: "set",
+                value: settings.acceptLanguage
+            });
+        }
+
+        // DNT / Sec-GPC privacy header spoofing
+        if (settings.dnt) {
+            requestHeadersToModify.push({ header: "dnt", operation: "set", value: String(settings.dnt) });
+            requestHeadersToModify.push({ header: "sec-gpc", operation: "set", value: String(settings.dnt) });
+        }
+
+        // IP Origin spoofing header
+        if (settings.spoofIp) {
+            requestHeadersToModify.push({ header: "x-forwarded-for", operation: "set", value: settings.spoofIp });
+            requestHeadersToModify.push({ header: "x-real-ip", operation: "set", value: settings.spoofIp });
+        }
+
         const uaRule = {
             id: 2,
             priority: 2,
             action: {
                 type: "modifyHeaders",
-                requestHeaders: [
-                    {
-                        header: "user-agent",
-                        operation: "set",
-                        value: activeUa
-                    }
-                ]
+                requestHeaders: requestHeadersToModify
             },
             condition: {
                 resourceTypes: (settings.enabled && settings.applyTo === "global") 
@@ -1210,17 +1253,38 @@ async function updateDeclarativeNetRequestRules() {
         if (settings.enabled && exceptions.length > 0) {
             uaRule.condition.excludedRequestDomains = exceptions.map(d => d.trim()).filter(Boolean);
         } else if (!settings.enabled || settings.applyTo === "iframe") {
-            // Default exceptions for the iframe to keep FB working
             uaRule.condition.excludedRequestDomains = ["facebook.com", "www.facebook.com", "m.facebook.com"];
         }
 
         rules.push(uaRule);
 
         await chrome.declarativeNetRequest.updateDynamicRules({
-            removeRuleIds: [1, 2, 3, 4],
+            removeRuleIds: [1, 2, 3, 4, 5, 6, 7],
             addRules: rules
         });
         console.log("Registered declarativeNetRequest rules. Current User-Agent:", activeUa);
+
+        // Register DOM identity spoofer content script
+        if (chrome.scripting && chrome.scripting.registerContentScripts) {
+            try {
+                const existingScripts = await chrome.scripting.getRegisteredContentScripts();
+                if (existingScripts.some(s => s.id === "bookmarkfs-dom-spoofer")) {
+                    await chrome.scripting.unregisterContentScripts({ ids: ["bookmarkfs-dom-spoofer"] });
+                }
+                if (settings.enabled && settings.applyTo === "global") {
+                    await chrome.scripting.registerContentScripts([{
+                        id: "bookmarkfs-dom-spoofer",
+                        matches: ["<all_urls>"],
+                        js: ["dist/dom_spoofer.js"],
+                        runAt: "document_start",
+                        world: "MAIN",
+                        allFrames: true
+                    }]);
+                }
+            } catch (scErr) {
+                console.warn("DOM spoofer script registration notice:", scErr);
+            }
+        }
     } catch (err) {
         console.error("Failed to update declarativeNetRequest rules:", err);
     }

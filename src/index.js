@@ -540,20 +540,55 @@ export function handleZip(bytes) {
             </div>
 
             <div id="ua-custom-container" style="display: none; flex-direction: column; gap: 4px; margin-bottom: 6px;">
-              <span style="font-weight: 500;">Select Preset:</span>
+              <span style="font-weight: 500;">Quick Identity Presets:</span>
               <select id="setting-ua-preset-select" style="padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; cursor: pointer; margin-bottom: 4px;">
                 <option value="custom">-- Custom User-Agent --</option>
-                <option value="chrome-win">Chrome on Windows</option>
-                <option value="safari-mac">Safari on MacOS</option>
-                <option value="firefox-linux">Firefox on Linux</option>
-                <option value="safari-ios">Safari on iPhone (iOS)</option>
-                <option value="chrome-android">Chrome on Android</option>
-                <option value="googlebot-desktop">Googlebot (Desktop)</option>
-                <option value="googlebot-mobile">Googlebot (Mobile)</option>
-                <option value="bingbot">Bingbot</option>
+                <optgroup label="Desktop Browsers">
+                  <option value="chrome-win">Chrome 124 / Windows 11</option>
+                  <option value="chrome-mac">Chrome 124 / macOS (Apple Silicon)</option>
+                  <option value="chrome-linux">Chrome 124 / Linux</option>
+                  <option value="firefox-win">Firefox 125 / Windows 11</option>
+                  <option value="firefox-linux">Firefox 125 / Linux</option>
+                  <option value="safari-mac">Safari 17.4 / macOS Sonoma</option>
+                  <option value="edge-win">Edge 124 / Windows 11</option>
+                </optgroup>
+                <optgroup label="Mobile & Tablet">
+                  <option value="chrome-pixel">Chrome 124 / Pixel 8 Pro (Android 14)</option>
+                  <option value="chrome-galaxy">Chrome 124 / Galaxy S24 (Android 14)</option>
+                  <option value="safari-ios">Safari 17.4 / iPhone 15 Pro (iOS 17)</option>
+                  <option value="safari-ipad">Safari 17.4 / iPad Pro (iPadOS 17)</option>
+                </optgroup>
+                <optgroup label="Stealth & Crawlers">
+                  <option value="tor">Tor Browser (ESR 115)</option>
+                  <option value="googlebot-desktop">Googlebot 2.1 (Desktop)</option>
+                  <option value="googlebot-mobile">Googlebot 2.1 (Mobile)</option>
+                  <option value="bingbot">Bingbot 2.0</option>
+                  <option value="curl">curl 8.7.1</option>
+                </optgroup>
               </select>
-              <span>Custom User-Agent String:</span>
+              <span>User-Agent String:</span>
               <textarea id="setting-ua-custom" placeholder="e.g. Mozilla/5.0 (Linux; Android 10) ..." style="width: 100%; height: 50px; padding: 6px 8px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; outline: none; resize: none; box-sizing: border-box; font-size: 11px; font-family: monospace;"></textarea>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px;">
+              <div style="font-weight: 500; font-size: 12px; margin-bottom: 2px;">🛡️ Coherent Header & Fingerprint Layers:</div>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px;">
+                <input type="checkbox" id="setting-ua-strip-ch" checked>
+                <span>Strip / Synchronize Client Hints (Sec-Ch-Ua*)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px;">
+                <input type="checkbox" id="setting-ua-dom-spoof" checked>
+                <span>Spoof DOM navigator Properties (MAIN World JS)</span>
+              </label>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 12px;">
+                <span>Accept-Language:</span>
+                <input type="text" id="setting-ua-lang" placeholder="en-US,en;q=0.9" style="width: 150px; padding: 3px 6px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; font-size: 11px;">
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <span>Spoof IP Origin (X-Forwarded-For):</span>
+                <input type="text" id="setting-ua-ip" placeholder="e.g. 1.1.1.1" style="width: 150px; padding: 3px 6px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; font-size: 11px;">
+              </div>
             </div>
 
             <div id="ua-filters-container" style="display: none; flex-direction: column; gap: 6px; margin-bottom: 6px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px;">
@@ -819,9 +854,13 @@ export function handleZip(bytes) {
                 rotationTrigger: qs("#setting-ua-trigger").value,
                 rotationInterval: parseInt(qs("#setting-ua-interval").value, 10) || 10,
                 customUa: qs("#setting-ua-custom").value.trim(),
+                stripClientHints: qs("#setting-ua-strip-ch").checked,
+                domSpoof: qs("#setting-ua-dom-spoof").checked,
+                acceptLanguage: qs("#setting-ua-lang").value.trim(),
+                spoofIp: qs("#setting-ua-ip").value.trim(),
                 allowedOS: [...document.querySelectorAll("#settings-popup input[data-ua-os]")]
                     .filter(c => c.checked)
-                    .map(c => c.dataset.uaOS),
+                    .map(c => c.dataset.uaOs),
                 allowedBrowsers: [...document.querySelectorAll("#settings-popup input[data-ua-browser]")]
                     .filter(c => c.checked)
                     .map(c => c.dataset.uaBrowser),
@@ -979,7 +1018,11 @@ export function handleZip(bytes) {
             allowedBrowsers: ["chrome", "firefox", "safari", "edge"],
             exceptions: ["facebook.com", "www.facebook.com", "m.facebook.com"],
             cspBypass: true,
-            corsBypass: true
+            corsBypass: true,
+            stripClientHints: true,
+            domSpoof: true,
+            acceptLanguage: "",
+            spoofIp: ""
         };
 
         qs("#setting-ua-enabled").checked = !!ua.enabled;
@@ -987,20 +1030,43 @@ export function handleZip(bytes) {
         qs("#setting-ua-trigger").value = ua.rotationTrigger || "never";
         qs("#setting-ua-interval").value = ua.rotationInterval || 10;
         qs("#setting-ua-custom").value = ua.customUa || "";
+        qs("#setting-ua-strip-ch").checked = ua.stripClientHints !== false;
+        qs("#setting-ua-dom-spoof").checked = ua.domSpoof !== false;
+        qs("#setting-ua-lang").value = ua.acceptLanguage || "";
+        qs("#setting-ua-ip").value = ua.spoofIp || "";
         qs("#setting-csp-bypass").checked = ua.cspBypass !== false;
         qs("#setting-cors-bypass").checked = ua.corsBypass !== false;
 
-        // Match customUa to presets
+        // Expanded Preset map
         const UA_PRESETS = {
-            "chrome-win": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "safari-mac": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15",
-            "firefox-linux": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0",
-            "safari-ios": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Mobile/15E148 Safari/604.1",
-            "chrome-android": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
+            "chrome-win": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "chrome-mac": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "chrome-linux": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "firefox-win": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+            "firefox-linux": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+            "safari-mac": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+            "edge-win": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+            "chrome-pixel": "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+            "chrome-galaxy": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+            "safari-ios": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+            "safari-ipad": "Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+            "tor": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0",
             "googlebot-desktop": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-            "googlebot-mobile": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-            "bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"
+            "googlebot-mobile": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+            "curl": "curl/8.7.1"
         };
+
+        const presetSelect = qs("#setting-ua-preset-select");
+        if (presetSelect) {
+            presetSelect.onchange = () => {
+                const selKey = presetSelect.value;
+                if (selKey !== "custom" && UA_PRESETS[selKey]) {
+                    qs("#setting-ua-custom").value = UA_PRESETS[selKey];
+                }
+            };
+        }
+
         const customVal = ua.customUa || "";
         let matchedPreset = "custom";
         for (const [key, val] of Object.entries(UA_PRESETS)) {
@@ -1009,7 +1075,7 @@ export function handleZip(bytes) {
                 break;
             }
         }
-        qs("#setting-ua-preset-select").value = matchedPreset;
+        if (presetSelect) presetSelect.value = matchedPreset;
 
         qs("#setting-ua-exceptions").value = (ua.exceptions || []).join("\n");
 

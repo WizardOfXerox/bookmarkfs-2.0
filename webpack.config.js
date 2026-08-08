@@ -4,7 +4,8 @@ const CopyPlugin = require("copy-webpack-plugin");
 module.exports = {
     entry: {
         bundle: './src/index.js',
-        sandbox: './src/sandbox.js'
+        sandbox: './src/sandbox.js',
+        dom_spoofer: './src/dom_spoofer.js'
     },
     mode: 'development',
     devtool: false,
