@@ -7323,42 +7323,57 @@ export function handleZip(bytes) {
                 }
             },
             async readRaw() {
-                // 1. Try chrome.storage.local / Schema 3/4 chunk folder
-                const chunkFolder = await getFileChunksFolder(this.handle.id);
-                const data = await readChunksData(this.handle.id, chunkFolder ? chunkFolder.id : null);
-                if (data && data.length > 0) {
-                    return data;
+                // 1. Check chrome.storage.local key
+                const localKey = `bookmarkfs_data_${this.handle.id}`;
+                const localRes = await chrome.storage.local.get([localKey]);
+                let data = localRes[localKey] || "";
+
+                // 2. Try Schema 3/4 chunk folder
+                if (!data) {
+                    const chunkFolder = await getFileChunksFolder(this.handle.id);
+                    data = await readChunksData(this.handle.id, chunkFolder ? chunkFolder.id : null);
                 }
 
-                // 2. Legacy format (Schema 2): read from the file folder itself
-                let legacyData = "";
+                // 3. Legacy format (Schema 1/2): read from direct children in file folder itself
                 const children = await this.getChildrenFresh();
-                for (const c of (children || [])) {
-                    if (c.title && c.title.startsWith(META_PREFIX)) continue;
-                    legacyData += c.title || "";
-                }
-
-                // Auto-migrate to Smart Hybrid Storage
-                const meta = await this.readMeta();
-                if (meta && legacyData.length > 0) {
-                    try {
-                        console.log("Migrating file to Smart Hybrid Storage:", this.handle.title);
-                        const saveRes = await saveChunksData(this.handle.id, legacyData);
-                        // Delete legacy chunk nodes from file folder
+                if (!data) {
+                    let legacyDirectData = "";
+                    for (const c of (children || [])) {
+                        if (c.title && c.title.startsWith(META_PREFIX)) continue;
+                        legacyDirectData += c.title || "";
+                    }
+                    if (legacyDirectData) {
+                        data = await decompressStringGzip(legacyDirectData);
+                        // Delete legacy direct chunk nodes
                         for (const c of (children || [])) {
                             if (c.title && !c.title.startsWith(META_PREFIX)) {
                                 try { await chrome.bookmarks.remove(c.id); } catch {}
                             }
                         }
-                        meta.schemaVersion = 4;
-                        meta.storageType = saveRes.storageType;
-                        meta.compressed = saveRes.compressed;
-                        await this.writeMeta(meta);
-                    } catch (migrationErr) {
-                        console.warn("Auto-migration to Smart Hybrid Storage failed:", migrationErr);
                     }
                 }
-                return legacyData;
+
+                // 4. Auto-migrate/compress if uncompressed or stored in local storage
+                const meta = await this.readMeta();
+                if (data && data.length > 0) {
+                    const needsMigration = !meta || meta.schemaVersion < 4 || !meta.compressed || meta.storageType === "local" || !!localRes[localKey];
+                    if (needsMigration) {
+                        try {
+                            console.log("[Pure Bookmark Sync] Auto-migrating & Compressing file:", this.handle.title);
+                            const saveRes = await saveChunksData(this.handle.id, data);
+                            const updatedMeta = meta || { schemaVersion: 4, type: "application/octet-stream" };
+                            updatedMeta.schemaVersion = 4;
+                            updatedMeta.storageType = saveRes.storageType;
+                            updatedMeta.compressed = saveRes.compressed;
+                            await this.writeMeta(updatedMeta);
+                            await chrome.storage.local.remove([localKey]);
+                        } catch (migrationErr) {
+                            console.warn("Auto-migration failed:", migrationErr);
+                        }
+                    }
+                }
+
+                return data;
             },
             async read() {
                 return this.readRaw();
@@ -7858,6 +7873,16 @@ export function handleZip(bytes) {
 
             cachedMetas = await Promise.all(files.map(async f => {
                 try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
+            }));
+
+            // Auto-migrate any uncompressed/legacy files in table on load
+            await Promise.all(cachedMetas.map(async item => {
+                if (item.file && item.meta && (item.meta.schemaVersion < 4 || !item.meta.compressed || item.meta.storageType === "local")) {
+                    try {
+                        await item.file.readRaw();
+                        item.meta = await item.file.readMeta();
+                    } catch (e) {}
+                }
             }));
         }
 

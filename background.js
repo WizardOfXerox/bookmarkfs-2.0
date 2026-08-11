@@ -416,27 +416,17 @@ async function storeSessionAutoSave(bytes) {
     const serialized = "r" + base64Str;
     const contentHash = await sha256Hex(bytes);
 
-    const maxBookmarkSize = 9092;
-    const pieces = [];
-    for (let i = 0; i < serialized.length; i += maxBookmarkSize) {
-        pieces.push(serialized.substring(i, i + maxBookmarkSize));
-    }
-
-    const chunkHashes = [];
-    for (const part of pieces) {
-        chunkHashes.push(await sha256String(part));
-    }
+    const saveRes = await saveChunksData(fileFolder.id, serialized);
 
     const metaObj = {
-        schemaVersion: 3,
+        schemaVersion: 4,
         type: "application/json",
         sizeOriginal: bytes.length,
         sizeStored: serialized.length,
         ratio: serialized.length / Math.max(1, bytes.length),
-        compressed: false,
+        compressed: saveRes.compressed,
+        storageType: saveRes.storageType,
         encrypted: false,
-        chunkSize: maxBookmarkSize,
-        chunkHashes: chunkHashes,
         contentHash: contentHash,
         dateISO: new Date().toISOString(),
         tags: ["session", "autosave"]
@@ -444,8 +434,6 @@ async function storeSessionAutoSave(bytes) {
 
     const metaPayload = "!meta:" + btoa(JSON.stringify(metaObj));
     await chrome.bookmarks.create({ parentId: fileFolder.id, title: metaPayload });
-
-    await saveChunksData(fileFolder.id, pieces);
 }
 
 let autoSaveTimeout = null;
