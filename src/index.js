@@ -7149,14 +7149,76 @@ export function handleZip(bytes) {
     }
 
     async function fsRoot() {
-        const tree = await chrome.bookmarks.getTree();
-        // usually tree[0].children[1] is bookmarks bar
-        const bar = tree[0].children[1] || tree[0].children[0];
-        let handle = (bar.children || []).find(b => b.title === "bookmarkfs");
+        let barId = "1";
+        let children = [];
+        try {
+            children = await chrome.bookmarks.getChildren(barId);
+        } catch (e) {
+            try {
+                children = await chrome.bookmarks.getChildren("0");
+                if (children && children.length > 0) {
+                    barId = (children[1] || children[0]).id;
+                    children = await chrome.bookmarks.getChildren(barId);
+                }
+            } catch (e2) {
+                const tree = await chrome.bookmarks.getTree();
+                const bar = tree[0].children[1] || tree[0].children[0];
+                barId = bar.id;
+                children = bar.children || [];
+            }
+        }
+        let handle = children.find(b => b.title === "bookmarkfs");
         if (!handle) {
-            handle = await chrome.bookmarks.create({ parentId: bar.id, title: "bookmarkfs" });
+            handle = await chrome.bookmarks.create({ parentId: barId, title: "bookmarkfs" });
         }
         return handle;
+    }
+
+    // Local storage chunk helpers for src/index.js
+    async function saveChunksData(fileId, rawString) {
+        const key = `bookmarkfs_data_${fileId}`;
+        await chrome.storage.local.set({ [key]: rawString });
+    }
+
+    async function readChunksData(fileId, chunkFolderNodeId = null) {
+        const key = `bookmarkfs_data_${fileId}`;
+        const storageRes = await chrome.storage.local.get([key]);
+        if (storageRes[key]) {
+            return storageRes[key];
+        }
+        if (chunkFolderNodeId) {
+            try {
+                const chunkChildren = await chrome.bookmarks.getChildren(chunkFolderNodeId);
+                if (chunkChildren && chunkChildren.length > 0) {
+                    return chunkChildren.map(c => c.title || "").join("");
+                }
+            } catch (e) {}
+        }
+        try {
+            const chunkFolder = await getFileChunksFolder(fileId, false);
+            if (chunkFolder) {
+                const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
+                if (chunkChildren && chunkChildren.length > 0) {
+                    return chunkChildren.map(c => c.title || "").join("");
+                }
+            }
+        } catch (e) {}
+        return "";
+    }
+
+    async function deleteChunksData(fileId, chunkFolderNodeId = null) {
+        const key = `bookmarkfs_data_${fileId}`;
+        await chrome.storage.local.remove([key]);
+        if (chunkFolderNodeId) {
+            try { await chrome.bookmarks.removeTree(chunkFolderNodeId); } catch (e) {}
+        } else {
+            try {
+                const chunkFolder = await getFileChunksFolder(fileId, false);
+                if (chunkFolder) {
+                    await chrome.bookmarks.removeTree(chunkFolder.id);
+                }
+            } catch (e) {}
+        }
     }
 
     function FileObj(handle, cachedChildren) {
@@ -7172,91 +7234,60 @@ export function handleZip(bytes) {
                 }
             },
             async readRaw() {
-                // 1. Try to find the centralized chunk folder for this file ID (Schema 3)
+                // 1. Try chrome.storage.local / Schema 3 chunk folder
                 const chunkFolder = await getFileChunksFolder(this.handle.id);
-                if (chunkFolder) {
-                    const children = await chrome.bookmarks.getChildren(chunkFolder.id);
-                    let data = "";
-                    for (const c of (children || [])) {
-                        data += c.title || "";
-                    }
+                const data = await readChunksData(this.handle.id, chunkFolder ? chunkFolder.id : null);
+                if (data && data.length > 0) {
                     return data;
                 }
 
                 // 2. Legacy format (Schema 2): read from the file folder itself
-                let data = "";
+                let legacyData = "";
                 const children = await this.getChildrenFresh();
                 for (const c of (children || [])) {
                     if (c.title && c.title.startsWith(META_PREFIX)) continue;
-                    data += c.title || "";
+                    legacyData += c.title || "";
                 }
 
-                // Auto-migrate to Schema 3 (centralized chunking)
+                // Auto-migrate to storage.local
                 const meta = await this.readMeta();
-                if (meta && data.length > 0) {
+                if (meta && legacyData.length > 0) {
                     try {
-                        console.log("Migrating file to Schema 3 (centralized chunking):", this.handle.title);
-                        const newChunkFolder = await getFileChunksFolder(this.handle.id, true);
-                        const CHUNK = meta.chunkSize || maxBookmarkSize;
-                        for (let i = 0; i < data.length; i += CHUNK) {
-                            const part = data.substring(i, i + CHUNK);
-                            await chrome.bookmarks.create({ parentId: newChunkFolder.id, title: part });
-                        }
+                        console.log("Migrating file to storage.local chunking:", this.handle.title);
+                        await saveChunksData(this.handle.id, legacyData);
                         // Delete legacy chunk nodes from file folder
                         for (const c of (children || [])) {
                             if (c.title && !c.title.startsWith(META_PREFIX)) {
                                 try { await chrome.bookmarks.remove(c.id); } catch {}
                             }
                         }
+                        if (chunkFolder) {
+                            try { await chrome.bookmarks.removeTree(chunkFolder.id); } catch {}
+                        }
                         meta.schemaVersion = 3;
                         await this.writeMeta(meta);
                     } catch (migrationErr) {
-                        console.warn("Auto-migration to Schema 3 failed:", migrationErr);
+                        console.warn("Auto-migration to storage.local failed:", migrationErr);
                     }
                 }
-                return data;
+                return legacyData;
             },
             async read() {
                 return this.readRaw();
             },
             async write(rawString, onProgress, options) {
-                // Get or create chunk folder under __chunks__
-                const chunkFolder = await getFileChunksFolder(this.handle.id, true);
+                // Store chunk payload directly in storage.local
+                await saveChunksData(this.handle.id, rawString);
 
-                // chunk into maxBookmarkSize pieces
-                const CHUNK = (options && options.chunkSize) ? options.chunkSize : maxBookmarkSize;
-                const startChunk = (options && Number.isFinite(options.startChunk)) ? options.startChunk : 0;
-                const pieces = [];
-                for (let i = 0; i < rawString.length; i += CHUNK) {
-                    pieces.push(rawString.substring(i, i + CHUNK));
-                }
-
-                // Get current children of the chunk folder
-                const existing = await chrome.bookmarks.getChildren(chunkFolder.id);
-
-                // Delete extra trailing children if any
-                if (startChunk === 0 && pieces.length < existing.length) {
-                    for (let i = existing.length - 1; i >= pieces.length; i--) {
-                        try { await chrome.bookmarks.remove(existing[i].id); } catch {}
+                // Clean up legacy bookmark chunk folder if present to keep bookmark tree light
+                try {
+                    const chunkFolder = await getFileChunksFolder(this.handle.id, false);
+                    if (chunkFolder) {
+                        await chrome.bookmarks.removeTree(chunkFolder.id);
                     }
-                }
+                } catch (e) {}
 
-                // Re-fetch current chunk nodes
-                const currentDataNodes = await chrome.bookmarks.getChildren(chunkFolder.id);
-
-                for (let i = startChunk; i < pieces.length; i++) {
-                    const title = pieces[i];
-                    const node = currentDataNodes[i];
-                    if (!node) {
-                        await chrome.bookmarks.create({ parentId: chunkFolder.id, title: title });
-                    } else {
-                        await chrome.bookmarks.update(node.id, { title: title });
-                    }
-                    if (options && typeof options.onChunk === "function") {
-                        await options.onChunk(i + 1, pieces.length);
-                    }
-                    if (onProgress) onProgress((i + 1) / pieces.length);
-                }
+                if (onProgress) onProgress(1);
             },
             async writeMeta(metaObj) {
                 // store meta as META_PREFIX + base64(JSON)
@@ -7296,17 +7327,8 @@ export function handleZip(bytes) {
                 await chrome.bookmarks.update(this.handle.id, { title: newName });
             },
             async delete() {
-                // remove centralized chunk folder if any
-                const chunkFolder = await getFileChunksFolder(this.handle.id);
-                if (chunkFolder) {
-                    try {
-                        const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
-                        for (const node of (chunkChildren || [])) {
-                            try { await chrome.bookmarks.remove(node.id); } catch {}
-                        }
-                        await chrome.bookmarks.remove(chunkFolder.id);
-                    } catch {}
-                }
+                // remove storage.local data & legacy chunk folder
+                await deleteChunksData(this.handle.id);
 
                 // remove file folder children then folder
                 const children = await this.getChildrenFresh();

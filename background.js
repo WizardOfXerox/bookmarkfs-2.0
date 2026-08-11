@@ -67,6 +67,7 @@ async function initDeclarativeNetRequest() {
 chrome.runtime.onInstalled.addListener(() => {
     initContextMenu();
     initDeclarativeNetRequest();
+    migrateLegacyBookmarkChunksToStorage();
     if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
         chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
     }
@@ -74,12 +75,14 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
     initContextMenu();
     initDeclarativeNetRequest();
+    migrateLegacyBookmarkChunksToStorage();
     restoreLatestSessionOnStartup();
 });
 
 // Also run immediately on worker script execution to ensure it works during active dev reloads
 initContextMenu();
 initDeclarativeNetRequest();
+migrateLegacyBookmarkChunksToStorage();
 if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
@@ -140,6 +143,59 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
 });
 
+// Storage data chunk helpers using chrome.storage.local to avoid 64MiB Chrome IPC bookmark tree overflow
+async function saveChunksData(fileId, pieces) {
+    const storageObj = {};
+    storageObj[`bookmarkfs_data_${fileId}`] = pieces.join("");
+    await chrome.storage.local.set(storageObj);
+}
+
+async function readChunksData(fileId, chunkFolderNodeId = null) {
+    // 1. Check chrome.storage.local
+    const key = `bookmarkfs_data_${fileId}`;
+    const storageRes = await chrome.storage.local.get([key]);
+    if (storageRes[key]) {
+        return storageRes[key];
+    }
+
+    // 2. Fallback to legacy bookmark chunk nodes
+    if (chunkFolderNodeId) {
+        try {
+            const chunkChildren = await chrome.bookmarks.getChildren(chunkFolderNodeId);
+            if (chunkChildren && chunkChildren.length > 0) {
+                return chunkChildren.map(c => c.title || "").join("");
+            }
+        } catch (e) {}
+    }
+
+    try {
+        const chunkFolder = await getFileChunksFolder(fileId, false);
+        if (chunkFolder) {
+            const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
+            if (chunkChildren && chunkChildren.length > 0) {
+                return chunkChildren.map(c => c.title || "").join("");
+            }
+        }
+    } catch (e) {}
+
+    return "";
+}
+
+async function deleteChunksData(fileId, chunkFolderNodeId = null) {
+    const key = `bookmarkfs_data_${fileId}`;
+    await chrome.storage.local.remove([key]);
+    if (chunkFolderNodeId) {
+        try { await chrome.bookmarks.removeTree(chunkFolderNodeId); } catch (e) {}
+    } else {
+        try {
+            const chunkFolder = await getFileChunksFolder(fileId, false);
+            if (chunkFolder) {
+                await chrome.bookmarks.removeTree(chunkFolder.id);
+            }
+        } catch (e) {}
+    }
+}
+
 // Binary storage helpers matching BookmarkFS 3.0 schema
 async function storeRawBytesInBookmarks(filename, bytes, mime) {
     const root = await fsRoot();
@@ -192,19 +248,32 @@ async function storeRawBytesInBookmarks(filename, bytes, mime) {
     const metaPayload = "!meta:" + btoa(JSON.stringify(metaObj));
     await chrome.bookmarks.create({ parentId: fileFolder.id, title: metaPayload });
 
-    // 4. Write data chunks to system folder
-    const chunkFolder = await getFileChunksFolder(fileFolder.id, true);
-    for (const part of pieces) {
-        await chrome.bookmarks.create({ parentId: chunkFolder.id, title: part });
-    }
+    // 4. Save chunk data to chrome.storage.local (keeping chrome.bookmarks lightweight)
+    await saveChunksData(fileFolder.id, pieces);
 }
 
 async function fsRoot() {
-    const tree = await chrome.bookmarks.getTree();
-    const bar = tree[0].children[1] || tree[0].children[0];
-    let handle = (bar.children || []).find(b => b.title === "bookmarkfs");
+    let barId = "1";
+    let children = [];
+    try {
+        children = await chrome.bookmarks.getChildren(barId);
+    } catch (e) {
+        try {
+            children = await chrome.bookmarks.getChildren("0");
+            if (children && children.length > 0) {
+                barId = (children[1] || children[0]).id;
+                children = await chrome.bookmarks.getChildren(barId);
+            }
+        } catch (e2) {
+            const tree = await chrome.bookmarks.getTree();
+            const bar = tree[0].children[1] || tree[0].children[0];
+            barId = bar.id;
+            children = bar.children || [];
+        }
+    }
+    let handle = children.find(b => b.title === "bookmarkfs");
     if (!handle) {
-        handle = await chrome.bookmarks.create({ parentId: bar.id, title: "bookmarkfs" });
+        handle = await chrome.bookmarks.create({ parentId: barId, title: "bookmarkfs" });
     }
     return handle;
 }
@@ -267,10 +336,7 @@ async function storeSessionAutoSave(bytes) {
         for (const item of sub) {
             await chrome.bookmarks.remove(item.id);
         }
-        const chunkFolder = await getFileChunksFolder(fileFolder.id, false);
-        if (chunkFolder) {
-            await chrome.bookmarks.removeTree(chunkFolder.id);
-        }
+        await deleteChunksData(fileFolder.id);
     } else {
         fileFolder = await chrome.bookmarks.create({ parentId: root.id, title: filename });
     }
@@ -308,10 +374,7 @@ async function storeSessionAutoSave(bytes) {
     const metaPayload = "!meta:" + btoa(JSON.stringify(metaObj));
     await chrome.bookmarks.create({ parentId: fileFolder.id, title: metaPayload });
 
-    const chunkFolder = await getFileChunksFolder(fileFolder.id, true);
-    for (const part of pieces) {
-        await chrome.bookmarks.create({ parentId: chunkFolder.id, title: part });
-    }
+    await saveChunksData(fileFolder.id, pieces);
 }
 
 let autoSaveTimeout = null;
@@ -405,55 +468,30 @@ async function restoreLatestSessionOnStartup() {
 
         console.log("Auto-restore is enabled. Querying bookmarks for latest session...");
         const root = await fsRoot();
-        const tree = await chrome.bookmarks.getSubTree(root.id);
-        const rootNode = tree[0];
-        if (!rootNode || !rootNode.children) return;
+        const rootChildren = await chrome.bookmarks.getChildren(root.id);
+        if (!rootChildren) return;
 
-        const childrenMap = new Map();
-        function cacheNode(node) {
-            if (node.children) {
-                childrenMap.set(node.id, node.children);
-                node.children.forEach(cacheNode);
-            }
-        }
-        cacheNode(rootNode);
-
-        const files = rootNode.children.filter(c => !c.url && c.title !== "__chunks__");
+        const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__");
         const sessions = [];
 
-        function getMetaFromCachedChildren(fileId) {
-            const children = childrenMap.get(fileId) || [];
-            const metaNode = children.find(c => c.title && c.title.startsWith("!meta:"));
-            if (!metaNode) return null;
+        for (const f of files) {
+            const subChildren = await chrome.bookmarks.getChildren(f.id);
+            const metaNode = subChildren.find(c => c.title && c.title.startsWith("!meta:"));
+            if (!metaNode) continue;
+
+            let meta = null;
             try {
                 const str = metaNode.title.slice("!meta:".length);
                 const decoded = atob(str);
-                return JSON.parse(decoded);
+                meta = JSON.parse(decoded);
             } catch (err) {
-                return null;
+                continue;
             }
-        }
 
-        function getRawFromCachedTree(fileId) {
-            const chunksRoot = rootNode.children.find(c => !c.url && c.title === "__chunks__");
-            if (!chunksRoot || !chunksRoot.children) return "";
-            const fileChunksFolder = chunksRoot.children.find(c => !c.url && c.title === String(fileId));
-            if (!fileChunksFolder || !fileChunksFolder.children) return "";
-            
-            let data = "";
-            for (const c of fileChunksFolder.children) {
-                data += c.title || "";
-            }
-            return data;
-        }
-
-        for (const f of files) {
-            const meta = getMetaFromCachedChildren(f.id);
-            if (!meta) continue;
             const isSessionFile = f.title.startsWith("session-") || (meta.tags && meta.tags.includes("session"));
             if (!isSessionFile) continue;
 
-            const serialized = getRawFromCachedTree(f.id);
+            const serialized = await readChunksData(f.id);
             if (!serialized) continue;
 
             try {
@@ -597,6 +635,36 @@ async function restoreLatestSessionOnStartup() {
         if (!err.message || !err.message.includes("No current window")) {
             console.warn("Auto-restore session notice:", err);
         }
+    }
+}
+
+async function migrateLegacyBookmarkChunksToStorage() {
+    try {
+        const root = await fsRoot();
+        const children = await chrome.bookmarks.getChildren(root.id);
+        const chunksRoot = children.find(c => !c.url && c.title === "__chunks__");
+        if (!chunksRoot) return;
+
+        const fileChunkFolders = await chrome.bookmarks.getChildren(chunksRoot.id);
+        if (fileChunkFolders && fileChunkFolders.length > 0) {
+            console.log(`Migrating ${fileChunkFolders.length} legacy bookmark chunk folders to chrome.storage.local...`);
+            for (const cf of fileChunkFolders) {
+                const fileId = cf.title;
+                const chunkChildren = await chrome.bookmarks.getChildren(cf.id);
+                if (chunkChildren && chunkChildren.length > 0) {
+                    const combinedData = chunkChildren.map(c => c.title || "").join("");
+                    if (combinedData) {
+                        await chrome.storage.local.set({ [`bookmarkfs_data_${fileId}`]: combinedData });
+                    }
+                }
+                try { await chrome.bookmarks.removeTree(cf.id); } catch (e) {}
+            }
+        }
+
+        try { await chrome.bookmarks.remove(chunksRoot.id); } catch (e) {}
+        console.log("Legacy bookmark chunk migration completed successfully! Chrome bookmarks tree footprint is now lightweight.");
+    } catch (err) {
+        console.warn("Notice during legacy chunk migration:", err);
     }
 }
 
