@@ -1233,6 +1233,7 @@ function contentScriptCaptureMain() {
     try {
         chrome.runtime.sendMessage({ action: "capture-ready" });
     } catch (e) {}
+    }
 }
 
 // --- User-Agent Switcher Feature ---
