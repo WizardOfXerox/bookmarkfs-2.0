@@ -193,52 +193,37 @@ async function decompressStringGzip(serialized) {
 const SYNC_SIZE_LIMIT = 10 * 1024 * 1024; // 10 MB threshold for Google Account Sync
 
 async function saveChunksData(fileId, rawString) {
-    const rawLength = rawString.length;
-
-    if (rawLength < SYNC_SIZE_LIMIT) {
-        // Mode A: Cross-Device Sync Mode (Gzip Compressed in chrome.bookmarks)
-        const compressedPayload = await compressStringGzip(rawString);
-        const maxBookmarkSize = 9092;
-        const pieces = [];
-        for (let i = 0; i < compressedPayload.length; i += maxBookmarkSize) {
-            pieces.push(compressedPayload.substring(i, i + maxBookmarkSize));
-        }
-
-        const chunkFolder = await getFileChunksFolder(fileId, true);
-        const existing = await chrome.bookmarks.getChildren(chunkFolder.id);
-
-        if (pieces.length < existing.length) {
-            for (let i = existing.length - 1; i >= pieces.length; i--) {
-                try { await chrome.bookmarks.remove(existing[i].id); } catch {}
-            }
-        }
-
-        const currentNodes = await chrome.bookmarks.getChildren(chunkFolder.id);
-        for (let i = 0; i < pieces.length; i++) {
-            const title = pieces[i];
-            const node = currentNodes[i];
-            if (!node) {
-                await chrome.bookmarks.create({ parentId: chunkFolder.id, title: title });
-            } else {
-                await chrome.bookmarks.update(node.id, { title: title });
-            }
-        }
-
-        await chrome.storage.local.remove([`bookmarkfs_data_${fileId}`]);
-        return { storageType: "synced_compressed", compressed: true };
-    } else {
-        // Mode B: Local High-Capacity Storage Mode (chrome.storage.local with unlimitedStorage)
-        await chrome.storage.local.set({ [`bookmarkfs_data_${fileId}`]: rawString });
-
-        try {
-            const chunkFolder = await getFileChunksFolder(fileId, false);
-            if (chunkFolder) {
-                await chrome.bookmarks.removeTree(chunkFolder.id);
-            }
-        } catch (e) {}
-
-        return { storageType: "local", compressed: false };
+    // 100% Cross-Device Bookmark Sync Mode (Gzip Compressed in chrome.bookmarks)
+    const compressedPayload = await compressStringGzip(rawString);
+    const maxBookmarkSize = 9092;
+    const pieces = [];
+    for (let i = 0; i < compressedPayload.length; i += maxBookmarkSize) {
+        pieces.push(compressedPayload.substring(i, i + maxBookmarkSize));
     }
+
+    const chunkFolder = await getFileChunksFolder(fileId, true);
+    const existing = await chrome.bookmarks.getChildren(chunkFolder.id);
+
+    if (pieces.length < existing.length) {
+        for (let i = existing.length - 1; i >= pieces.length; i--) {
+            try { await chrome.bookmarks.remove(existing[i].id); } catch {}
+        }
+    }
+
+    const currentNodes = await chrome.bookmarks.getChildren(chunkFolder.id);
+    for (let i = 0; i < pieces.length; i++) {
+        const title = pieces[i];
+        const node = currentNodes[i];
+        if (!node) {
+            await chrome.bookmarks.create({ parentId: chunkFolder.id, title: title });
+        } else {
+            await chrome.bookmarks.update(node.id, { title: title });
+        }
+    }
+
+    // Clean up any legacy local storage key if present
+    await chrome.storage.local.remove([`bookmarkfs_data_${fileId}`]);
+    return { storageType: "synced_compressed", compressed: true };
 }
 
 async function readChunksData(fileId, chunkFolderNodeId = null) {
@@ -748,9 +733,9 @@ async function migrateLegacyBookmarkChunksToStorage() {
             const localRes = await chrome.storage.local.get([key]);
             const localData = localRes[key];
 
-            // Case 1: File is stored locally and < 10MB -> Compress and migrate to Bookmarks for Cross-PC Sync!
-            if (localData && localData.length < SYNC_SIZE_LIMIT) {
-                console.log(`[Smart Hybrid Sync] Migrating file "${f.title}" (${(localData.length / 1024).toFixed(1)} KB) to Compressed Bookmark Sync...`);
+            // Case 1: File is stored locally -> Compress and migrate 100% to Bookmarks for Cross-PC Sync!
+            if (localData) {
+                console.log(`[Pure Bookmark Sync] Migrating file "${f.title}" (${(localData.length / 1024).toFixed(1)} KB) from local storage to Compressed Bookmark Sync...`);
                 const res = await saveChunksData(fileId, localData);
                 meta.schemaVersion = 4;
                 meta.storageType = res.storageType;
@@ -760,7 +745,7 @@ async function migrateLegacyBookmarkChunksToStorage() {
                 migratedCount++;
             }
             // Case 2: Legacy uncompressed bookmark chunks -> Compress with Gzip!
-            else if (!localData) {
+            else {
                 const chunkFolder = await getFileChunksFolder(fileId, false);
                 if (chunkFolder) {
                     const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
@@ -769,7 +754,7 @@ async function migrateLegacyBookmarkChunksToStorage() {
                         if (rawChunkStr && !rawChunkStr.startsWith("z")) {
                             const decompressedData = await decompressStringGzip(rawChunkStr);
                             if (decompressedData) {
-                                console.log(`[Smart Hybrid Sync] Compressing legacy bookmark file "${f.title}"...`);
+                                console.log(`[Pure Bookmark Sync] Compressing legacy bookmark file "${f.title}"...`);
                                 const res = await saveChunksData(fileId, decompressedData);
                                 meta.schemaVersion = 4;
                                 meta.storageType = res.storageType;
@@ -784,20 +769,11 @@ async function migrateLegacyBookmarkChunksToStorage() {
             }
         }
 
-        // Clean up empty legacy __chunks__ root folder if all files were migrated or removed
-        const chunksRoot = children.find(c => !c.url && c.title === "__chunks__");
-        if (chunksRoot) {
-            const chunkFolders = await chrome.bookmarks.getChildren(chunksRoot.id);
-            if (!chunkFolders || chunkFolders.length === 0) {
-                try { await chrome.bookmarks.remove(chunksRoot.id); } catch (e) {}
-            }
-        }
-
         if (migratedCount > 0) {
-            console.log(`[Smart Hybrid Sync] Successfully migrated ${migratedCount} files to Compressed Cross-Device Syncing!`);
+            console.log(`[Pure Bookmark Sync] Successfully migrated ${migratedCount} files to Compressed Cross-Device Syncing!`);
         }
     } catch (err) {
-        console.warn("Notice during Smart Hybrid Storage migration:", err);
+        console.warn("Notice during Pure Bookmark Sync migration:", err);
     }
 }
 
