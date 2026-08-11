@@ -717,60 +717,102 @@ async function migrateLegacyBookmarkChunksToStorage() {
 
         let migratedCount = 0;
         for (const f of files) {
-            const subChildren = await chrome.bookmarks.getChildren(f.id);
-            const metaNode = (subChildren || []).find(c => c.title && c.title.startsWith("!meta:"));
-            if (!metaNode) continue;
+            const fileId = f.id;
+            const subChildren = (await chrome.bookmarks.getChildren(fileId)) || [];
+            let metaNode = subChildren.find(c => c.title && c.title.startsWith("!meta:"));
 
             let meta = null;
-            try {
-                meta = JSON.parse(atob(metaNode.title.slice("!meta:".length)));
-            } catch (e) {
-                continue;
+            if (metaNode) {
+                try {
+                    meta = JSON.parse(atob(metaNode.title.slice("!meta:".length)));
+                } catch (e) {}
+            }
+            if (!meta) {
+                meta = { schemaVersion: 4, storageType: "synced_compressed", compressed: true };
             }
 
-            const fileId = f.id;
+            // Step 1: Read raw uncompressed string from ALL possible legacy storage locations
+            let rawData = "";
+
+            // Source A: Local storage (Schema 3 local mode)
             const key = `bookmarkfs_data_${fileId}`;
             const localRes = await chrome.storage.local.get([key]);
-            const localData = localRes[key];
-
-            // Case 1: File is stored locally -> Compress and migrate 100% to Bookmarks for Cross-PC Sync!
-            if (localData) {
-                console.log(`[Pure Bookmark Sync] Migrating file "${f.title}" (${(localData.length / 1024).toFixed(1)} KB) from local storage to Compressed Bookmark Sync...`);
-                const res = await saveChunksData(fileId, localData);
-                meta.schemaVersion = 4;
-                meta.storageType = res.storageType;
-                meta.compressed = res.compressed;
-                const newMetaPayload = "!meta:" + btoa(JSON.stringify(meta));
-                await chrome.bookmarks.update(metaNode.id, { title: newMetaPayload });
-                migratedCount++;
+            if (localRes[key]) {
+                rawData = localRes[key];
             }
-            // Case 2: Legacy uncompressed bookmark chunks -> Compress with Gzip!
-            else {
+
+            // Source B: Dedicated __chunks__ folder (Schema 3/4 bookmark mode)
+            if (!rawData) {
                 const chunkFolder = await getFileChunksFolder(fileId, false);
                 if (chunkFolder) {
                     const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
                     if (chunkChildren && chunkChildren.length > 0) {
-                        const rawChunkStr = chunkChildren.map(c => c.title || "").join("");
-                        if (rawChunkStr && !rawChunkStr.startsWith("z")) {
-                            const decompressedData = await decompressStringGzip(rawChunkStr);
-                            if (decompressedData) {
-                                console.log(`[Pure Bookmark Sync] Compressing legacy bookmark file "${f.title}"...`);
-                                const res = await saveChunksData(fileId, decompressedData);
-                                meta.schemaVersion = 4;
-                                meta.storageType = res.storageType;
-                                meta.compressed = res.compressed;
-                                const newMetaPayload = "!meta:" + btoa(JSON.stringify(meta));
-                                await chrome.bookmarks.update(metaNode.id, { title: newMetaPayload });
-                                migratedCount++;
-                            }
+                        const combinedStr = chunkChildren.map(c => c.title || "").join("");
+                        if (combinedStr) {
+                            rawData = await decompressStringGzip(combinedStr);
                         }
                     }
                 }
             }
+
+            // Source C: Direct children inside file folder f.id (Legacy Schema 1/2 format)
+            if (!rawData) {
+                let directChunkStr = "";
+                const legacyChunkNodes = [];
+                for (const c of subChildren) {
+                    if (c.title && !c.title.startsWith("!meta:")) {
+                        directChunkStr += c.title || "";
+                        legacyChunkNodes.push(c);
+                    }
+                }
+                if (directChunkStr) {
+                    rawData = await decompressStringGzip(directChunkStr);
+                    // Delete old direct legacy chunk nodes from f.id
+                    for (const node of legacyChunkNodes) {
+                        try { await chrome.bookmarks.remove(node.id); } catch (e) {}
+                    }
+                }
+            }
+
+            // Step 2: If we found raw data, check if it needs Gzip compression & migration to __chunks__/${fileId}
+            if (rawData && rawData.length > 0) {
+                // Check if current chunks in __chunks__/${fileId} are ALREADY Gzip compressed ("z:")
+                let isAlreadyCompressed = false;
+                const chunkFolder = await getFileChunksFolder(fileId, false);
+                if (chunkFolder) {
+                    const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
+                    if (chunkChildren && chunkChildren.length > 0) {
+                        const firstTitle = chunkChildren[0].title || "";
+                        if (firstTitle.startsWith("z")) {
+                            isAlreadyCompressed = true;
+                        }
+                    }
+                }
+
+                // If not compressed yet or coming from local/legacy direct nodes, save with Gzip compression!
+                if (!isAlreadyCompressed || localRes[key]) {
+                    console.log(`[Pure Bookmark Sync] Migrating & Gzip Compressing file "${f.title}" (${(rawData.length / 1024).toFixed(1)} KB)...`);
+                    const res = await saveChunksData(fileId, rawData);
+                    meta.schemaVersion = 4;
+                    meta.storageType = res.storageType;
+                    meta.compressed = res.compressed;
+
+                    const newMetaPayload = "!meta:" + btoa(JSON.stringify(meta));
+                    if (metaNode) {
+                        await chrome.bookmarks.update(metaNode.id, { title: newMetaPayload });
+                    } else {
+                        await chrome.bookmarks.create({ parentId: fileId, title: newMetaPayload });
+                    }
+                    migratedCount++;
+                }
+
+                // Clean up local storage key if present
+                await chrome.storage.local.remove([key]);
+            }
         }
 
         if (migratedCount > 0) {
-            console.log(`[Pure Bookmark Sync] Successfully migrated ${migratedCount} files to Compressed Cross-Device Syncing!`);
+            console.log(`[Pure Bookmark Sync] Successfully migrated & compressed ${migratedCount} files for Cross-PC Google Syncing!`);
         }
     } catch (err) {
         console.warn("Notice during Pure Bookmark Sync migration:", err);
