@@ -7174,35 +7174,139 @@ export function handleZip(bytes) {
         return handle;
     }
 
-    // Local storage chunk helpers for src/index.js
+    // Native Gzip compression / decompression helpers for Smart Hybrid Storage & Cross-PC Syncing
+    async function compressStringGzip(str) {
+        try {
+            const bytes = new TextEncoder().encode(str);
+            const cs = new CompressionStream("gzip");
+            const writer = cs.writable.getWriter();
+            writer.write(bytes);
+            writer.close();
+            const compressedBuffer = await new Response(cs.readable).arrayBuffer();
+            const u8 = new Uint8Array(compressedBuffer);
+            let binary = "";
+            for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
+            return "z" + btoa(binary);
+        } catch (e) {
+            console.warn("Gzip compression fallback to raw Base64:", e);
+            return "r" + btoa(str);
+        }
+    }
+
+    async function decompressStringGzip(serialized) {
+        if (!serialized) return "";
+        if (serialized.startsWith("z")) {
+            try {
+                const b64 = serialized.slice(1);
+                const binary = atob(b64);
+                const u8 = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
+                const ds = new DecompressionStream("gzip");
+                const writer = ds.writable.getWriter();
+                writer.write(u8);
+                writer.close();
+                const decompressedBuffer = await new Response(ds.readable).arrayBuffer();
+                return new TextDecoder().decode(decompressedBuffer);
+            } catch (e) {
+                console.error("Failed to decompress Gzip data:", e);
+                return "";
+            }
+        } else if (serialized.startsWith("r")) {
+            try {
+                return atob(serialized.slice(1));
+            } catch (e) {
+                return serialized.slice(1);
+            }
+        }
+        return serialized;
+    }
+
+    const SYNC_SIZE_LIMIT = 10 * 1024 * 1024; // 10 MB threshold for Google Account Sync
+
     async function saveChunksData(fileId, rawString) {
-        const key = `bookmarkfs_data_${fileId}`;
-        await chrome.storage.local.set({ [key]: rawString });
+        const rawLength = rawString.length;
+
+        if (rawLength < SYNC_SIZE_LIMIT) {
+            // Mode A: Cross-Device Sync Mode (Gzip Compressed in chrome.bookmarks)
+            const compressedPayload = await compressStringGzip(rawString);
+            const maxBookmarkSize = 9092;
+            const pieces = [];
+            for (let i = 0; i < compressedPayload.length; i += maxBookmarkSize) {
+                pieces.push(compressedPayload.substring(i, i + maxBookmarkSize));
+            }
+
+            const chunkFolder = await getFileChunksFolder(fileId, true);
+            const existing = await chrome.bookmarks.getChildren(chunkFolder.id);
+
+            if (pieces.length < existing.length) {
+                for (let i = existing.length - 1; i >= pieces.length; i--) {
+                    try { await chrome.bookmarks.remove(existing[i].id); } catch {}
+                }
+            }
+
+            const currentNodes = await chrome.bookmarks.getChildren(chunkFolder.id);
+            for (let i = 0; i < pieces.length; i++) {
+                const title = pieces[i];
+                const node = currentNodes[i];
+                if (!node) {
+                    await chrome.bookmarks.create({ parentId: chunkFolder.id, title: title });
+                } else {
+                    await chrome.bookmarks.update(node.id, { title: title });
+                }
+            }
+
+            await chrome.storage.local.remove([`bookmarkfs_data_${fileId}`]);
+            return { storageType: "synced_compressed", compressed: true };
+        } else {
+            // Mode B: Local High-Capacity Storage Mode (chrome.storage.local with unlimitedStorage)
+            await chrome.storage.local.set({ [`bookmarkfs_data_${fileId}`]: rawString });
+
+            try {
+                const chunkFolder = await getFileChunksFolder(fileId, false);
+                if (chunkFolder) {
+                    await chrome.bookmarks.removeTree(chunkFolder.id);
+                }
+            } catch (e) {}
+
+            return { storageType: "local", compressed: false };
+        }
     }
 
     async function readChunksData(fileId, chunkFolderNodeId = null) {
+        // 1. Check chrome.storage.local
         const key = `bookmarkfs_data_${fileId}`;
         const storageRes = await chrome.storage.local.get([key]);
         if (storageRes[key]) {
             return storageRes[key];
         }
+
+        // 2. Check chrome.bookmarks chunk folder
+        let combinedStr = "";
         if (chunkFolderNodeId) {
             try {
                 const chunkChildren = await chrome.bookmarks.getChildren(chunkFolderNodeId);
                 if (chunkChildren && chunkChildren.length > 0) {
-                    return chunkChildren.map(c => c.title || "").join("");
+                    combinedStr = chunkChildren.map(c => c.title || "").join("");
                 }
             } catch (e) {}
         }
-        try {
-            const chunkFolder = await getFileChunksFolder(fileId, false);
-            if (chunkFolder) {
-                const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
-                if (chunkChildren && chunkChildren.length > 0) {
-                    return chunkChildren.map(c => c.title || "").join("");
+
+        if (!combinedStr) {
+            try {
+                const chunkFolder = await getFileChunksFolder(fileId, false);
+                if (chunkFolder) {
+                    const chunkChildren = await chrome.bookmarks.getChildren(chunkFolder.id);
+                    if (chunkChildren && chunkChildren.length > 0) {
+                        combinedStr = chunkChildren.map(c => c.title || "").join("");
+                    }
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
+
+        if (combinedStr) {
+            return await decompressStringGzip(combinedStr);
+        }
+
         return "";
     }
 
@@ -7234,7 +7338,7 @@ export function handleZip(bytes) {
                 }
             },
             async readRaw() {
-                // 1. Try chrome.storage.local / Schema 3 chunk folder
+                // 1. Try chrome.storage.local / Schema 3/4 chunk folder
                 const chunkFolder = await getFileChunksFolder(this.handle.id);
                 const data = await readChunksData(this.handle.id, chunkFolder ? chunkFolder.id : null);
                 if (data && data.length > 0) {
@@ -7249,25 +7353,24 @@ export function handleZip(bytes) {
                     legacyData += c.title || "";
                 }
 
-                // Auto-migrate to storage.local
+                // Auto-migrate to Smart Hybrid Storage
                 const meta = await this.readMeta();
                 if (meta && legacyData.length > 0) {
                     try {
-                        console.log("Migrating file to storage.local chunking:", this.handle.title);
-                        await saveChunksData(this.handle.id, legacyData);
+                        console.log("Migrating file to Smart Hybrid Storage:", this.handle.title);
+                        const saveRes = await saveChunksData(this.handle.id, legacyData);
                         // Delete legacy chunk nodes from file folder
                         for (const c of (children || [])) {
                             if (c.title && !c.title.startsWith(META_PREFIX)) {
                                 try { await chrome.bookmarks.remove(c.id); } catch {}
                             }
                         }
-                        if (chunkFolder) {
-                            try { await chrome.bookmarks.removeTree(chunkFolder.id); } catch {}
-                        }
-                        meta.schemaVersion = 3;
+                        meta.schemaVersion = 4;
+                        meta.storageType = saveRes.storageType;
+                        meta.compressed = saveRes.compressed;
                         await this.writeMeta(meta);
                     } catch (migrationErr) {
-                        console.warn("Auto-migration to storage.local failed:", migrationErr);
+                        console.warn("Auto-migration to Smart Hybrid Storage failed:", migrationErr);
                     }
                 }
                 return legacyData;
@@ -7276,16 +7379,16 @@ export function handleZip(bytes) {
                 return this.readRaw();
             },
             async write(rawString, onProgress, options) {
-                // Store chunk payload directly in storage.local
-                await saveChunksData(this.handle.id, rawString);
+                // Store chunk payload using Smart Hybrid Storage (Compressed in bookmarks for <10MB, local for >=10MB)
+                const saveRes = await saveChunksData(this.handle.id, rawString);
 
-                // Clean up legacy bookmark chunk folder if present to keep bookmark tree light
-                try {
-                    const chunkFolder = await getFileChunksFolder(this.handle.id, false);
-                    if (chunkFolder) {
-                        await chrome.bookmarks.removeTree(chunkFolder.id);
-                    }
-                } catch (e) {}
+                const meta = await this.readMeta();
+                if (meta) {
+                    meta.schemaVersion = 4;
+                    meta.storageType = saveRes.storageType;
+                    meta.compressed = saveRes.compressed;
+                    await this.writeMeta(meta);
+                }
 
                 if (onProgress) onProgress(1);
             },
