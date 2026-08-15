@@ -141,30 +141,27 @@ export function handleZip(bytes) {
 
     function b64encodeBytes(u8) {
         let s = "";
-        for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+        const CHUNK_SIZE = 0x8000;
+        for (let i = 0; i < u8.length; i += CHUNK_SIZE) {
+            s += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK_SIZE));
+        }
         return btoa(s);
     }
 
     function b64decodeToBytes(b64) {
         if (!b64) return new Uint8Array(0);
-        // quick sanity: base64 must be multiple of 4 chars
-        if (b64.length % 4 !== 0) {
-            return new TextEncoder().encode(b64);
-        }
-        // Avoid running regex on very large strings (causes regex engine failure/slowdown)
-        const prefix = b64.length > 1000 ? b64.slice(0, 1000) : b64;
-        const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
-        if (!base64Pattern.test(prefix)) {
-            // Not valid base64 → treat as raw UTF-8 string
-            return new TextEncoder().encode(b64);
-        }
+        let padded = String(b64).replace(/\s+/g, '');
+        const remainder = padded.length % 4;
+        if (remainder === 2) padded += "==";
+        else if (remainder === 3) padded += "=";
+        else if (remainder === 1) padded = padded.slice(0, -1);
+
         try {
-            const s = atob(b64);
+            const s = atob(padded);
             const out = new Uint8Array(s.length);
             for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
             return out;
         } catch (e) {
-            console.warn("b64decodeToBytes: fallback to UTF-8, not valid base64", e);
             return new TextEncoder().encode(b64);
         }
     }
@@ -276,13 +273,21 @@ export function handleZip(bytes) {
 
     // gzip/gunzip adapters (fflate if present)
     function gzipSync(bytes) {
-        if (hasFflate) return window.fflate.gzipSync(bytes);
-        return fflateGzip(bytes);
+        try {
+            if (hasFflate) return window.fflate.gzipSync(bytes);
+            return fflateGzip(bytes);
+        } catch (e) {
+            return bytes;
+        }
     }
 
     function gunzipSync(bytes) {
-        if (hasFflate) return window.fflate.gunzipSync(bytes);
-        return fflateGunzip(bytes);
+        try {
+            if (hasFflate) return window.fflate.gunzipSync(bytes);
+            return fflateGunzip(bytes);
+        } catch (e) {
+            return bytes;
+        }
     }
 
     // ---------- WebCrypto AES-GCM helpers ----------
@@ -7330,26 +7335,6 @@ export function handleZip(bytes) {
                             if (c.title && !c.title.startsWith(META_PREFIX)) {
                                 try { await chrome.bookmarks.remove(c.id); } catch {}
                             }
-                        }
-                    }
-                }
-
-                // 4. Auto-migrate/compress if uncompressed or stored in local storage
-                const meta = await this.readMeta();
-                if (data && data.length > 0) {
-                    const needsMigration = !meta || meta.schemaVersion < 4 || !meta.compressed || meta.storageType === "local" || !!localRes[localKey];
-                    if (needsMigration) {
-                        try {
-                            console.log("[Pure Bookmark Sync] Auto-migrating & Compressing file:", this.handle.title);
-                            const saveRes = await saveChunksData(this.handle.id, data);
-                            const updatedMeta = meta || { schemaVersion: 4, type: "application/octet-stream" };
-                            updatedMeta.schemaVersion = 4;
-                            updatedMeta.storageType = saveRes.storageType;
-                            updatedMeta.compressed = saveRes.compressed;
-                            await this.writeMeta(updatedMeta);
-                            await chrome.storage.local.remove([localKey]);
-                        } catch (migrationErr) {
-                            console.warn("Auto-migration failed:", migrationErr);
                         }
                     }
                 }
