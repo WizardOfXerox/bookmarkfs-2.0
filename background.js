@@ -151,8 +151,21 @@ async function compressStringGzip(str) {
         const writer = cs.writable.getWriter();
         writer.write(bytes);
         writer.close();
-        const compressedBuffer = await new Response(cs.readable).arrayBuffer();
-        const u8 = new Uint8Array(compressedBuffer);
+        const reader = cs.readable.getReader();
+        const chunks = [];
+        let total = 0;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            total += value.length;
+        }
+        const u8 = new Uint8Array(total);
+        let offset = 0;
+        for (const c of chunks) {
+            u8.set(c, offset);
+            offset += c.length;
+        }
         let binary = "";
         for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
         return "z" + btoa(binary);
@@ -164,7 +177,7 @@ async function compressStringGzip(str) {
 
 async function decompressStringGzip(serialized) {
     if (!serialized) return "";
-    if (serialized.startsWith("z")) {
+    if (typeof serialized === "string" && serialized.startsWith("z")) {
         try {
             const b64 = serialized.slice(1);
             const binary = atob(b64);
@@ -174,11 +187,25 @@ async function decompressStringGzip(serialized) {
             const writer = ds.writable.getWriter();
             writer.write(u8);
             writer.close();
-            const decompressedBuffer = await new Response(ds.readable).arrayBuffer();
-            return new TextDecoder().decode(decompressedBuffer);
+            const reader = ds.readable.getReader();
+            const chunks = [];
+            let total = 0;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                total += value.length;
+            }
+            const u8out = new Uint8Array(total);
+            let offset = 0;
+            for (const c of chunks) {
+                u8out.set(c, offset);
+                offset += c.length;
+            }
+            return new TextDecoder().decode(u8out);
         } catch (e) {
-            console.error("Failed to decompress Gzip data:", e);
-            return "";
+            console.warn("ServiceWorker decompression notice:", e);
+            return serialized;
         }
     }
     return serialized;

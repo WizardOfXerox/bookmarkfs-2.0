@@ -7174,42 +7174,29 @@ export function handleZip(bytes) {
         return handle;
     }
 
-    // Native Gzip compression / decompression helpers for Smart Hybrid Storage & Cross-PC Syncing
-    async function compressStringGzip(str) {
+    // Gzip compression / decompression helpers for Pure Bookmark Syncing using fflate
+    function compressStringGzip(str) {
         try {
             const bytes = new TextEncoder().encode(str);
-            const cs = new CompressionStream("gzip");
-            const writer = cs.writable.getWriter();
-            writer.write(bytes);
-            writer.close();
-            const compressedBuffer = await new Response(cs.readable).arrayBuffer();
-            const u8 = new Uint8Array(compressedBuffer);
-            let binary = "";
-            for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
-            return "z" + btoa(binary);
+            const compressed = fflateGzip(bytes);
+            return "z" + b64encodeBytes(compressed);
         } catch (e) {
             console.warn("Gzip compression fallback to raw Base64:", e);
-            return "r" + btoa(str);
+            return "r" + btoa(unescape(encodeURIComponent(str)));
         }
     }
 
-    async function decompressStringGzip(serialized) {
+    function decompressStringGzip(serialized) {
         if (!serialized) return "";
-        if (serialized.startsWith("z")) {
+        if (typeof serialized === "string" && serialized.startsWith("z")) {
             try {
                 const b64 = serialized.slice(1);
-                const binary = atob(b64);
-                const u8 = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
-                const ds = new DecompressionStream("gzip");
-                const writer = ds.writable.getWriter();
-                writer.write(u8);
-                writer.close();
-                const decompressedBuffer = await new Response(ds.readable).arrayBuffer();
-                return new TextDecoder().decode(decompressedBuffer);
+                const compressed = b64decodeToBytes(b64);
+                const decompressed = fflateGunzip(compressed);
+                return new TextDecoder().decode(decompressed);
             } catch (e) {
-                console.error("Failed to decompress Gzip data:", e);
-                return "";
+                console.warn("Gzip decompression error, using fallback payload:", e);
+                return serialized;
             }
         }
         return serialized;
