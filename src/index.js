@@ -7200,17 +7200,20 @@ export function handleZip(bytes) {
     function decompressStringGzip(serialized) {
         if (!serialized) return "";
         if (typeof serialized === "string" && serialized.startsWith("z")) {
+            const b64 = serialized.slice(1);
             try {
-                const b64 = serialized.slice(1);
                 const bytes = b64decodeToBytes(b64);
-                // ONLY decompress if standard Gzip magic bytes 0x1f, 0x8b are present
+                // Only decompress if standard Gzip magic bytes 0x1f, 0x8b are present
                 if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
                     const decompressed = fflateGunzip(bytes);
                     return new TextDecoder().decode(decompressed);
                 }
             } catch (e) {
-                // Not a valid gzip stream - treat as raw uncompressed string
+                // Gzip decompression failed - fall through
             }
+            // "z" prefix but not actually valid gzip — return raw string unchanged
+            // so downstream can handle it (e.g. reconstructBytesFromSerialized)
+            return serialized;
         }
         return serialized;
     }
@@ -7283,7 +7286,9 @@ export function handleZip(bytes) {
         }
 
         if (combinedStr) {
-            return await decompressStringGzip(combinedStr);
+            // Return raw combined chunk data — do NOT decompress here.
+            // Callers (readRaw -> reconstructBytesFromSerialized) handle decompression.
+            return combinedStr;
         }
 
         return "";
@@ -7329,21 +7334,17 @@ export function handleZip(bytes) {
                 }
 
                 // 3. Legacy format (Schema 1/2): read from direct children in file folder itself
-                const children = await this.getChildrenFresh();
                 if (!data) {
+                    const children = await this.getChildrenFresh();
                     let legacyDirectData = "";
                     for (const c of (children || [])) {
                         if (c.title && c.title.startsWith(META_PREFIX)) continue;
                         legacyDirectData += c.title || "";
                     }
                     if (legacyDirectData) {
-                        data = await decompressStringGzip(legacyDirectData);
-                        // Delete legacy direct chunk nodes
-                        for (const c of (children || [])) {
-                            if (c.title && !c.title.startsWith(META_PREFIX)) {
-                                try { await chrome.bookmarks.remove(c.id); } catch {}
-                            }
-                        }
+                        // Return raw legacy data as-is — do NOT decompress or delete.
+                        // Callers handle decompression via reconstructBytesFromSerialized.
+                        data = legacyDirectData;
                     }
                 }
 
