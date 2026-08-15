@@ -7154,29 +7154,35 @@ export function handleZip(bytes) {
     }
 
     async function fsRoot() {
-        let barId = "1";
-        let children = [];
-        try {
-            children = await chrome.bookmarks.getChildren(barId);
-        } catch (e) {
+        // Search in Bookmarks Bar ("1"), Other Bookmarks ("2"), Mobile Bookmarks ("3") or root ("0")
+        const topBarIds = ["1", "2", "3", "toolbar_____", "unfiled_____"];
+        for (const barId of topBarIds) {
             try {
-                children = await chrome.bookmarks.getChildren("0");
-                if (children && children.length > 0) {
-                    barId = (children[1] || children[0]).id;
-                    children = await chrome.bookmarks.getChildren(barId);
-                }
-            } catch (e2) {
-                const tree = await chrome.bookmarks.getTree();
-                const bar = tree[0].children[1] || tree[0].children[0];
-                barId = bar.id;
-                children = bar.children || [];
+                const children = await chrome.bookmarks.getChildren(barId);
+                const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
+                if (handle) return handle;
+            } catch (e) {}
+        }
+        try {
+            const rootChildren = await chrome.bookmarks.getChildren("0");
+            for (const bar of (rootChildren || [])) {
+                try {
+                    const children = await chrome.bookmarks.getChildren(bar.id);
+                    const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
+                    if (handle) return handle;
+                } catch (e) {}
             }
-        }
-        let handle = children.find(b => b.title === "bookmarkfs");
-        if (!handle) {
-            handle = await chrome.bookmarks.create({ parentId: barId, title: "bookmarkfs" });
-        }
-        return handle;
+        } catch (e) {}
+
+        // Fallback: create under Bookmarks Bar ("1")
+        let targetBarId = "1";
+        try {
+            const children0 = await chrome.bookmarks.getChildren("0");
+            if (children0 && children0.length > 0) {
+                targetBarId = (children0[1] || children0[0]).id;
+            }
+        } catch (e) {}
+        return await chrome.bookmarks.create({ parentId: targetBarId, title: "bookmarkfs" });
     }
 
     // Gzip compression / decompression helpers for Pure Bookmark Syncing using fflate
@@ -7196,12 +7202,14 @@ export function handleZip(bytes) {
         if (typeof serialized === "string" && serialized.startsWith("z")) {
             try {
                 const b64 = serialized.slice(1);
-                const compressed = b64decodeToBytes(b64);
-                const decompressed = fflateGunzip(compressed);
-                return new TextDecoder().decode(decompressed);
+                const bytes = b64decodeToBytes(b64);
+                // ONLY decompress if standard Gzip magic bytes 0x1f, 0x8b are present
+                if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+                    const decompressed = fflateGunzip(bytes);
+                    return new TextDecoder().decode(decompressed);
+                }
             } catch (e) {
-                console.warn("Gzip decompression error, using fallback payload:", e);
-                return serialized;
+                // Not a valid gzip stream - treat as raw uncompressed string
             }
         }
         return serialized;

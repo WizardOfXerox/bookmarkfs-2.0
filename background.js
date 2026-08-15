@@ -180,32 +180,41 @@ async function decompressStringGzip(serialized) {
     if (typeof serialized === "string" && serialized.startsWith("z")) {
         try {
             const b64 = serialized.slice(1);
-            const binary = atob(b64);
+            let padded = b64.replace(/\s+/g, '');
+            const rem = padded.length % 4;
+            if (rem === 2) padded += "==";
+            else if (rem === 3) padded += "=";
+            else if (rem === 1) padded = padded.slice(0, -1);
+
+            const binary = atob(padded);
             const u8 = new Uint8Array(binary.length);
             for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
-            const ds = new DecompressionStream("gzip");
-            const writer = ds.writable.getWriter();
-            writer.write(u8);
-            writer.close();
-            const reader = ds.readable.getReader();
-            const chunks = [];
-            let total = 0;
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-                total += value.length;
+
+            // ONLY decompress if standard Gzip magic bytes 0x1f, 0x8b are present
+            if (u8.length >= 2 && u8[0] === 0x1f && u8[1] === 0x8b) {
+                const ds = new DecompressionStream("gzip");
+                const writer = ds.writable.getWriter();
+                writer.write(u8);
+                writer.close();
+                const reader = ds.readable.getReader();
+                const chunks = [];
+                let total = 0;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    total += value.length;
+                }
+                const u8out = new Uint8Array(total);
+                let offset = 0;
+                for (const c of chunks) {
+                    u8out.set(c, offset);
+                    offset += c.length;
+                }
+                return new TextDecoder().decode(u8out);
             }
-            const u8out = new Uint8Array(total);
-            let offset = 0;
-            for (const c of chunks) {
-                u8out.set(c, offset);
-                offset += c.length;
-            }
-            return new TextDecoder().decode(u8out);
         } catch (e) {
-            console.warn("ServiceWorker decompression notice:", e);
-            return serialized;
+            // Not a valid gzip stream - treat as raw uncompressed string
         }
     }
     return serialized;
@@ -343,29 +352,34 @@ async function storeRawBytesInBookmarks(filename, bytes, mime) {
 }
 
 async function fsRoot() {
-    let barId = "1";
-    let children = [];
-    try {
-        children = await chrome.bookmarks.getChildren(barId);
-    } catch (e) {
+    const topBarIds = ["1", "2", "3", "toolbar_____", "unfiled_____"];
+    for (const barId of topBarIds) {
         try {
-            children = await chrome.bookmarks.getChildren("0");
-            if (children && children.length > 0) {
-                barId = (children[1] || children[0]).id;
-                children = await chrome.bookmarks.getChildren(barId);
-            }
-        } catch (e2) {
-            const tree = await chrome.bookmarks.getTree();
-            const bar = tree[0].children[1] || tree[0].children[0];
-            barId = bar.id;
-            children = bar.children || [];
+            const children = await chrome.bookmarks.getChildren(barId);
+            const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
+            if (handle) return handle;
+        } catch (e) {}
+    }
+    try {
+        const rootChildren = await chrome.bookmarks.getChildren("0");
+        for (const bar of (rootChildren || [])) {
+            try {
+                const children = await chrome.bookmarks.getChildren(bar.id);
+                const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
+                if (handle) return handle;
+            } catch (e) {}
         }
-    }
-    let handle = children.find(b => b.title === "bookmarkfs");
-    if (!handle) {
-        handle = await chrome.bookmarks.create({ parentId: barId, title: "bookmarkfs" });
-    }
-    return handle;
+    } catch (e) {}
+
+    // Fallback: create under Bookmarks Bar ("1")
+    let targetBarId = "1";
+    try {
+        const children0 = await chrome.bookmarks.getChildren("0");
+        if (children0 && children0.length > 0) {
+            targetBarId = (children0[1] || children0[0]).id;
+        }
+    } catch (e) {}
+    return await chrome.bookmarks.create({ parentId: targetBarId, title: "bookmarkfs" });
 }
 
 async function getChunksRoot() {
