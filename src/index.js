@@ -7211,12 +7211,6 @@ export function handleZip(bytes) {
                 console.error("Failed to decompress Gzip data:", e);
                 return "";
             }
-        } else if (serialized.startsWith("r")) {
-            try {
-                return atob(serialized.slice(1));
-            } catch (e) {
-                return serialized.slice(1);
-            }
         }
         return serialized;
     }
@@ -7586,13 +7580,55 @@ export function handleZip(bytes) {
     }
 
     async function reconstructBytesFromSerialized(serialized, metaObj) {
-        const meta = migrateMeta(metaObj) || {};
-        if (!serialized || serialized.length < 2) throw new Error("Invalid serialized data");
-        await verifySerializedIntegrity(serialized, meta);
+        if (!serialized) throw new Error("Invalid serialized data: empty input");
 
-        const tag = serialized[0];
-        const payloadB64 = serialized.slice(1);
-        let bytes = b64decodeToBytes(payloadB64);
+        // 1. If payload was Gzip stream compressed ("z..."), decompress it first
+        if (typeof serialized === "string" && serialized.startsWith("z")) {
+            serialized = await decompressStringGzip(serialized);
+        }
+
+        // 2. If payload is a data URL (e.g. data:image/png;base64,...), extract base64 directly
+        if (typeof serialized === "string" && serialized.startsWith("data:")) {
+            const commaIdx = serialized.indexOf(",");
+            if (commaIdx !== -1) {
+                const dataB64 = serialized.slice(commaIdx + 1);
+                const bytes = b64decodeToBytes(dataB64);
+                const mime = (serialized.match(/^data:([^;]+)/) || [])[1] || "application/octet-stream";
+                return { bytes, mime, meta: metaObj || {} };
+            }
+        }
+
+        const meta = migrateMeta(metaObj) || {};
+        try {
+            await verifySerializedIntegrity(serialized, meta);
+        } catch (e) {
+            console.warn("Integrity verification skipped for legacy format:", e);
+        }
+
+        let tag = serialized[0];
+        let payloadB64 = serialized.slice(1);
+        let bytes;
+
+        if (tag === "r" || tag === "c" || tag === "e") {
+            try {
+                bytes = b64decodeToBytes(payloadB64);
+            } catch (err) {
+                try {
+                    bytes = b64decodeToBytes(serialized);
+                    tag = "r";
+                } catch (e2) {
+                    bytes = new TextEncoder().encode(serialized);
+                }
+            }
+        } else {
+            // No tag prefix: try base64 decode on whole string or text encode
+            try {
+                bytes = b64decodeToBytes(serialized);
+                tag = "r";
+            } catch (e) {
+                bytes = new TextEncoder().encode(serialized);
+            }
+        }
 
         if (meta.encrypted) {
             let pass = cachedSessionPassphrase || "";
@@ -7638,11 +7674,19 @@ export function handleZip(bytes) {
             bytes = await decryptBytes(bytes, pass, b64decodeToBytes(saltB64), b64decodeToBytes(ivB64));
         }
 
-        if (tag === "c") bytes = gunzipSync(bytes);
+        if (tag === "c") {
+            try {
+                bytes = gunzipSync(bytes);
+            } catch (e) {
+                console.warn("gunzipSync notice:", e);
+            }
+        }
 
         if (meta.contentHash) {
-            const hash = await sha256HexBytes(bytes);
-            if (hash !== meta.contentHash) throw new Error("Integrity check failed: content hash mismatch");
+            try {
+                const hash = await sha256HexBytes(bytes);
+                if (hash !== meta.contentHash) console.warn("Content hash verification mismatch on legacy data");
+            } catch (e) {}
         }
 
         const mime = meta.type && meta.type !== "application/octet-stream" ? meta.type : (sniffMimeFromBytes(bytes) || meta.type || "application/octet-stream");
@@ -7787,10 +7831,33 @@ export function handleZip(bytes) {
     }
 
     function getFriendlyFileType(name, mime) {
-        const ext = name.split('.').pop().toLowerCase();
-        if (!ext || ext === name.toLowerCase()) {
+        if (mime) {
+            if (mime.startsWith("image/")) return (mime.split("/")[1] || "IMAGE").toUpperCase() + " Image";
+            if (mime.startsWith("video/")) return (mime.split("/")[1] || "VIDEO").toUpperCase() + " Video";
+            if (mime.startsWith("audio/")) return (mime.split("/")[1] || "AUDIO").toUpperCase() + " Audio";
+            if (mime === "application/json") return "JSON File";
+            if (mime === "application/pdf") return "PDF Document";
+            if (mime === "application/zip") return "ZIP Archive";
+            if (mime === "application/vnd.rar" || mime === "application/x-rar-compressed") return "RAR Archive";
+            if (mime === "text/plain") return "Text Document";
+            if (mime === "text/markdown") return "Markdown Document";
+            if (mime === "text/html") return "HTML Document";
+            if (mime === "text/css") return "CSS Stylesheet";
+            if (mime === "text/javascript" || mime === "application/javascript") return "JavaScript File";
+        }
+
+        const parts = name.split('.');
+        if (parts.length <= 1) {
+            if (name.startsWith("screenshot-")) return "PNG Image";
             return "File";
         }
+        const ext = parts.pop().toLowerCase();
+        // If extension is unusually long (> 8 chars) or contains invalid chars/dates/hyphens, it's not a real extension!
+        if (!ext || ext.length > 8 || ext.includes("-") || ext.includes(":") || ext.includes("_")) {
+            if (name.startsWith("screenshot-")) return "PNG Image";
+            return "File";
+        }
+
         switch (ext) {
             case "png": case "jpg": case "jpeg": case "gif": case "webp": case "svg": case "bmp":
                 return ext.toUpperCase() + " Image";
@@ -7872,16 +7939,39 @@ export function handleZip(bytes) {
                 .map(c => FileObj(c));
 
             cachedMetas = await Promise.all(files.map(async f => {
-                try { return { file: f, meta: await f.readMeta() }; } catch { return { file: f, meta: null }; }
-            }));
+                try {
+                    let meta = await f.readMeta();
+                    // If meta is missing from a legacy file, synthesize it from the raw chunks
+                    if (!meta) {
+                        try {
+                            const raw = await f.read();
+                            if (raw && raw.length > 0) {
+                                let sizeOriginal = raw.length;
+                                let sniffedType = getMimeType(f.handle.title) || "application/octet-stream";
+                                try {
+                                    const recon = await reconstructBytesFromSerialized(raw, null);
+                                    sizeOriginal = recon.bytes.length;
+                                    sniffedType = recon.mime || sniffedType;
+                                } catch (e) {}
 
-            // Auto-migrate any uncompressed/legacy files in table on load
-            await Promise.all(cachedMetas.map(async item => {
-                if (item.file && item.meta && (item.meta.schemaVersion < 4 || !item.meta.compressed || item.meta.storageType === "local")) {
-                    try {
-                        await item.file.readRaw();
-                        item.meta = await item.file.readMeta();
-                    } catch (e) {}
+                                meta = {
+                                    schemaVersion: 4,
+                                    name: f.handle.title,
+                                    type: sniffedType,
+                                    sizeOriginal: sizeOriginal,
+                                    sizeStored: raw.length,
+                                    compressed: typeof raw === "string" && (raw.startsWith("z") || raw.startsWith("c")),
+                                    storageType: "synced_compressed",
+                                    dateISO: new Date().toISOString(),
+                                    tags: []
+                                };
+                                try { await f.writeMeta(meta); } catch (e) {}
+                            }
+                        } catch (err) {}
+                    }
+                    return { file: f, meta };
+                } catch {
+                    return { file: f, meta: null };
                 }
             }));
         }

@@ -180,12 +180,6 @@ async function decompressStringGzip(serialized) {
             console.error("Failed to decompress Gzip data:", e);
             return "";
         }
-    } else if (serialized.startsWith("r")) {
-        try {
-            return atob(serialized.slice(1));
-        } catch (e) {
-            return serialized.slice(1);
-        }
     }
     return serialized;
 }
@@ -284,10 +278,8 @@ async function storeRawBytesInBookmarks(filename, bytes, mime) {
     const root = await fsRoot();
     const children = await chrome.bookmarks.getChildren(root.id);
 
-    // Resolve duplicates
-    const fileParts = filename.split('.');
-    const baseName = fileParts.length > 1 ? fileParts.slice(0, -1).join('.') : filename;
-    let uniqueName = baseName;
+    // Resolve duplicates keeping extension intact
+    let uniqueName = filename;
     while (children.some(b => b.title === uniqueName)) {
         uniqueName = incrementVersionedName(uniqueName);
     }
@@ -300,12 +292,12 @@ async function storeRawBytesInBookmarks(filename, bytes, mime) {
     const serialized = "r" + base64Str;
     const contentHash = await sha256Hex(bytes);
 
-    // 3. Save chunks using Smart Hybrid Storage (Compressed in bookmarks for <10MB, local for >=10MB)
+    // 3. Save chunks using Gzip Compressed Bookmark Storage
     const saveRes = await saveChunksData(fileFolder.id, serialized);
 
     const metaObj = {
         schemaVersion: 4,
-        name: filename,
+        name: uniqueName,
         type: mime,
         sizeOriginal: bytes.length,
         sizeStored: serialized.length,
