@@ -352,24 +352,48 @@ async function storeRawBytesInBookmarks(filename, bytes, mime) {
 }
 
 async function fsRoot() {
+    let candidateFolders = [];
+    try {
+        const searchResults = await chrome.bookmarks.search({ title: "bookmarkfs" });
+        if (searchResults && searchResults.length > 0) {
+            for (const item of searchResults) {
+                if (!item.url) {
+                    try {
+                        const kids = await chrome.bookmarks.getChildren(item.id);
+                        candidateFolders.push({ handle: item, childrenCount: kids ? kids.length : 0 });
+                    } catch (e) {
+                        candidateFolders.push({ handle: item, childrenCount: 0 });
+                    }
+                }
+            }
+        }
+    } catch (e) {}
+
+    // Also search case-insensitively across top bars
     const topBarIds = ["1", "2", "3", "toolbar_____", "unfiled_____"];
     for (const barId of topBarIds) {
         try {
             const children = await chrome.bookmarks.getChildren(barId);
-            const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
-            if (handle) return handle;
+            for (const b of (children || [])) {
+                if (!b.url && b.title && b.title.toLowerCase() === "bookmarkfs") {
+                    if (!candidateFolders.some(c => c.handle.id === b.id)) {
+                        try {
+                            const kids = await chrome.bookmarks.getChildren(b.id);
+                            candidateFolders.push({ handle: b, childrenCount: kids ? kids.length : 0 });
+                        } catch (e) {
+                            candidateFolders.push({ handle: b, childrenCount: 0 });
+                        }
+                    }
+                }
+            }
         } catch (e) {}
     }
-    try {
-        const rootChildren = await chrome.bookmarks.getChildren("0");
-        for (const bar of (rootChildren || [])) {
-            try {
-                const children = await chrome.bookmarks.getChildren(bar.id);
-                const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
-                if (handle) return handle;
-            } catch (e) {}
-        }
-    } catch (e) {}
+
+    // If any candidate has children, pick the one with the most children!
+    if (candidateFolders.length > 0) {
+        candidateFolders.sort((a, b) => b.childrenCount - a.childrenCount);
+        return candidateFolders[0].handle;
+    }
 
     // Fallback: create under Bookmarks Bar ("1")
     let targetBarId = "1";

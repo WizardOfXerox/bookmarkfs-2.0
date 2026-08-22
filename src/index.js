@@ -7154,25 +7154,48 @@ export function handleZip(bytes) {
     }
 
     async function fsRoot() {
-        // Search in Bookmarks Bar ("1"), Other Bookmarks ("2"), Mobile Bookmarks ("3") or root ("0")
+        let candidateFolders = [];
+        try {
+            const searchResults = await chrome.bookmarks.search({ title: "bookmarkfs" });
+            if (searchResults && searchResults.length > 0) {
+                for (const item of searchResults) {
+                    if (!item.url) {
+                        try {
+                            const kids = await chrome.bookmarks.getChildren(item.id);
+                            candidateFolders.push({ handle: item, childrenCount: kids ? kids.length : 0 });
+                        } catch (e) {
+                            candidateFolders.push({ handle: item, childrenCount: 0 });
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+
+        // Also search case-insensitively across top bars
         const topBarIds = ["1", "2", "3", "toolbar_____", "unfiled_____"];
         for (const barId of topBarIds) {
             try {
                 const children = await chrome.bookmarks.getChildren(barId);
-                const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
-                if (handle) return handle;
+                for (const b of (children || [])) {
+                    if (!b.url && b.title && b.title.toLowerCase() === "bookmarkfs") {
+                        if (!candidateFolders.some(c => c.handle.id === b.id)) {
+                            try {
+                                const kids = await chrome.bookmarks.getChildren(b.id);
+                                candidateFolders.push({ handle: b, childrenCount: kids ? kids.length : 0 });
+                            } catch (e) {
+                                candidateFolders.push({ handle: b, childrenCount: 0 });
+                            }
+                        }
+                    }
+                }
             } catch (e) {}
         }
-        try {
-            const rootChildren = await chrome.bookmarks.getChildren("0");
-            for (const bar of (rootChildren || [])) {
-                try {
-                    const children = await chrome.bookmarks.getChildren(bar.id);
-                    const handle = (children || []).find(b => b.title && b.title.toLowerCase() === "bookmarkfs");
-                    if (handle) return handle;
-                } catch (e) {}
-            }
-        } catch (e) {}
+
+        // If any candidate has children, pick the one with the most children!
+        if (candidateFolders.length > 0) {
+            candidateFolders.sort((a, b) => b.childrenCount - a.childrenCount);
+            return candidateFolders[0].handle;
+        }
 
         // Fallback: create under Bookmarks Bar ("1")
         let targetBarId = "1";
@@ -7442,8 +7465,32 @@ export function handleZip(bytes) {
     async function listFiles() {
         const root = await fsRoot();
         const children = await chrome.bookmarks.getChildren(root.id);
-        // only folders (no url) and skip system chunk directories
-        return children.filter(c => !c.url && c.title !== "__chunks__").map(c => FileObj(c));
+        const resultFiles = [];
+
+        for (const c of (children || [])) {
+            if (c.url || c.title === "__chunks__") continue;
+            
+            try {
+                const subChildren = await chrome.bookmarks.getChildren(c.id);
+                const hasSubFolders = (subChildren || []).some(k => !k.url && k.title !== "__chunks__" && !k.title.startsWith(META_PREFIX) && k.title.length < 200);
+                
+                if (hasSubFolders && !subChildren.some(k => k.title && k.title.startsWith(META_PREFIX))) {
+                    for (const sub of subChildren) {
+                        if (!sub.url && sub.title !== "__chunks__") {
+                            const virtualHandle = {
+                                ...sub,
+                                title: `${c.title}/${sub.title}`
+                            };
+                            resultFiles.push(FileObj(virtualHandle));
+                        }
+                    }
+                    continue;
+                }
+            } catch (e) {}
+
+            resultFiles.push(FileObj(c));
+        }
+        return resultFiles;
     }
 
     async function getFileByName(name) {
@@ -7935,10 +7982,7 @@ export function handleZip(bytes) {
         const tagFilterValue = tagFilter ? tagFilter.value : "";
 
         if (bypassCache || !cachedMetas) {
-            const root = await fsRoot();
-            const rootChildren = await chrome.bookmarks.getChildren(root.id);
-            const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
-                .map(c => FileObj(c));
+            const files = await listFiles();
 
             cachedMetas = await Promise.all(files.map(async f => {
                 try {
