@@ -167,10 +167,23 @@
     }
 
     function loadReactScripts() {
-        // Dynamically insert the module script
-        const moduleScript = document.createElement("script");
-        moduleScript.type = "module";
-        moduleScript.src = isCapturePage ? "capture.js" : "editor.js";
-        document.body.appendChild(moduleScript);
+        const scriptName = isCapturePage ? "capture.js" : "editor.js";
+        
+        function injectScript() {
+            if (document.querySelector(`script[data-app="${scriptName}"]`)) return;
+            const moduleScript = document.createElement("script");
+            moduleScript.type = "module";
+            moduleScript.src = scriptName;
+            moduleScript.dataset.app = scriptName;
+            document.body.appendChild(moduleScript);
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", () => {
+                setTimeout(injectScript, 50);
+            });
+        } else {
+            setTimeout(injectScript, 50);
+        }
     }
 })();
