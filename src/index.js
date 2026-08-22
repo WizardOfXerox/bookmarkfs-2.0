@@ -7185,34 +7185,55 @@ export function handleZip(bytes) {
         return await chrome.bookmarks.create({ parentId: targetBarId, title: "bookmarkfs" });
     }
 
-    // Gzip compression / decompression helpers for Pure Bookmark Syncing using fflate
-    function compressStringGzip(str) {
+    // Gzip compression / decompression helpers for Pure Bookmark Syncing using fflate + CompressionStream
+    async function compressStringGzip(str) {
         try {
             const bytes = new TextEncoder().encode(str);
             const compressed = fflateGzip(bytes);
             return "z" + b64encodeBytes(compressed);
         } catch (e) {
-            console.warn("Gzip compression fallback to raw Base64:", e);
-            return "r" + btoa(unescape(encodeURIComponent(str)));
+            try {
+                const bytes = new TextEncoder().encode(str);
+                const cs = new CompressionStream("gzip");
+                const writer = cs.writable.getWriter();
+                writer.write(bytes);
+                writer.close();
+                const buf = await new Response(cs.readable).arrayBuffer();
+                return "z" + b64encodeBytes(new Uint8Array(buf));
+            } catch (e2) {
+                console.warn("Gzip compression fallback to raw Base64:", e2);
+                return "r" + btoa(unescape(encodeURIComponent(str)));
+            }
         }
     }
 
-    function decompressStringGzip(serialized) {
+    async function decompressStringGzip(serialized) {
         if (!serialized) return "";
         if (typeof serialized === "string" && serialized.startsWith("z")) {
             const b64 = serialized.slice(1);
+            let bytes;
             try {
-                const bytes = b64decodeToBytes(b64);
-                // Only decompress if standard Gzip magic bytes 0x1f, 0x8b are present
-                if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+                bytes = b64decodeToBytes(b64);
+            } catch (e) {
+                return serialized;
+            }
+            if (bytes && bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+                // 1. Try fflateGunzip (fast)
+                try {
                     const decompressed = fflateGunzip(bytes);
                     return new TextDecoder().decode(decompressed);
-                }
-            } catch (e) {
-                // Gzip decompression failed - fall through
+                } catch (errFflate) {}
+
+                // 2. Try native DecompressionStream
+                try {
+                    const ds = new DecompressionStream("gzip");
+                    const writer = ds.writable.getWriter();
+                    writer.write(bytes);
+                    writer.close();
+                    const buf = await new Response(ds.readable).arrayBuffer();
+                    return new TextDecoder().decode(buf);
+                } catch (errNative) {}
             }
-            // "z" prefix but not actually valid gzip — return raw string unchanged
-            // so downstream can handle it (e.g. reconstructBytesFromSerialized)
             return serialized;
         }
         return serialized;
