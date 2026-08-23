@@ -41,6 +41,7 @@
     "permissions": [
         "bookmarks",
         "storage",
+        "identity",
         "contextMenus",
         "sidePanel",
         "unlimitedStorage",
@@ -54,10 +55,18 @@
         "alarms",
         "notifications"
     ],
+    "oauth2": {
+        "client_id": "766258079864-bookmarkfs.apps.googleusercontent.com",
+        "scopes": [
+            "https://www.googleapis.com/auth/drive.file",
+            "https://www.googleapis.com/auth/drive.appdata"
+        ]
+    },
     "optional_permissions": [
     ],
     "host_permissions": [
-        "<all_urls>"
+        "<all_urls>",
+        "https://www.googleapis.com/*"
     ],
     "content_scripts": [
         {

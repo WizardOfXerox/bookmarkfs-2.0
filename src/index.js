@@ -2,6 +2,7 @@ import { unzipSync, zipSync, gzipSync as fflateGzip, gunzipSync as fflateGunzip 
 import { createExtractorFromData } from "node-unrar-js";
 import jsQR from "jsqr";
 import QRCode from "qrcode";
+import * as GDrive from "./gdrive.js";
 
 // Global safe guard for Popover API on disconnected elements
 if (typeof HTMLElement !== "undefined" && HTMLElement.prototype.showPopover) {
@@ -685,6 +686,7 @@ export function handleZip(bytes) {
       <fieldset style="border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;">
         <legend style="padding: 0 6px; color: var(--accent); font-weight: 500;">Data Backup & Migration</legend>
         <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button id="settings-backup-gdrive" class="button" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 12px; background: #2563eb; color: #fff; border: none; font-weight: 500;">☁️ Backup All Bookmark Files to Google Drive</button>
           <button id="settings-export" class="button" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 12px;">📤 Export Database</button>
           <label class="button" style="display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; width: 100%; box-sizing: border-box; padding: 6px 12px; margin: 0;">
             📥 Import Database
@@ -6266,11 +6268,48 @@ export function handleZip(bytes) {
                         </div>
                     </div>
                 </div>
-                <div class="nav-controls">
+                <div class="nav-controls" style="display:flex;align-items:center;">
+                    <div id="storage-mode-selector" style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:2px;margin-right:6px;font-size:12px;">
+                        <button id="nav-btn-storage-bmk" class="nav-btn ${getStorageMode() === 'bookmarks' ? 'active' : ''}" style="padding:4px 8px;font-size:12px;cursor:pointer;border:none;border-radius:4px;" title="Chrome Bookmarks Storage">🔖 <span>Bookmarks</span></button>
+                        <button id="nav-btn-storage-gdrive" class="nav-btn ${getStorageMode() === 'gdrive' ? 'active' : ''}" style="padding:4px 8px;font-size:12px;cursor:pointer;border:none;border-radius:4px;" title="Google Drive Cloud Storage (15 GB)">☁️ <span>Drive</span></button>
+                    </div>
                     <button id="global-theme-toggle" class="nav-btn" title="Toggle Theme" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
                 </div>
             `;
             document.body.insertBefore(nav, document.body.firstChild);
+
+            // Storage mode switcher handlers
+            const btnBmk = nav.querySelector("#nav-btn-storage-bmk");
+            const btnGDrive = nav.querySelector("#nav-btn-storage-gdrive");
+
+            if (btnBmk && btnGDrive) {
+                btnBmk.onclick = async (e) => {
+                    e.preventDefault();
+                    setStorageMode("bookmarks");
+                    btnBmk.classList.add("active");
+                    btnGDrive.classList.remove("active");
+                    cachedMetas = null;
+                    if (typeof loadFilesToTable === "function") await loadFilesToTable(true);
+                };
+
+                btnGDrive.onclick = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const token = await GDrive.getAuthToken(true);
+                        if (!token) {
+                            alert("Google Drive authorization was not completed.");
+                            return;
+                        }
+                        setStorageMode("gdrive");
+                        btnGDrive.classList.add("active");
+                        btnBmk.classList.remove("active");
+                        cachedMetas = null;
+                        if (typeof loadFilesToTable === "function") await loadFilesToTable(true);
+                    } catch (err) {
+                        alert("Could not connect to Google Drive: " + err.message);
+                    }
+                };
+            }
 
             // Toggle dropdown behavior
             const trigger = nav.querySelector(".dropdown-trigger");
@@ -7462,7 +7501,120 @@ export function handleZip(bytes) {
         };
     }
 
+    function GDriveFileObj(driveFile) {
+        return {
+            isGDrive: true,
+            handle: {
+                id: driveFile.id,
+                title: driveFile.name
+            },
+            async getChildrenFresh() {
+                return [];
+            },
+            async readRaw() {
+                const bytes = await GDrive.downloadDriveFile(this.handle.id);
+                // Try decoding as BookmarkFS serialized payload ("z...", "r...", "c...", "data:...")
+                const decoder = new TextDecoder();
+                const str = decoder.decode(bytes);
+                if (str.startsWith("z") || str.startsWith("r") || str.startsWith("c") || str.startsWith("data:")) {
+                    return str;
+                }
+                const mime = (driveFile.appProperties && driveFile.appProperties.type) || driveFile.mimeType || "application/octet-stream";
+                const b64 = b64encodeBytes(bytes);
+                return `data:${mime};base64,${b64}`;
+            },
+            async read() {
+                return this.readRaw();
+            },
+            async write(rawString, onProgress) {
+                let bytes;
+                if (typeof rawString === "string") {
+                    bytes = new TextEncoder().encode(rawString);
+                } else if (rawString instanceof Uint8Array) {
+                    bytes = rawString;
+                } else {
+                    bytes = new Uint8Array(0);
+                }
+                const meta = await this.readMeta() || {};
+                const uploaded = await GDrive.uploadDriveFile(this.handle.title, bytes, meta.type || "application/octet-stream", meta, onProgress);
+                this.handle.id = uploaded.id;
+            },
+            async writeMeta(metaObj) {
+                const appProperties = {
+                    schemaVersion: "4",
+                    storageType: "gdrive",
+                    name: metaObj.name || this.handle.title,
+                    type: metaObj.type || "application/octet-stream",
+                    compressed: String(metaObj.compressed || false),
+                    encrypted: String(metaObj.encrypted || false),
+                    contentHash: metaObj.contentHash || "",
+                    sizeOriginal: String(metaObj.sizeOriginal || 0),
+                    sizeStored: String(metaObj.sizeStored || 0),
+                    dateISO: metaObj.dateISO || new Date().toISOString(),
+                    tags: Array.isArray(metaObj.tags) ? metaObj.tags.join(",") : (metaObj.tags || "")
+                };
+                if (metaObj.enc) {
+                    appProperties.encSalt = metaObj.enc.salt || metaObj.enc.saltB64 || "";
+                    appProperties.encIv = metaObj.enc.iv || metaObj.enc.ivB64 || "";
+                }
+                await GDrive.apiFetch(`drive/v3/files/${this.handle.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ appProperties })
+                });
+            },
+            async readMeta() {
+                const props = driveFile.appProperties || {};
+                let encInfo = null;
+                if (props.encrypted === "true") {
+                    encInfo = { salt: props.encSalt, iv: props.encIv };
+                }
+                return {
+                    schemaVersion: 4,
+                    storageType: "gdrive",
+                    name: driveFile.name,
+                    type: props.type || driveFile.mimeType || "application/octet-stream",
+                    sizeOriginal: Number(props.sizeOriginal) || Number(driveFile.size) || 0,
+                    sizeStored: Number(props.sizeStored) || Number(driveFile.size) || 0,
+                    compressed: props.compressed === "true",
+                    encrypted: props.encrypted === "true",
+                    enc: encInfo,
+                    contentHash: props.contentHash || "",
+                    dateISO: props.dateISO || driveFile.modifiedTime || new Date().toISOString(),
+                    tags: props.tags ? props.tags.split(",").filter(Boolean) : []
+                };
+            },
+            async rename(newName) {
+                await GDrive.renameDriveFile(this.handle.id, newName);
+                this.handle.title = newName;
+            },
+            async delete() {
+                await GDrive.deleteDriveFile(this.handle.id);
+            }
+        };
+    }
+
+    function getStorageMode() {
+        return localStorage.getItem("bookmarkfs_storage_mode") || "bookmarks";
+    }
+
+    function setStorageMode(mode) {
+        localStorage.setItem("bookmarkfs_storage_mode", mode);
+    }
+
     async function listFiles() {
+        if (getStorageMode() === "gdrive") {
+            try {
+                const isAuthed = await GDrive.isDriveAuthenticated();
+                if (!isAuthed) return [];
+                const driveFiles = await GDrive.listDriveFiles();
+                return driveFiles.map(df => GDriveFileObj(df));
+            } catch (err) {
+                console.warn("Failed to list Google Drive files:", err);
+                return [];
+            }
+        }
+
         const root = await fsRoot();
         const children = await chrome.bookmarks.getChildren(root.id);
         const resultFiles = [];
@@ -7494,6 +7646,16 @@ export function handleZip(bytes) {
     }
 
     async function getFileByName(name) {
+        if (getStorageMode() === "gdrive") {
+            try {
+                const files = await GDrive.listDriveFiles();
+                const found = files.find(f => f.name === name);
+                return found ? GDriveFileObj(found) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
         if (name === "__chunks__") return null;
         const root = await fsRoot();
         const children = await chrome.bookmarks.getChildren(root.id);
@@ -7502,6 +7664,14 @@ export function handleZip(bytes) {
     }
 
     async function createNewFile(name) {
+        if (getStorageMode() === "gdrive") {
+            const files = await GDrive.listDriveFiles();
+            const existing = files.find(f => f.name === name);
+            if (existing) throw new Error("file exists");
+            const uploaded = await GDrive.uploadDriveFile(name, new Uint8Array(0), getMimeType(name) || "application/octet-stream");
+            return GDriveFileObj(uploaded);
+        }
+
         if (name === "__chunks__") throw new Error("reserved name");
         const root = await fsRoot();
         const children = await chrome.bookmarks.getChildren(root.id);
@@ -7513,10 +7683,7 @@ export function handleZip(bytes) {
 
     async function findFileByHash(contentHash) {
         if (!contentHash) return null;
-        const root = await fsRoot();
-        const rootChildren = await chrome.bookmarks.getChildren(root.id);
-        const files = rootChildren.filter(c => !c.url && c.title !== "__chunks__")
-            .map(c => FileObj(c));
+        const files = await listFiles();
 
         for (const f of files) {
             const meta = await f.readMeta();
@@ -9946,6 +10113,57 @@ export function handleZip(bytes) {
             }
             this.value = "";
         });
+
+        const backupGDriveBtn = qs("#settings-backup-gdrive");
+        if (backupGDriveBtn) {
+            backupGDriveBtn.addEventListener("click", async () => {
+                try {
+                    const token = await GDrive.getAuthToken(true);
+                    if (!token) {
+                        alert("Google Drive authorization was cancelled.");
+                        return;
+                    }
+
+                    backupGDriveBtn.disabled = true;
+                    backupGDriveBtn.textContent = "⏳ Backing up files to Google Drive...";
+
+                    // Get all bookmark files
+                    const root = await fsRoot();
+                    const children = await chrome.bookmarks.getChildren(root.id);
+                    const bmkFiles = children.filter(c => !c.url && c.title !== "__chunks__").map(c => FileObj(c));
+
+                    let successCount = 0;
+                    for (const f of bmkFiles) {
+                        try {
+                            const raw = await f.read();
+                            if (raw) {
+                                const meta = await f.readMeta() || {};
+                                let bytes;
+                                let mime = meta.type || "application/octet-stream";
+                                try {
+                                    const recon = await reconstructBytesFromSerialized(raw, meta);
+                                    bytes = recon.bytes;
+                                    mime = recon.mime || mime;
+                                } catch (e) {
+                                    bytes = new TextEncoder().encode(raw);
+                                }
+                                await GDrive.uploadDriveFile(f.handle.title, bytes, mime, meta);
+                                successCount++;
+                            }
+                        } catch (err) {
+                            console.warn("Failed to backup file to Drive:", f.handle.title, err);
+                        }
+                    }
+
+                    alert(`Successfully backed up ${successCount} files to your BookmarkFS folder in Google Drive!`);
+                } catch (err) {
+                    alert("Backup to Google Drive failed: " + err.message);
+                } finally {
+                    backupGDriveBtn.disabled = false;
+                    backupGDriveBtn.textContent = "☁️ Backup All Bookmark Files to Google Drive";
+                }
+            });
+        }
 
         setupDragDrop();
 
