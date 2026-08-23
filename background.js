@@ -914,9 +914,11 @@ async function captureFullPage(tab) {
         const { coords, totalWidth, totalHeight, viewportWidth, viewportHeight, dpr } = prep;
         console.log(`Page details: ${totalWidth}x${totalHeight}, Viewport: ${viewportWidth}x${viewportHeight}, DPR: ${dpr}, Slices count: ${coords.length}`);
 
-        const slices = [];
+        // 5. Create background OffscreenCanvas to stitch slices without message size limits
+        const canvas = new OffscreenCanvas(Math.max(1, Math.round(totalWidth * dpr)), Math.max(1, Math.round(totalHeight * dpr)));
+        const ctx = canvas.getContext("2d");
 
-        // 5. Scroll and capture viewport slides loop
+        // Scroll and capture viewport slides loop, drawing directly onto background canvas
         let currentSliceIdx = 0;
         for (const coord of coords) {
             currentSliceIdx++;
@@ -928,7 +930,7 @@ async function captureFullPage(tab) {
 
             await chrome.tabs.sendMessage(tab.id, { action: "scroll", x: coord.x, y: coord.y });
             
-            // Reduced paint delay for 3x faster viewport capture cycle
+            // Reduced paint delay for fast viewport capture cycle
             await new Promise(resolve => setTimeout(resolve, 100));
 
             // Capture the current visible tab window viewport with retry on rate limit
@@ -953,83 +955,79 @@ async function captureFullPage(tab) {
                 throw new Error("Failed to capture tab viewport due to Google Chrome rate limits. Please try again.");
             }
 
-            slices.push({
-                x: coord.x,
-                y: coord.y,
-                dataUrl: dataUrl
-            });
-        }
-
-        // 4. Send all captured slices back to page DOM canvas context for high-performance offscreen stitching
-        console.log("Stitching slices...");
-        const stitchRes = await chrome.tabs.sendMessage(tab.id, {
-            action: "stitch",
-            slices: slices,
-            totalWidth: totalWidth,
-            totalHeight: totalHeight,
-            dpr: dpr
-        });
-
-        // 5. Restore page scroll positions and layout visibility states
-        await chrome.tabs.sendMessage(tab.id, { action: "cleanup" });
-
-        if (stitchRes && stitchRes.dataUrl) {
-            // 6. Convert returned stitched Data URL back to raw binary bytes array
-            const base64Str = stitchRes.dataUrl.split(",")[1];
-            const binaryString = atob(base64Str);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-
-            let domain = "page";
+            // Draw this slice directly onto background canvas and close bitmap
             try {
-                const urlObj = new URL(tab.url);
-                domain = urlObj.hostname;
-            } catch (e) {}
-
-            const dateStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-            const filename = `screenshot-${domain}-${dateStr}.png`;
-
-            // Save raw bytes asynchronously in background so it never blocks or lags the user capture flow
-            storeRawBytesInBookmarks(filename, bytes, "image/png").catch(err => {
-                console.warn("Background bookmark store warning:", err);
-            });
-            console.log("Full-page screenshot successfully saved as file:", filename);
-
-            // 7. Save capture object to Dexie database "Test4"
-            const imageFilename = "capture_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + ".png";
-            const captureObj = {
-                domain: domain,
-                time: new Date(),
-                format: "png",
-                images: [ imageFilename ],
-                sizes: [ bytes.length ],
-                scaleMultiplier: dpr,
-                url: tab.url,
-                title: tab.title || "Screenshot",
-                edits: {}
-            };
-
-            const insertedId = await saveCaptureToDexie(captureObj);
-            console.log("Screenshot successfully saved to Dexie captures store, ID:", insertedId);
-
-            // 7.5 Store the Data URL in chrome.storage.local temporarily for capture.html to write to HTML5 Persistent FS
-            const storageKey = "temp_capture_file_" + imageFilename;
-            await chrome.storage.local.set({ [storageKey]: stitchRes.dataUrl });
-
-            // 8. Open the viewer tab to inspect and edit!
-            const captureViewerUrl = chrome.runtime.getURL(`dist/capture.html?id=${insertedId}&url=${encodeURIComponent(tab.url)}`);
-            await chrome.tabs.create({ url: captureViewerUrl });
-
-            // 9. Show success Toast notification on captured page
-            await chrome.tabs.sendMessage(tab.id, {
-                action: "show-toast",
-                text: "Full-page screenshot captured & saved to BookmarkFS!"
-            });
-        } else {
-            throw new Error(stitchRes ? stitchRes.error : "Unknown stitching canvas error.");
+                const res = await fetch(dataUrl);
+                const blob = await res.blob();
+                const bitmap = await createImageBitmap(blob);
+                ctx.drawImage(bitmap, Math.round(coord.x * dpr), Math.round(coord.y * dpr));
+                bitmap.close();
+            } catch (drawErr) {
+                console.warn("Slice draw warning:", drawErr);
+            }
         }
+
+        // Restore page scroll positions and layout visibility states
+        await chrome.tabs.sendMessage(tab.id, { action: "cleanup" }).catch(() => {});
+
+        // Convert the completed stitched canvas into Blob and bytes directly in background
+        const finalBlob = await canvas.convertToBlob({ type: "image/png" });
+        const arrayBuf = await finalBlob.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuf);
+
+        // Fast base64 data URL conversion
+        let binaryString = "";
+        const CHUNK_SIZE = 0x8000;
+        for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+            binaryString += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK_SIZE));
+        }
+        const stitchedDataUrl = "data:image/png;base64," + btoa(binaryString);
+
+        let domain = "page";
+        try {
+            const urlObj = new URL(tab.url);
+            domain = urlObj.hostname;
+        } catch (e) {}
+
+        const dateStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const filename = `screenshot-${domain}-${dateStr}.png`;
+
+        // Save raw bytes asynchronously in background so it never blocks or lags the user capture flow
+        storeRawBytesInBookmarks(filename, bytes, "image/png").catch(err => {
+            console.warn("Background bookmark store warning:", err);
+        });
+        console.log("Full-page screenshot successfully saved as file:", filename);
+
+        // 7. Save capture object to Dexie database "Test4"
+        const imageFilename = "capture_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + ".png";
+        const captureObj = {
+            domain: domain,
+            time: new Date(),
+            format: "png",
+            images: [ imageFilename ],
+            sizes: [ bytes.length ],
+            scaleMultiplier: dpr,
+            url: tab.url,
+            title: tab.title || "Screenshot",
+            edits: {}
+        };
+
+        const insertedId = await saveCaptureToDexie(captureObj);
+        console.log("Screenshot successfully saved to Dexie captures store, ID:", insertedId);
+
+        // 7.5 Store the Data URL in chrome.storage.local temporarily for capture.html to write to HTML5 Persistent FS
+        const storageKey = "temp_capture_file_" + imageFilename;
+        await chrome.storage.local.set({ [storageKey]: stitchedDataUrl });
+
+        // 8. Open the viewer tab to inspect and edit!
+        const captureViewerUrl = chrome.runtime.getURL(`dist/capture.html?id=${insertedId}&url=${encodeURIComponent(tab.url)}`);
+        await chrome.tabs.create({ url: captureViewerUrl });
+
+        // 9. Show success Toast notification on captured page
+        await chrome.tabs.sendMessage(tab.id, {
+            action: "show-toast",
+            text: "Full-page screenshot captured & saved to BookmarkFS!"
+        }).catch(() => {});
 
     } catch (err) {
         console.error("Screenshot capture flow failed:", err);
