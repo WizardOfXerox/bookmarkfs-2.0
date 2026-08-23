@@ -6270,8 +6270,8 @@ export function handleZip(bytes) {
                 </div>
                 <div class="nav-controls" style="display:flex;align-items:center;">
                     <div id="storage-mode-selector" style="display:inline-flex;align-items:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:2px;margin-right:6px;font-size:12px;">
-                        <button id="nav-btn-storage-bmk" class="nav-btn ${getStorageMode() === 'bookmarks' ? 'active' : ''}" style="padding:4px 8px;font-size:12px;cursor:pointer;border:none;border-radius:4px;" title="Chrome Bookmarks Storage">🔖 <span>Bookmarks</span></button>
-                        <button id="nav-btn-storage-gdrive" class="nav-btn ${getStorageMode() === 'gdrive' ? 'active' : ''}" style="padding:4px 8px;font-size:12px;cursor:pointer;border:none;border-radius:4px;" title="Google Drive Cloud Storage (15 GB)">☁️ <span>Drive</span></button>
+                        <button id="nav-btn-storage-bmk" class="storage-mode-btn ${getStorageMode() === 'bookmarks' ? 'active' : ''}" style="padding:4px 8px;font-size:12px;cursor:pointer;border:none;border-radius:4px;background:transparent;color:inherit;" title="Chrome Bookmarks Storage">🔖 <span>Bookmarks</span></button>
+                        <button id="nav-btn-storage-gdrive" class="storage-mode-btn ${getStorageMode() === 'gdrive' ? 'active' : ''}" style="padding:4px 8px;font-size:12px;cursor:pointer;border:none;border-radius:4px;background:transparent;color:inherit;" title="Google Drive Cloud Storage (15 GB)">☁️ <span>Drive</span></button>
                     </div>
                     <button id="global-theme-toggle" class="nav-btn" title="Toggle Theme" style="background:transparent;border:none;cursor:pointer;padding:6px 12px;margin-left:8px;"></button>
                 </div>
@@ -6285,30 +6285,44 @@ export function handleZip(bytes) {
             if (btnBmk && btnGDrive) {
                 btnBmk.onclick = async (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     setStorageMode("bookmarks");
                     btnBmk.classList.add("active");
                     btnGDrive.classList.remove("active");
+                    btnBmk.style.background = "rgba(255,255,255,0.15)";
+                    btnGDrive.style.background = "transparent";
                     cachedMetas = null;
                     if (typeof loadFilesToTable === "function") await loadFilesToTable(true);
                 };
 
                 btnGDrive.onclick = async (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     try {
                         const token = await GDrive.getAuthToken(true);
                         if (!token) {
-                            alert("Google Drive authorization was not completed.");
                             return;
                         }
                         setStorageMode("gdrive");
                         btnGDrive.classList.add("active");
                         btnBmk.classList.remove("active");
+                        btnGDrive.style.background = "rgba(255,255,255,0.15)";
+                        btnBmk.style.background = "transparent";
                         cachedMetas = null;
                         if (typeof loadFilesToTable === "function") await loadFilesToTable(true);
                     } catch (err) {
                         alert("Could not connect to Google Drive: " + err.message);
                     }
                 };
+
+                // Initial style setup
+                if (getStorageMode() === "gdrive") {
+                    btnGDrive.style.background = "rgba(255,255,255,0.15)";
+                    btnBmk.style.background = "transparent";
+                } else {
+                    btnBmk.style.background = "rgba(255,255,255,0.15)";
+                    btnGDrive.style.background = "transparent";
+                }
             }
 
             // Toggle dropdown behavior
@@ -6327,8 +6341,8 @@ export function handleZip(bytes) {
                 }
             });
 
-            // Bind panel switching
-            const navLinks = nav.querySelectorAll(".nav-btn:not(.dropdown-trigger)");
+            // Bind panel switching ONLY on nav-links items
+            const navLinks = nav.querySelectorAll(".nav-links .nav-btn:not(.dropdown-trigger)");
             navLinks.forEach(link => {
                 link.onclick = (e) => {
                     const panel = link.dataset.panel;

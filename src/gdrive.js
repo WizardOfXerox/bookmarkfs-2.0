@@ -7,11 +7,21 @@
 export async function getAuthToken(interactive = false) {
     return new Promise((resolve) => {
         if (typeof chrome === "undefined" || !chrome.identity || !chrome.identity.getAuthToken) {
+            console.warn("[Google Drive] chrome.identity.getAuthToken is not available in this context.");
             resolve(null);
             return;
         }
         chrome.identity.getAuthToken({ interactive }, (token) => {
-            if (chrome.runtime.lastError || !token) {
+            if (chrome.runtime.lastError) {
+                console.error("[Google Drive Auth Error]:", chrome.runtime.lastError.message);
+                if (interactive) {
+                    alert("Google Drive Sign-In: " + chrome.runtime.lastError.message + "\n\nTip: For development, ensure the extension ID is configured in Google Cloud Console OAuth Client credentials.");
+                }
+                resolve(null);
+            } else if (!token) {
+                if (interactive) {
+                    alert("Google Drive authorization was cancelled or no token was returned.");
+                }
                 resolve(null);
             } else {
                 resolve(token);
