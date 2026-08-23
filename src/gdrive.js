@@ -5,39 +5,112 @@
  */
 
 export async function getAuthToken(interactive = false) {
-    return new Promise((resolve) => {
-        if (typeof chrome === "undefined" || !chrome.identity || !chrome.identity.getAuthToken) {
-            console.warn("[Google Drive] chrome.identity.getAuthToken is not available in this context.");
-            resolve(null);
-            return;
-        }
-        chrome.identity.getAuthToken({ interactive }, (token) => {
-            if (chrome.runtime.lastError) {
-                console.error("[Google Drive Auth Error]:", chrome.runtime.lastError.message);
-                if (interactive) {
-                    alert("Google Drive Sign-In: " + chrome.runtime.lastError.message + "\n\nTip: For development, ensure the extension ID is configured in Google Cloud Console OAuth Client credentials.");
+    // 1. Check if token is cached in storage and not expired
+    try {
+        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+            const storageRes = await chrome.storage.local.get(["bookmarkfs_gdrive_token", "bookmarkfs_gdrive_token_exp"]);
+            if (storageRes.bookmarkfs_gdrive_token) {
+                const exp = storageRes.bookmarkfs_gdrive_token_exp || 0;
+                if (Date.now() < exp - 60000) { // Valid for at least 1 more minute
+                    return storageRes.bookmarkfs_gdrive_token;
                 }
-                resolve(null);
-            } else if (!token) {
-                if (interactive) {
-                    alert("Google Drive authorization was cancelled or no token was returned.");
-                }
-                resolve(null);
-            } else {
-                resolve(token);
             }
-        });
-    });
+        }
+    } catch (e) {}
+
+    // 2. Try native chrome.identity.getAuthToken if available
+    if (typeof chrome !== "undefined" && chrome.identity && typeof chrome.identity.getAuthToken === "function") {
+        try {
+            const token = await new Promise((resolve) => {
+                chrome.identity.getAuthToken({ interactive }, (t) => {
+                    if (chrome.runtime.lastError || !t) {
+                        resolve(null);
+                    } else {
+                        resolve(t);
+                    }
+                });
+            });
+            if (token) {
+                await chrome.storage.local.set({
+                    bookmarkfs_gdrive_token: token,
+                    bookmarkfs_gdrive_token_exp: Date.now() + 3500 * 1000
+                });
+                return token;
+            }
+        } catch (e) {
+            console.warn("[Google Drive getAuthToken notice]:", e);
+        }
+    }
+
+    // 3. Fall back to chrome.identity.launchWebAuthFlow (Universal OAuth 2.0 flow)
+    if (interactive && typeof chrome !== "undefined" && chrome.identity && typeof chrome.identity.launchWebAuthFlow === "function") {
+        try {
+            const clientId = "766258079864-bookmarkfs.apps.googleusercontent.com";
+            const redirectUri = chrome.identity.getRedirectURL ? chrome.identity.getRedirectURL() : `https://${chrome.runtime.id}.chromiumapp.org/`;
+            const scopes = encodeURIComponent("https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata");
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&prompt=consent`;
+
+            const redirectedUrl = await new Promise((resolve, reject) => {
+                chrome.identity.launchWebAuthFlow({
+                    url: authUrl,
+                    interactive: true
+                }, (responseUrl) => {
+                    if (chrome.runtime.lastError) {
+                        reject(new Error(chrome.runtime.lastError.message));
+                    } else {
+                        resolve(responseUrl);
+                    }
+                });
+            });
+
+            if (redirectedUrl) {
+                const hash = new URL(redirectedUrl).hash.substring(1);
+                const params = new URLSearchParams(hash);
+                const accessToken = params.get("access_token");
+                const expiresIn = Number(params.get("expires_in")) || 3600;
+
+                if (accessToken) {
+                    await chrome.storage.local.set({
+                        bookmarkfs_gdrive_token: accessToken,
+                        bookmarkfs_gdrive_token_exp: Date.now() + expiresIn * 1000
+                    });
+                    return accessToken;
+                }
+            }
+        } catch (flowErr) {
+            console.warn("[Google Drive launchWebAuthFlow notice]:", flowErr.message);
+        }
+    }
+
+    // 4. Interactive fallback token prompt (works anywhere with custom/temporary token)
+    if (interactive) {
+        const manualToken = prompt(
+            "🔑 Google Drive Connection\n\n" +
+            "Enter your Google OAuth Access Token (or generate one from Google OAuth 2.0 Playground with Drive scope):",
+            ""
+        );
+        if (manualToken && manualToken.trim()) {
+            const cleanToken = manualToken.trim();
+            if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+                await chrome.storage.local.set({
+                    bookmarkfs_gdrive_token: cleanToken,
+                    bookmarkfs_gdrive_token_exp: Date.now() + 3600 * 1000
+                });
+            }
+            return cleanToken;
+        }
+    }
+
+    return null;
 }
 
 export async function removeCachedAuthToken(token) {
-    return new Promise((resolve) => {
-        if (typeof chrome !== "undefined" && chrome.identity && chrome.identity.removeCachedAuthToken) {
-            chrome.identity.removeCachedAuthToken({ token }, () => resolve());
-        } else {
-            resolve();
-        }
-    });
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        await chrome.storage.local.remove(["bookmarkfs_gdrive_token", "bookmarkfs_gdrive_token_exp"]);
+    }
+    if (typeof chrome !== "undefined" && chrome.identity && chrome.identity.removeCachedAuthToken && token) {
+        chrome.identity.removeCachedAuthToken({ token }, () => {});
+    }
 }
 
 export async function isDriveAuthenticated() {
