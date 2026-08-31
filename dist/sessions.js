@@ -119,11 +119,16 @@
 
     // Storage and Bookmarks Filesystem Helpers
     async function fsRoot() {
-        const tree = await chrome.bookmarks.getTree();
-        const bar = tree[0].children[1] || tree[0].children[0];
-        let handle = (bar.children || []).find(b => b.title === "bookmarkfs");
+        const roots = await new Promise((resolve) => {
+            chrome.bookmarks.getChildren("0", (nodes) => resolve(nodes || []));
+        });
+        const barId = roots.length > 1 ? roots[1].id : (roots.length > 0 ? roots[0].id : "1");
+        const children = await new Promise((resolve) => {
+            chrome.bookmarks.getChildren(barId, (nodes) => resolve(nodes || []));
+        });
+        let handle = children.find(b => b.title === "bookmarkfs");
         if (!handle) {
-            handle = await chrome.bookmarks.create({ parentId: bar.id, title: "bookmarkfs" });
+            handle = await chrome.bookmarks.create({ parentId: barId, title: "bookmarkfs" });
         }
         return handle;
     }
