@@ -1761,3 +1761,166 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 });
 
+// ===== LEGACY & SIDEBAR MESSAGING BRIDGE =====
+const _legacyMessageHandlers = {
+    bookmarks: async (msg) => {
+        if (!msg || msg.id === 0 || msg.id === "0" || msg.id === undefined) {
+            try {
+                const roots = await chrome.bookmarks.getChildren("0");
+                const treeRoots = [];
+                for (const root of roots) {
+                    const children = await chrome.bookmarks.getChildren(root.id);
+                    treeRoots.push({
+                        ...root,
+                        children: (children || []).filter(c => c.title !== "bookmarkfs" && c.title !== "__chunks__")
+                    });
+                }
+                return { bookmarks: [{ id: "0", title: "", children: treeRoots }] };
+            } catch (err) {
+                return { bookmarks: [{ id: "0", title: "", children: [] }], error: err.message };
+            }
+        }
+        try {
+            const sub = await chrome.bookmarks.getSubTree("" + msg.id);
+            return { bookmarks: sub };
+        } catch (err) {
+            return { bookmarks: [], error: err.message };
+        }
+    },
+    searchBookmarks: async (msg) => {
+        try {
+            const res = await chrome.bookmarks.search(msg.searchVal);
+            return { bookmarks: (res || []).filter(c => c.title !== "bookmarkfs" && c.title !== "__chunks__") };
+        } catch (e) {
+            return { bookmarks: [], error: e.message };
+        }
+    },
+    moveBookmark: async (msg) => {
+        try {
+            const moved = await chrome.bookmarks.move("" + msg.id, { parentId: "" + msg.parentId, index: msg.index });
+            return { moved: moved.id };
+        } catch (e) {
+            return { error: e.message };
+        }
+    },
+    updateBookmark: async (msg) => {
+        try {
+            const updateInfo = { title: msg.title };
+            if (msg.url) updateInfo.url = msg.url;
+            await chrome.bookmarks.update("" + msg.id, updateInfo);
+            return { updated: msg.id };
+        } catch (e) {
+            return { error: e.message };
+        }
+    },
+    createBookmark: async (msg) => {
+        try {
+            const created = await chrome.bookmarks.create({
+                parentId: msg.parentId,
+                index: msg.index,
+                title: msg.title,
+                url: msg.url || null
+            });
+            return created;
+        } catch (e) {
+            return { error: e.message };
+        }
+    },
+    deleteBookmark: async (msg) => {
+        try {
+            await chrome.bookmarks.removeTree("" + msg.id);
+            return { deleted: msg.id };
+        } catch (e) {
+            return { error: e.message };
+        }
+    },
+    langvars: async () => {
+        return { language: "en", dir: "ltr", vars: {} };
+    },
+    languageInfos: async () => {
+        return { infos: {} };
+    },
+    rtlLangs: async () => {
+        return ["ar", "fa", "he"];
+    },
+    favicon: async (msg) => {
+        return chrome.runtime.getURL("_favicon") + "?pageUrl=" + encodeURIComponent(msg.url || "") + "&size=32";
+    },
+    userType: async () => {
+        return { userType: "premium" };
+    },
+    licenseKey: async () => {
+        return { licenseKey: null };
+    },
+    getCache: async (msg) => {
+        const key = "cache_" + msg.name;
+        const res = await chrome.storage.local.get([key]);
+        return { val: res[key] };
+    },
+    setCache: async (msg) => {
+        const key = "cache_" + msg.name;
+        await chrome.storage.local.set({ [key]: msg.val });
+        return { success: true };
+    },
+    removeCache: async (msg) => {
+        const key = "cache_" + msg.name;
+        await chrome.storage.local.remove([key]);
+        return { success: true };
+    },
+    viewAmounts: async () => {
+        const res = await chrome.storage.local.get(["clickCounter"]);
+        return { viewAmounts: res.clickCounter || {}, counterStartDate: Date.now() };
+    },
+    increaseViewCounter: async () => {
+        return { success: true };
+    },
+    searchHistory: async (msg) => {
+        try {
+            if (chrome.history) {
+                const history = await chrome.history.search({ text: msg.searchVal || "", maxResults: 50 });
+                return { history: history || [] };
+            }
+        } catch {}
+        return { history: [] };
+    },
+    parsedUrl: async (msg) => {
+        return msg.href;
+    },
+    lastUpdateDate: async () => {
+        return Date.now();
+    },
+    systemColorChanged: async () => {
+        return { success: true };
+    },
+    updateShareInfo: async () => {
+        return { success: true };
+    },
+    infoToDisplay: async () => {
+        return { info: null };
+    },
+    reload: async () => {
+        return { success: true };
+    },
+    reinitialize: async () => {
+        return { success: true };
+    },
+    openLink: async (msg) => {
+        if (msg.href) {
+            chrome.tabs.create({ url: msg.href });
+        }
+        return { success: true };
+    }
+};
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg && msg.type && _legacyMessageHandlers[msg.type]) {
+        _legacyMessageHandlers[msg.type](msg).then(res => {
+            sendResponse(res);
+        }).catch(err => {
+            console.error("Legacy handler error for", msg.type, err);
+            sendResponse({ error: err.message, bookmarks: [] });
+        });
+        return true;
+    }
+});
+
