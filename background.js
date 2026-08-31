@@ -922,11 +922,11 @@ async function captureFullPage(tab) {
         let currentSliceIdx = 0;
         for (const coord of coords) {
             currentSliceIdx++;
-            await chrome.tabs.sendMessage(tab.id, {
-                action: "update-progress",
-                current: currentSliceIdx,
-                total: coords.length
-            }).catch(() => {});
+            const pct = Math.round((currentSliceIdx / coords.length) * 100);
+            try {
+                chrome.action.setBadgeText({ text: `${pct}%`, tabId: tab.id });
+                chrome.action.setBadgeBackgroundColor({ color: "#059669", tabId: tab.id });
+            } catch (e) {}
 
             await chrome.tabs.sendMessage(tab.id, { action: "scroll", x: coord.x, y: coord.y });
             
@@ -969,6 +969,9 @@ async function captureFullPage(tab) {
 
         // Restore page scroll positions and layout visibility states
         await chrome.tabs.sendMessage(tab.id, { action: "cleanup" }).catch(() => {});
+        try {
+            chrome.action.setBadgeText({ text: "", tabId: tab.id });
+        } catch (e) {}
 
         // Convert the completed stitched canvas into Blob and bytes directly in background
         const finalBlob = await canvas.convertToBlob({ type: "image/png" });
@@ -1032,6 +1035,7 @@ async function captureFullPage(tab) {
     } catch (err) {
         console.error("Screenshot capture flow failed:", err);
         try {
+            chrome.action.setBadgeText({ text: "", tabId: tab.id });
             await chrome.tabs.sendMessage(tab.id, { action: "cleanup" });
             await chrome.tabs.sendMessage(tab.id, {
                 action: "show-toast",
@@ -1080,44 +1084,6 @@ function contentScriptCaptureMain() {
         // Listen to runtime scroll, stitch and toast commands
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.action === "prepare") {
-                // Create progress indicator overlay
-                const overlay = document.createElement("div");
-                overlay.id = "bookmarkfs-capture-progress-overlay";
-                overlay.style.position = "fixed";
-                overlay.style.top = "0";
-                overlay.style.left = "0";
-                overlay.style.width = "100vw";
-                overlay.style.height = "100vh";
-                overlay.style.backgroundColor = "rgba(0, 0, 0, 0.45)";
-                overlay.style.zIndex = "2147483647"; // Max z-index
-                overlay.style.display = "flex";
-                overlay.style.alignItems = "center";
-                overlay.style.justifyContent = "center";
-                overlay.style.fontFamily = "Helvetica, -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-                
-                overlay.innerHTML = `
-                    <div style="width: 324px; background: #ffffff; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); padding: 16px 20px; text-align: left; position: relative; border: 1px solid #ddd; box-sizing: border-box;">
-                        <div style="height: 50px; background: #161616; margin: -16px -20px 16px; padding: 0 20px; font-size: 20px; font-weight: 300; line-height: 50px; color: #fff; display: flex; align-items: center; border-top-left-radius: 5px; border-top-right-radius: 5px; box-sizing: border-box;">
-                            <img src="${chrome.runtime.getURL('images/icon-camera-fm.svg')}" style="width: 20px; height: 20px; margin-right: 10px; vertical-align: middle;">
-                            BookmarkFS
-                        </div>
-                        <div id="bookmarkfs-capture-progress-text" style="margin-bottom: 9px; font-size: 16px; color: #666; font-family: inherit;">Screen capture in progress…</div>
-                        <div style="height: 34px; margin-left: -12px; margin-right: -12px; position: relative; overflow: hidden; background: #fff;">
-                            <!-- dots background (gray dots) -->
-                            <div style="height: 12px; position: absolute; bottom: 11px; left: 12px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
-                                <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #ccc; position: absolute; bottom: 0; right: 0;"></div>
-                            </div>
-                            <!-- dots remaining (black dots) -->
-                            <div id="bookmarkfs-capture-progress-dots" style="height: 12px; position: absolute; bottom: 11px; right: 12px; overflow: hidden; width: calc(100% - 24px);">
-                                <div style="content: ''; width: 300px; height: 0; border-top: 12px dotted #161616; position: absolute; bottom: 0; right: 0;"></div>
-                            </div>
-                            <!-- bar with Pacman gif -->
-                            <div id="bookmarkfs-capture-progress-fill" style="width: 0%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; background-image: url(${chrome.runtime.getURL('images/anim.gif')}); background-position: 100% 50%; background-size: 34px 34px; background-repeat: no-repeat;"></div>
-                        </div>
-                    </div>
-                `;
-                (document.body || document.documentElement).appendChild(overlay);
-
                 // 1. Disable smooth scroll and transitions so viewports match coordinates exactly
                 const styleNode = document.createElement("style");
                 styleNode.innerHTML = "* { scroll-behavior: auto !important; transition: none !important; animation: none !important; }";
@@ -1131,8 +1097,6 @@ function contentScriptCaptureMain() {
                 let node;
                 while (node = walker.nextNode()) {
                     if (!node || !node.style) continue;
-                    // Skip our own overlay
-                    if (node.id === "bookmarkfs-capture-progress-overlay" || node.closest("#bookmarkfs-capture-progress-overlay")) continue;
                     
                     const computed = window.getComputedStyle(node);
                     const pos = computed.position;
@@ -1151,173 +1115,153 @@ function contentScriptCaptureMain() {
                     [data-bmfs-neutralize] {
                         position: relative !important;
                     }
-                    #bookmarkfs-capture-progress-overlay {
-                        position: fixed !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                    }
                 `;
                 document.head.appendChild(neutralizeStyle);
 
-            // Save original scroll states
-            const origX = window.scrollX;
-            const origY = window.scrollY;
+                // Save original scroll states
+                const origX = window.scrollX;
+                const origY = window.scrollY;
 
-            // Measure AFTER neutralization — converting fixed sidebars to relative may change scroll dimensions
-            const totalWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
-            const totalHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            const dpr = window.devicePixelRatio || 1;
+                // Measure AFTER neutralization — converting fixed sidebars to relative may change scroll dimensions
+                const totalWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
+                const totalHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const dpr = window.devicePixelRatio || 1;
 
-            // Generate coordinate capture points grid
-            const coords = [];
-            for (let y = 0; y < totalHeight; y += viewportHeight) {
-                for (let x = 0; x < totalWidth; x += viewportWidth) {
-                    const scrollX = Math.min(x, totalWidth - viewportWidth);
-                    const scrollY = Math.min(y, totalHeight - viewportHeight);
-                    coords.push({
-                        x: Math.max(0, scrollX),
-                        y: Math.max(0, scrollY)
-                    });
-                }
-            }
-
-            // Filter out duplicate coordinate points
-            const uniqueCoords = [];
-            const seen = new Set();
-            for (const c of coords) {
-                const key = `${c.x},${c.y}`;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniqueCoords.push(c);
-                }
-            }
-
-            // Send page specifications back
-            sendResponse({
-                coords: uniqueCoords,
-                totalWidth,
-                totalHeight,
-                viewportWidth,
-                viewportHeight,
-                dpr,
-                origX,
-                origY
-            });
-
-            // Keep reference to cleanup
-            window.__bookmarkfs_capture_cleanup = () => {
-                // Remove injected styles
-                if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
-                const ns = document.getElementById("bookmarkfs-neutralize-style");
-                if (ns && ns.parentNode) ns.parentNode.removeChild(ns);
-                
-                // Remove data-attributes to restore original positioning
-                (window.__bookmarkfs_marked_elts || []).forEach(el => {
-                    el.removeAttribute("data-bmfs-neutralize");
-                });
-                window.__bookmarkfs_marked_elts = null;
-
-                const progressOverlay = document.getElementById("bookmarkfs-capture-progress-overlay");
-                if (progressOverlay && progressOverlay.parentNode) {
-                    progressOverlay.parentNode.removeChild(progressOverlay);
-                }
-                window.scrollTo(origX, origY);
-                window.__bookmarkfs_capture_initialized = false;
-            };
-        }
-        else if (message.action === "scroll") {
-            window.scrollTo(message.x, message.y);
-
-            // No per-slice element toggling needed — fixed/sticky elements are already
-            // neutralized to position:relative via CSS, so they scroll naturally with content
-
-            // Wait for browser to paint the new scroll position
-            setTimeout(() => {
-                sendResponse({ scrolled: true });
-            }, 100);
-            return true; // Keep message channel open for async response
-        }
-        else if (message.action === "stitch") {
-            const { slices, totalWidth, totalHeight, dpr } = message;
-            
-            // Create offscreen canvas block
-            const canvas = document.createElement("canvas");
-            canvas.width = totalWidth * dpr;
-            canvas.height = totalHeight * dpr;
-            const ctx = canvas.getContext("2d");
-
-            let loadedCount = 0;
-            slices.forEach(slice => {
-                const img = new Image();
-                img.onload = () => {
-                    ctx.drawImage(img, slice.x * dpr, slice.y * dpr);
-                    loadedCount++;
-                    if (loadedCount === slices.length) {
-                        try {
-                            const dataUrl = canvas.toDataURL("image/png");
-                            sendResponse({ dataUrl });
-                        } catch (err) {
-                            sendResponse({ error: "Canvas capture tainted or failed: " + err.message });
-                        }
+                // Generate coordinate capture points grid
+                const coords = [];
+                for (let y = 0; y < totalHeight; y += viewportHeight) {
+                    for (let x = 0; x < totalWidth; x += viewportWidth) {
+                        const scrollX = Math.min(x, totalWidth - viewportWidth);
+                        const scrollY = Math.min(y, totalHeight - viewportHeight);
+                        coords.push({
+                            x: Math.max(0, scrollX),
+                            y: Math.max(0, scrollY)
+                        });
                     }
-                };
-                img.onerror = () => {
-                    sendResponse({ error: "Failed to load screenshot slice image." });
-                };
-                img.src = slice.dataUrl;
-            });
-            return true; // Keep message channel open
-        }
-        else if (message.action === "cleanup") {
-            if (typeof window.__bookmarkfs_capture_cleanup === "function") {
-                window.__bookmarkfs_capture_cleanup();
-            }
-            sendResponse({ cleaned: true });
-        }
-        else if (message.action === "update-progress") {
-            const pct = Math.round((message.current / message.total) * 100);
-            const fill = document.getElementById("bookmarkfs-capture-progress-fill");
-            const dots = document.getElementById("bookmarkfs-capture-progress-dots");
-            if (fill) fill.style.width = pct + "%";
-            if (dots) dots.style.width = Math.max(0, 100 - pct + 2) + "%";
-            sendResponse({ updated: true });
-        }
-        else if (message.action === "show-toast") {
-            // Display clean floating success notifier toast
-            const toast = document.createElement("div");
-            toast.textContent = "📸 " + message.text;
-            toast.style.position = "fixed";
-            toast.style.top = "20px";
-            toast.style.left = "50%";
-            toast.style.transform = "translateX(-50%)";
-            toast.style.backgroundColor = "#059669";
-            toast.style.color = "#fff";
-            toast.style.padding = "12px 24px";
-            toast.style.borderRadius = "8px";
-            toast.style.zIndex = "999999";
-            toast.style.fontSize = "14px";
-            toast.style.fontWeight = "600";
-            toast.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-            toast.style.fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
-            toast.style.transition = "opacity 0.5s ease";
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.style.opacity = "0";
-                setTimeout(() => {
-                    if (toast.parentNode) toast.parentNode.removeChild(toast);
-                }, 500);
-            }, 3000);
-            sendResponse({ toastShown: true });
-        }
-    });
+                }
 
-    try {
-        chrome.runtime.sendMessage({ action: "capture-ready" });
-    } catch (e) {}
+                // Filter out duplicate coordinate points
+                const uniqueCoords = [];
+                const seen = new Set();
+                for (const c of coords) {
+                    const key = `${c.x},${c.y}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        uniqueCoords.push(c);
+                    }
+                }
+
+                // Send page specifications back
+                sendResponse({
+                    coords: uniqueCoords,
+                    totalWidth,
+                    totalHeight,
+                    viewportWidth,
+                    viewportHeight,
+                    dpr,
+                    origX,
+                    origY
+                });
+
+                // Keep reference to cleanup
+                window.__bookmarkfs_capture_cleanup = () => {
+                    // Remove injected styles
+                    if (styleNode.parentNode) styleNode.parentNode.removeChild(styleNode);
+                    const ns = document.getElementById("bookmarkfs-neutralize-style");
+                    if (ns && ns.parentNode) ns.parentNode.removeChild(ns);
+                    
+                    // Remove data-attributes to restore original positioning
+                    (window.__bookmarkfs_marked_elts || []).forEach(el => {
+                        el.removeAttribute("data-bmfs-neutralize");
+                    });
+                    window.__bookmarkfs_marked_elts = null;
+
+                    window.scrollTo(origX, origY);
+                    window.__bookmarkfs_capture_initialized = false;
+                };
+            }
+            else if (message.action === "scroll") {
+                window.scrollTo(message.x, message.y);
+
+                // Wait for browser to paint the new scroll position
+                setTimeout(() => {
+                    sendResponse({ scrolled: true });
+                }, 100);
+                return true; // Keep message channel open for async response
+            }
+            else if (message.action === "stitch") {
+                const { slices, totalWidth, totalHeight, dpr } = message;
+                
+                // Create offscreen canvas block
+                const canvas = document.createElement("canvas");
+                canvas.width = totalWidth * dpr;
+                canvas.height = totalHeight * dpr;
+                const ctx = canvas.getContext("2d");
+
+                let loadedCount = 0;
+                slices.forEach(slice => {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.drawImage(img, slice.x * dpr, slice.y * dpr);
+                        loadedCount++;
+                        if (loadedCount === slices.length) {
+                            try {
+                                const dataUrl = canvas.toDataURL("image/png");
+                                sendResponse({ dataUrl });
+                            } catch (err) {
+                                sendResponse({ error: "Canvas capture tainted or failed: " + err.message });
+                            }
+                        }
+                    };
+                    img.onerror = () => {
+                        sendResponse({ error: "Failed to load screenshot slice image." });
+                    };
+                    img.src = slice.dataUrl;
+                });
+                return true; // Keep message channel open
+            }
+            else if (message.action === "cleanup") {
+                if (typeof window.__bookmarkfs_capture_cleanup === "function") {
+                    window.__bookmarkfs_capture_cleanup();
+                }
+                sendResponse({ cleaned: true });
+            }
+            else if (message.action === "show-toast") {
+                // Display clean floating success notifier toast
+                const toast = document.createElement("div");
+                toast.textContent = "📸 " + message.text;
+                toast.style.position = "fixed";
+                toast.style.top = "20px";
+                toast.style.left = "50%";
+                toast.style.transform = "translateX(-50%)";
+                toast.style.backgroundColor = "#059669";
+                toast.style.color = "#fff";
+                toast.style.padding = "12px 24px";
+                toast.style.borderRadius = "8px";
+                toast.style.zIndex = "2147483647";
+                toast.style.fontSize = "14px";
+                toast.style.fontWeight = "600";
+                toast.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+                toast.style.fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+                toast.style.transition = "opacity 0.5s ease";
+                
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.opacity = "0";
+                    setTimeout(() => {
+                        if (toast.parentNode) toast.parentNode.removeChild(toast);
+                    }, 500);
+                }, 3000);
+                sendResponse({ toastShown: true });
+            }
+        });
+
+        try {
+            chrome.runtime.sendMessage({ action: "capture-ready" });
+        } catch (e) {}
     }
 }
 

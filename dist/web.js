@@ -66,6 +66,14 @@
         // Save last loaded URL to chrome.storage.local for state persistence
         chrome.storage.local.set({ bookmarkfs_web_last_url: targetUrl });
 
+        // Ensure sandbox and permission permissions
+        if (!iframe.getAttribute("sandbox")) {
+            iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-pointer-lock allow-top-navigation-by-user-activation");
+        }
+        if (!iframe.getAttribute("allow")) {
+            iframe.setAttribute("allow", "fullscreen; camera; microphone; clipboard-read; clipboard-write; autoplay; encrypted-media");
+        }
+
         // Load page in iframe
         iframe.src = targetUrl;
         addressBar.value = targetUrl;

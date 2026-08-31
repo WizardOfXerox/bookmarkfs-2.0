@@ -308,13 +308,56 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    async function getSafeBookmarkTree() {
+        const roots = await new Promise((resolve) => {
+            chrome.bookmarks.getChildren("0", (nodes) => resolve(nodes || []));
+        });
+        
+        const treeRoots = [];
+        for (const root of roots) {
+            const children = await new Promise((resolve) => {
+                chrome.bookmarks.getChildren(root.id, (nodes) => resolve(nodes || []));
+            });
+            const userChildren = children.filter(c => c.title !== "bookmarkfs" && c.title !== "__chunks__");
+            treeRoots.push({
+                ...root,
+                children: userChildren
+            });
+        }
+        return [{ id: "0", title: "", children: treeRoots }];
+    }
+
+    async function collectAllUserBookmarks(folderId = "0") {
+        const bookmarks = [];
+        const queue = [folderId];
+        
+        while (queue.length > 0) {
+            const currentId = queue.shift();
+            const children = await new Promise((resolve) => {
+                chrome.bookmarks.getChildren(currentId, (nodes) => resolve(nodes || []));
+            });
+            
+            for (const child of children) {
+                if (child.title === "bookmarkfs" || child.title === "__chunks__") {
+                    continue; // Skip BookmarkFS internal chunk storage
+                }
+                if (child.url) {
+                    bookmarks.push(child);
+                } else if (child.id) {
+                    queue.push(child.id);
+                }
+            }
+        }
+        return bookmarks;
+    }
+
     async function loadInitialBookmarks() {
         showLoading(true);
         try {
-            bookmarkTree = await chrome.bookmarks.getTree();
-            allBookmarks = flattenBookmarks(bookmarkTree);
+            bookmarkTree = await getSafeBookmarkTree();
+            allBookmarks = await collectAllUserBookmarks("0");
             
-            const rootFolders = bookmarkTree[0].children.filter(node => node.children && node.title);
+            const rootFolders = bookmarkTree[0].children.filter(node => (node.children || !node.url) && node.title);
             renderFolderTabs(rootFolders, primaryFolderTabs, true);
             
             // Load most visited and recently added
@@ -332,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Populate folder dropdowns in modals
-            populateFolderDropdowns();
+            await populateFolderDropdowns();
             
         } catch (error) {
             console.error('Error loading bookmarks:', error);
@@ -347,28 +390,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const mostVisited = await new Promise((resolve) => {
                 chrome.topSites.get(resolve);
             });
-            renderBookmarks(mostVisited.slice(0, 12), mostVisitedGrid);
+            renderBookmarks((mostVisited || []).slice(0, 12), mostVisitedGrid);
         } catch (error) {
             console.error('Error loading most visited:', error);
         }
     }
 
     function loadRecentlyAdded() {
-        const recentBookmarks = allBookmarks
+        const recentBookmarks = (allBookmarks || [])
             .filter(bookmark => bookmark.dateAdded)
             .sort((a, b) => b.dateAdded - a.dateAdded)
             .slice(0, 12);
         renderBookmarks(recentBookmarks, recentlyAddedGrid);
     }
 
-    function populateFolderDropdowns() {
-        const folders = getFolderList(bookmarkTree);
+    async function populateFolderDropdowns() {
+        const folders = [];
+        const queue = [{ id: "0", prefix: "" }];
+        
+        while (queue.length > 0) {
+            const current = queue.shift();
+            const children = await new Promise((resolve) => {
+                chrome.bookmarks.getChildren(current.id, (nodes) => resolve(nodes || []));
+            });
+            
+            for (const child of children) {
+                if (child.title === "bookmarkfs" || child.title === "__chunks__") continue;
+                if (!child.url) { // Folder
+                    const title = current.prefix ? `${current.prefix} / ${child.title}` : child.title;
+                    folders.push({ id: child.id, title });
+                    queue.push({ id: child.id, prefix: title });
+                }
+            }
+        }
+        
         const dropdowns = [
             document.getElementById('bookmarkFolder'),
             document.getElementById('editBookmarkFolder')
         ];
         
         dropdowns.forEach(dropdown => {
+            if (!dropdown) return;
             dropdown.innerHTML = '<option value="">Select folder...</option>';
             folders.forEach(folder => {
                 const option = document.createElement('option');
@@ -377,20 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 dropdown.appendChild(option);
             });
         });
-    }
-
-    function getFolderList(nodes, prefix = '') {
-        let folders = [];
-        for (const node of nodes) {
-            if (node.children && node.title) {
-                folders.push({
-                    id: node.id,
-                    title: prefix + node.title
-                });
-                folders = folders.concat(getFolderList(node.children, prefix + node.title + ' / '));
-            }
-        }
-        return folders;
     }
 
     // --- Event Handlers ---
@@ -1095,9 +1143,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    function exportBookmarks() {
-        chrome.bookmarks.getTree((tree) => {
-            const jsonString = JSON.stringify(tree, null, 2);
+    async function exportBookmarks() {
+        showLoading(true);
+        try {
+            const allUserBmk = await collectAllUserBookmarks("0");
+            const jsonString = JSON.stringify(allUserBmk, null, 2);
             const blob = new Blob([jsonString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             
@@ -1110,7 +1160,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             showToast('Bookmarks exported successfully!', 'success');
-        });
+        } catch (err) {
+            showToast('Error exporting bookmarks: ' + err.message, 'error');
+        } finally {
+            showLoading(false);
+        }
     }
 
     function handleImportBookmarks(event) {
@@ -1130,8 +1184,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateStr = new Date().toLocaleDateString();
                 const parentFolderTitle = `Imported Bookmarks (${dateStr})`;
                 
-                const tree = await chrome.bookmarks.getTree();
-                const rootFolderId = tree[0].children[0].id || '1';
+                const roots = await new Promise(resolve => chrome.bookmarks.getChildren("0", resolve));
+                const rootFolderId = (roots && roots.length > 0) ? roots[0].id : '1';
                 
                 chrome.bookmarks.create({
                     parentId: rootFolderId,
