@@ -1762,29 +1762,56 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // ===== LEGACY & SIDEBAR MESSAGING BRIDGE =====
+// Safe recursive shallow bookmark tree builder that skips internal storage folders
+async function getSafeBookmarkSubTree(nodeId) {
+    async function buildNode(id) {
+        let nodes;
+        try {
+            nodes = await chrome.bookmarks.get(id);
+        } catch { return null; }
+        if (!nodes || nodes.length === 0) return null;
+        const node = nodes[0];
+        if (node.title === "bookmarkfs" || node.title === "__chunks__") return null;
+        if (!node.url) { // is directory
+            let rawChildren = [];
+            try {
+                rawChildren = await chrome.bookmarks.getChildren(id);
+            } catch {}
+            const children = [];
+            for (const child of (rawChildren || [])) {
+                if (child.title === "bookmarkfs" || child.title === "__chunks__") continue;
+                if (!child.url) {
+                    const subDir = await buildNode(child.id);
+                    if (subDir) children.push(subDir);
+                } else {
+                    children.push(child);
+                }
+            }
+            node.children = children;
+        }
+        return node;
+    }
+    const result = await buildNode("" + nodeId);
+    return result ? [result] : [{ id: "" + nodeId, title: "", children: [] }];
+}
+
 const _legacyMessageHandlers = {
     bookmarks: async (msg) => {
-        if (!msg || msg.id === 0 || msg.id === "0" || msg.id === undefined) {
-            try {
+        try {
+            if (!msg || msg.id === 0 || msg.id === "0" || msg.id === undefined) {
                 const roots = await chrome.bookmarks.getChildren("0");
                 const treeRoots = [];
-                for (const root of roots) {
-                    const children = await chrome.bookmarks.getChildren(root.id);
-                    treeRoots.push({
-                        ...root,
-                        children: (children || []).filter(c => c.title !== "bookmarkfs" && c.title !== "__chunks__")
-                    });
+                for (const root of (roots || [])) {
+                    const sub = await getSafeBookmarkSubTree(root.id);
+                    if (sub && sub[0]) treeRoots.push(sub[0]);
                 }
                 return { bookmarks: [{ id: "0", title: "", children: treeRoots }] };
-            } catch (err) {
-                return { bookmarks: [{ id: "0", title: "", children: [] }], error: err.message };
             }
-        }
-        try {
-            const sub = await chrome.bookmarks.getSubTree("" + msg.id);
+            const sub = await getSafeBookmarkSubTree(msg.id);
             return { bookmarks: sub };
         } catch (err) {
-            return { bookmarks: [], error: err.message };
+            console.error("bookmarks handler error:", err);
+            return { bookmarks: [{ id: "" + (msg?.id || 0), title: "", children: [] }], error: err.message };
         }
     },
     searchBookmarks: async (msg) => {
